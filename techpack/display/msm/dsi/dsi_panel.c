@@ -5084,6 +5084,9 @@ int dsi_panel_get_mode(struct dsi_panel *panel,
 		//ignore the rc value
 		if (dsi_panel_parse_qsync_min_fps(prv_info, utils))
 			DSI_ERR("failed to parse qsyn min fps!\n");
+
+		mode->splash_dms = of_property_read_bool(child_np,
+				"qcom,mdss-dsi-splash-dms-switch-to-this-timing");
 	}
 	goto done;
 
