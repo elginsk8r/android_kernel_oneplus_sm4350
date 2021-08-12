@@ -17,6 +17,10 @@
 #include "bus.h"
 #include "debug.h"
 #include "genl.h"
+static u32 fw_version;
+static u32 fw_version_ext;
+static u32 bdf_version;
+static u32 bdf_version_ext;
 
 #define CNSS_DUMP_FORMAT_VER		0x11
 #define CNSS_DUMP_FORMAT_VER_V2		0x22
@@ -45,6 +49,52 @@
 static struct cnss_plat_data *plat_env;
 
 static DECLARE_RWSEM(cnss_pm_sem);
+
+int  bdf_WifiChain_mode;
+EXPORT_SYMBOL(bdf_WifiChain_mode);
+
+int get_wifi_chain_mode(void)
+{
+	return bdf_WifiChain_mode;
+}
+EXPORT_SYMBOL(get_wifi_chain_mode);
+
+static ssize_t wifichain_flag_show(struct device *dev,
+				   struct device_attribute *attr,
+				   char *buf)
+{
+	return snprintf(buf, sizeof(buf), "%u\n", bdf_WifiChain_mode);
+}
+EXPORT_SYMBOL(wifichain_flag_show);
+
+void cnss_set_bdf_name(u32 version, u32 ext)
+{
+	bdf_version = version;
+	bdf_version_ext = ext;
+}
+EXPORT_SYMBOL(cnss_set_bdf_name);
+
+static ssize_t bdf_name_show(struct device *dev,
+			     struct device_attribute *attr,
+			     char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u.%u\n",
+		bdf_version, bdf_version_ext);
+}
+static DEVICE_ATTR_RO(bdf_name);
+
+static ssize_t wifichain_flag_store(struct device *dev,
+				    struct device_attribute *attr,
+				    const char *buf,
+				    size_t size)
+{
+	if (buf && size != 0)
+		bdf_WifiChain_mode = *buf;
+	return bdf_WifiChain_mode;
+}
+EXPORT_SYMBOL(wifichain_flag_store);
+
+static DEVICE_ATTR_RW(wifichain_flag);
 
 static struct cnss_fw_files FW_FILES_QCA6174_FW_3_0 = {
 	"qwlan30.bin", "bdwlan30.bin", "otp30.bin", "utf30.bin",
@@ -616,40 +666,6 @@ out:
 	return ret;
 }
 
-/**
- * cnss_get_timeout - Get timeout for corresponding type.
- * @plat_priv: Pointer to platform driver context.
- * @cnss_timeout_type: Timeout type.
- *
- * Return: Timeout in milliseconds.
- */
-unsigned int cnss_get_timeout(struct cnss_plat_data *plat_priv,
-			      enum cnss_timeout_type timeout_type)
-{
-	unsigned int qmi_timeout = cnss_get_qmi_timeout(plat_priv);
-
-	switch (timeout_type) {
-	case CNSS_TIMEOUT_QMI:
-		return qmi_timeout;
-	case CNSS_TIMEOUT_POWER_UP:
-		return (qmi_timeout << 2);
-	case CNSS_TIMEOUT_IDLE_RESTART:
-		/* In idle restart power up sequence, we have fw_boot_timer to
-		 * handle FW initialization failure.
-		 * It uses WLAN_MISSION_MODE_TIMEOUT, so setup 3x that time to
-		 * account for FW dump collection and FW re-initialization on
-		 * retry.
-		 */
-		return (qmi_timeout + WLAN_MISSION_MODE_TIMEOUT * 3);
-	case CNSS_TIMEOUT_CALIBRATION:
-		return (qmi_timeout + WLAN_COLD_BOOT_CAL_TIMEOUT);
-	case CNSS_TIMEOUT_WLAN_WATCHDOG:
-		return ((qmi_timeout << 1) + WLAN_WD_TIMEOUT_MS);
-	default:
-		return qmi_timeout;
-	}
-}
-
 unsigned int cnss_get_boot_timeout(struct device *dev)
 {
 	struct cnss_plat_data *plat_priv = cnss_bus_dev_to_plat_priv(dev);
@@ -659,7 +675,7 @@ unsigned int cnss_get_boot_timeout(struct device *dev)
 		return 0;
 	}
 
-	return cnss_get_timeout(plat_priv, CNSS_TIMEOUT_QMI);
+	return cnss_get_qmi_timeout(plat_priv);
 }
 EXPORT_SYMBOL(cnss_get_boot_timeout);
 
@@ -685,14 +701,13 @@ int cnss_power_up(struct device *dev)
 	if (plat_priv->device_id == QCA6174_DEVICE_ID)
 		goto out;
 
-	timeout = cnss_get_timeout(plat_priv, CNSS_TIMEOUT_POWER_UP);
+	timeout = cnss_get_boot_timeout(dev);
 
 	reinit_completion(&plat_priv->power_up_complete);
 	ret = wait_for_completion_timeout(&plat_priv->power_up_complete,
-					  msecs_to_jiffies(timeout));
+					  msecs_to_jiffies(timeout) << 2);
 	if (!ret) {
-		cnss_pr_err("Timeout (%ums) waiting for power up to complete\n",
-			    timeout);
+		cnss_pr_err("Timeout waiting for power up to complete\n");
 		ret = -EAGAIN;
 		goto out;
 	}
@@ -758,23 +773,20 @@ int cnss_idle_restart(struct device *dev)
 		goto out;
 	}
 
-	timeout = cnss_get_timeout(plat_priv, CNSS_TIMEOUT_IDLE_RESTART);
+	timeout = cnss_get_boot_timeout(dev);
+	/* In Idle restart power up sequence, we have fw_boot_timer to handle
+	 * FW initialization failure. It uses WLAN_DRIVER_LOAD_TIMEOUT.
+	 * Thus setup 3x that completion wait time to account for FW reinit /
+	 * dump collection on retry.
+	 */
 	ret = wait_for_completion_timeout(&plat_priv->power_up_complete,
-					  msecs_to_jiffies(timeout));
-	if (plat_priv->power_up_error) {
-		ret = plat_priv->power_up_error;
-		clear_bit(CNSS_DRIVER_IDLE_RESTART, &plat_priv->driver_state);
-		cnss_pr_dbg("Power up error:%d, exiting\n",
-			    plat_priv->power_up_error);
-		goto out;
-	}
-
+					  msecs_to_jiffies(timeout +
+					  WLAN_MISSION_MODE_TIMEOUT * 3));
 	if (!ret) {
 		/* This exception occurs after attempting retry of FW recovery.
 		 * Thus we can safely power off the device.
 		 */
-		cnss_fatal_err("Timeout (%ums) waiting for idle restart to complete\n",
-			       timeout);
+		cnss_fatal_err("Timeout for idle restart to complete\n");
 		ret = -ETIMEDOUT;
 		cnss_power_down(dev);
 		CNSS_ASSERT(0);
@@ -822,8 +834,7 @@ int cnss_idle_shutdown(struct device *dev)
 	ret = wait_for_completion_timeout(&plat_priv->recovery_complete,
 					  msecs_to_jiffies(RECOVERY_TIMEOUT));
 	if (!ret) {
-		cnss_pr_err("Timeout (%ums) waiting for recovery to complete\n",
-			    RECOVERY_TIMEOUT);
+		cnss_pr_err("Timeout waiting for recovery to complete\n");
 		CNSS_ASSERT(0);
 	}
 
@@ -1390,13 +1401,8 @@ wait_rddm:
 	ret = wait_for_completion_timeout
 		(&plat_priv->rddm_complete,
 		 msecs_to_jiffies(CNSS_RDDM_TIMEOUT_MS));
-	if (!ret) {
-		cnss_pr_err("Timeout (%ums) waiting for RDDM to complete\n",
-			    CNSS_RDDM_TIMEOUT_MS);
+	if (!ret)
 		ret = -ETIMEDOUT;
-	} else if (ret > 0) {
-		ret = 0;
-	}
 
 	return ret;
 }
@@ -2234,7 +2240,6 @@ int cnss_register_ramdump(struct cnss_plat_data *plat_priv)
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
-	case WCN7850_DEVICE_ID:
 		ret = cnss_register_ramdump_v2(plat_priv);
 		break;
 	default:
@@ -2254,7 +2259,6 @@ void cnss_unregister_ramdump(struct cnss_plat_data *plat_priv)
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
-	case WCN7850_DEVICE_ID:
 		cnss_unregister_ramdump_v2(plat_priv);
 		break;
 	default:
@@ -2541,7 +2545,6 @@ static ssize_t fs_ready_store(struct device *dev,
 	case QCA6290_DEVICE_ID:
 	case QCA6390_DEVICE_ID:
 	case QCA6490_DEVICE_ID:
-	case WCN7850_DEVICE_ID:
 		break;
 	default:
 		cnss_pr_err("Not supported for device ID 0x%lx\n",
@@ -2727,7 +2730,7 @@ static void cnss_init_control_params(struct cnss_plat_data *plat_priv)
 				  "cnss-daemon-support"))
 		plat_priv->ctrl_params.quirks |= BIT(ENABLE_DAEMON_SUPPORT);
 
-	plat_priv->cbc_enabled = !IS_ENABLED(CONFIG_CNSS_EMULATION) &&
+	plat_priv->cbc_enabled =
 		of_property_read_bool(plat_priv->plat_dev->dev.of_node,
 				      "qcom,wlan-cbc-enabled");
 
@@ -2770,7 +2773,6 @@ static const struct platform_device_id cnss_platform_id_table[] = {
 	{ .name = "qca6290", .driver_data = QCA6290_DEVICE_ID, },
 	{ .name = "qca6390", .driver_data = QCA6390_DEVICE_ID, },
 	{ .name = "qca6490", .driver_data = QCA6490_DEVICE_ID, },
-	{ .name = "wcn7850", .driver_data = WCN7850_DEVICE_ID, },
 	{ },
 };
 
@@ -2787,9 +2789,6 @@ static const struct of_device_id cnss_of_match_table[] = {
 	{
 		.compatible = "qcom,cnss-qca6490",
 		.data = (void *)&cnss_platform_id_table[3]},
-	{
-		.compatible = "qcom,cnss-wcn7850",
-		.data = (void *)&cnss_platform_id_table[4]},
 	{ },
 };
 MODULE_DEVICE_TABLE(of, cnss_of_match_table);
@@ -2800,6 +2799,26 @@ cnss_use_nv_mac(struct cnss_plat_data *plat_priv)
 	return of_property_read_bool(plat_priv->plat_dev->dev.of_node,
 				     "use-nv-mac");
 }
+
+/* Initial and show wlan firmware build version */
+void cnss_set_fw_version(u32 version, u32 ext)
+{
+	fw_version = version;
+	fw_version_ext = ext;
+}
+EXPORT_SYMBOL(cnss_set_fw_version);
+
+static ssize_t cnss_version_information_show(struct device *dev,
+					     struct device_attribute *attr,
+					     char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u.%u.%u.%u.%u\n",
+		(fw_version & 0xf0000000) >> 28,
+	(fw_version & 0xf000000) >> 24, (fw_version & 0xf00000) >> 20,
+	fw_version & 0x7fff, (fw_version_ext & 0xf0000000) >> 28);
+}
+
+static DEVICE_ATTR_RO(cnss_version_information);
 
 static int cnss_probe(struct platform_device *plat_dev)
 {
@@ -2899,7 +2918,16 @@ static int cnss_probe(struct platform_device *plat_dev)
 	ret = cnss_genl_init();
 	if (ret < 0)
 		cnss_pr_err("CNSS genl init failed %d\n", ret);
-
+	device_create_file(&plat_priv->plat_dev->dev,
+<<<<<<< HEAD
+			   &dev_attr_wifichain_flag);
+=======
+			   &dev_attr_cnss_version_information);
+	device_create_file(&plat_priv->plat_dev->dev,
+			   &dev_attr_wifichain_flag);
+	device_create_file(&plat_priv->plat_dev->dev,
+			   &dev_attr_bdf_name);
+>>>>>>> Vendor_916_Upgrade_Base_914
 	cnss_pr_info("Platform driver probed successfully.\n");
 
 	return 0;
@@ -2952,6 +2980,16 @@ static int cnss_remove(struct platform_device *plat_dev)
 	cnss_put_resources(plat_priv);
 	platform_set_drvdata(plat_dev, NULL);
 	plat_env = NULL;
+	device_remove_file(&plat_priv->plat_dev->dev,
+<<<<<<< HEAD
+			   &dev_attr_wifichain_flag);
+=======
+			   &dev_attr_cnss_version_information);
+	device_remove_file(&plat_priv->plat_dev->dev,
+			   &dev_attr_wifichain_flag);
+	device_remove_file(&plat_priv->plat_dev->dev,
+			   &dev_attr_bdf_name);
+>>>>>>> Vendor_916_Upgrade_Base_914
 
 	return 0;
 }

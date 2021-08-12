@@ -23,6 +23,8 @@ struct mhi_sfr_info;
 
 #define REG_WRITE_QUEUE_LEN 1024
 
+#define SFR_BUF_SIZE 100
+
 /**
  * enum MHI_CB - MHI callback
  * @MHI_CB_IDLE: MHI entered idle state
@@ -132,13 +134,11 @@ enum mhi_dev_state {
  * target_link_speed - as defined by TLS bits in LinkControl reg
  * target_link_width - as defined by NLW bits in LinkStatus reg
  * sequence_num - used by device to track bw requests sent to host
- * last_response - used by host to cache response to the last bw switch request
  */
 struct mhi_link_info {
 	unsigned int target_link_speed;
 	unsigned int target_link_width;
 	int sequence_num;
-	u32 last_response;
 };
 
 /**
@@ -827,7 +827,7 @@ int mhi_force_rddm_mode(struct mhi_controller *mhi_cntrl);
  * mhi_dump_sfr - Print SFR string from RDDM table.
  * @mhi_cntrl: MHI controller
  */
-void mhi_dump_sfr(struct mhi_controller *mhi_cntrl);
+void mhi_dump_sfr(struct mhi_controller *mhi_cntrl, char *buf, size_t len);
 
 /**
  * mhi_get_remote_time - Get external modem time relative to host time

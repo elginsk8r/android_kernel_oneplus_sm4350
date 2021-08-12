@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 
 /*
- * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt) "%s: " fmt, KBUILD_MODNAME
@@ -43,7 +43,6 @@ enum master_pid {
 	PID_ADSP = 2,
 	PID_SLPI = 3,
 	PID_CDSP = 5,
-	PID_WPSS = 13,
 	PID_GPU = PID_APSS,
 	PID_DISPLAY = PID_APSS,
 };
@@ -64,7 +63,6 @@ struct msm_rpmh_master_data {
 
 static const struct msm_rpmh_master_data rpmh_masters[] = {
 	{"MPSS", MPSS, PID_MPSS},
-	{"WPSS", MPSS, PID_WPSS},
 	{"ADSP", ADSP, PID_ADSP},
 	{"ADSP_ISLAND", SLPI_ISLAND, PID_ADSP},
 	{"CDSP", CDSP, PID_CDSP},
@@ -200,18 +198,19 @@ EXPORT_SYMBOL(msm_rpmh_master_stats_update);
 static int msm_rpmh_master_stats_probe(struct platform_device *pdev)
 {
 	struct rpmh_master_stats_prv_data *prvdata = NULL;
-	struct kobject *rpmh_master_stats_kobj = NULL;
 	int ret = -ENOMEM;
 
 	prvdata = devm_kzalloc(&pdev->dev, sizeof(*prvdata), GFP_KERNEL);
 	if (!prvdata)
 		return ret;
 
-	rpmh_master_stats_kobj = kobject_create_and_add(
-					"rpmh_stats",
-					power_kobj);
-	if (!rpmh_master_stats_kobj)
-		return ret;
+	if (rpmh_master_stats_kobj == NULL) {
+		rpmh_master_stats_kobj = kobject_create_and_add(
+						"rpmh",
+						power_kobj);
+		if (!rpmh_master_stats_kobj)
+			return ret;
+	}
 
 	prvdata->kobj = rpmh_master_stats_kobj;
 

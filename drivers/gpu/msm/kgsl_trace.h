@@ -28,9 +28,7 @@
 #define show_constraint(type) \
 	__print_symbolic(type, \
 		{ KGSL_CONSTRAINT_NONE, "None" }, \
-		{ KGSL_CONSTRAINT_PWRLEVEL, "Pwrlevel" }, \
-		{ KGSL_CONSTRAINT_L3_NONE, "L3_none" }, \
-		{ KGSL_CONSTRAINT_L3_PWRLEVEL, "L3_pwrlevel" })
+		{ KGSL_CONSTRAINT_PWRLEVEL, "Pwrlevel" })
 
 struct kgsl_ringbuffer_issueibcmds;
 struct kgsl_device_waittimestamp;

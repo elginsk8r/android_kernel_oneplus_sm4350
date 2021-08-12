@@ -518,15 +518,6 @@ config CMA_DEBUGFS
 	help
 	  Turns on the DebugFS interface for CMA.
 
-config  CMA_ALLOW_WRITE_DEBUGFS
-	depends on CMA_DEBUGFS
-	bool "Allow CMA debugfs write"
-	help
-	  Say 'y' here to allow the CMA debugfs write.
-	  CMA debugfs write could be risky as it allows
-	  cma allocation, so it is not recommended to
-	  enable this option on any production device.
-
 config CMA_AREAS
 	int "Maximum count of the CMA areas"
 	depends on CMA
@@ -895,3 +886,12 @@ config MULTIPLE_KSWAPD
 	 (echo <num> > /proc/sys/vm/kswapd_threads)
 
 	 Values not in the range of 1..16 are ignored.
+
+config DIRECT_SWAPPINESS
+	bool "direct swappiness"
+	default n
+	help
+	  set direct swappiness rate, higher means more swap and slowly.
+	  echo ratio > proc/sys/vm/direct_swapiness  default_value 60
+	  cat /sys/module/memplus_core/parameters/memory_plus_enabled
+	  default_value 0

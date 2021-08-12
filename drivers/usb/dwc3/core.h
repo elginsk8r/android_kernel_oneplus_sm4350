@@ -1387,13 +1387,11 @@ struct dwc3 {
 	/* Indicate if software connect was issued by the usb_gadget_driver */
 	unsigned int		softconnect:1;
 	/*
-	 * If true, PM suspend/freeze allowed irrespective of host runtimePM
-	 * state. In PM suspend/resume case, core will stay powered and
-	 * connected devices will just be suspended/resumed.
-	 * In hibernation, core will power collapse and connected devices will
-	 * reset-resume on PM restore.
+	 * If true, PM suspend allowed irrespective of host runtimePM state
+	 * and core will power collapse. This also leads to reset-resume of
+	 * connected devices on PM resume.
 	 */
-	bool			ignore_wakeup_src_in_hostmode;
+	bool			host_poweroff_in_pm_suspend;
 	int			retries_on_error;
 	u32			gen2_tx_de_emph;
 	u32			gen2_tx_de_emph1;

@@ -3,7 +3,6 @@
  * Copyright (c) 2010-2020, The Linux Foundation. All rights reserved.
  */
 
-#include <linux/interconnect.h>
 #include <linux/of_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
@@ -15,6 +14,9 @@
 #include "kgsl_pwrscale.h"
 #include "kgsl_sysfs.h"
 #include "kgsl_trace.h"
+#ifdef CONFIG_HOUSTON
+#include <oneplus/houston/houston_helper.h>
+#endif
 #include "kgsl_util.h"
 
 #define UPDATE_BUSY_VAL		1000000
@@ -1606,6 +1608,10 @@ int kgsl_pwrctrl_init(struct kgsl_device *device)
 
 	timer_setup(&pwr->minbw_timer, kgsl_minbw_timer, 0);
 
+#ifdef CONFIG_HOUSTON
+	ht_register_kgsl_pwrctrl(pwr);
+#endif
+
 	return 0;
 }
 
@@ -1618,8 +1624,6 @@ void kgsl_pwrctrl_close(struct kgsl_device *device)
 	kgsl_bus_close(device);
 
 	pm_runtime_disable(&device->pdev->dev);
-
-	icc_put(device->l3_icc);
 }
 
 void kgsl_idle_check(struct work_struct *work)
@@ -1755,24 +1759,16 @@ static int kgsl_pwrctrl_enable(struct kgsl_device *device)
 	return device->ftbl->regulator_enable(device);
 }
 
-void kgsl_pwrctrl_clear_l3_vote(struct kgsl_device *device)
+static void kgsl_pwrctrl_disable(struct kgsl_device *device)
 {
 	int status;
 
-	if (IS_ERR(device->l3_icc))
-		return;
-
-	status = icc_set_bw(device->l3_icc, 0, device->l3_freq[0]);
+	status = clk_set_rate(device->l3_clk, device->l3_freq[0]);
 	if (!status)
 		device->cur_l3_pwrlevel = 0;
 	else
 		dev_err(device->dev, "Could not clear l3_vote: %d\n",
 			     status);
-}
-
-static void kgsl_pwrctrl_disable(struct kgsl_device *device)
-{
-	kgsl_pwrctrl_clear_l3_vote(device);
 
 	/* Order pwrrail/clk sequence based upon platform */
 	device->ftbl->regulator_disable(device);

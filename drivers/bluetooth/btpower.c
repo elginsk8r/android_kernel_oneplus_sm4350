@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 /*
@@ -36,6 +36,8 @@
 #define DEFAULT_INVALID_VALUE -1
 #define PWR_SRC_INIT_STATE_IDX 0
 
+#define SW_CTRL_GPIO_MAX_RETRY_TIMES 5
+
 enum power_src_pos {
 	BT_RESET_GPIO = PWR_SRC_INIT_STATE_IDX,
 	BT_SW_CTRL_GPIO,
@@ -65,23 +67,11 @@ enum power_src_pos {
 	BT_VDD_IO_LDO_CURRENT,
 	BT_VDD_LDO_CURRENT,
 	BT_VDD_RFA_0p8_CURRENT,
-	BT_VDD_RFACMN_CURRENT,
-	BT_VDD_IPA_2p2,
-	BT_VDD_IPA_2p2_CURRENT
+	BT_VDD_RFACMN_CURRENT
 };
 
-// Regulator structure for QCA6174/QCA9377/QCA9379 BT SoC series
-static struct bt_power_vreg_data bt_vregs_info_qca61x4_937x[] = {
-	{NULL, "qcom,bt-vdd-aon", 928000, 928000, 0, false, false,
-		{BT_VDD_AON_LDO, BT_VDD_AON_LDO_CURRENT}},
-	{NULL, "qcom,bt-vdd-io", 1710000, 3460000, 0, false, false,
-		{BT_VDD_IO_LDO, BT_VDD_IO_LDO_CURRENT}},
-	{NULL, "qcom,bt-vdd-core", 3135000, 3465000, 0, false, false,
-		{BT_VDD_CORE_LDO, BT_VDD_CORE_LDO_CURRENT}},
-};
-
-// Regulator structure for QCA6390,QCA6490 and WCN6750 BT SoC series
-static struct bt_power_vreg_data bt_vregs_info_qca6xx0[] = {
+// Regulator structure for QCA6390 and QCA6490 BT SoC series
+static struct bt_power_vreg_data bt_vregs_info_qca6x9x[] = {
 	{NULL, "qcom,bt-vdd-io",      1800000, 1800000, 0, false, true,
 		{BT_VDD_IO_LDO, BT_VDD_IO_LDO_CURRENT}},
 	{NULL, "qcom,bt-vdd-aon",     950000,  950000,  0, false, true,
@@ -99,8 +89,6 @@ static struct bt_power_vreg_data bt_vregs_info_qca6xx0[] = {
 		{BT_VDD_RFA2_LDO, BT_VDD_RFA2_LDO_CURRENT}},
 	{NULL, "qcom,bt-vdd-asd",      2800000, 2800000, 0, false, true,
 		{BT_VDD_ASD_LDO, BT_VDD_ASD_LDO_CURRENT}},
-	{NULL, "qcom,bt-vdd-ipa-2p2",  2200000, 2210000, 0, false, true,
-		{BT_VDD_IPA_2p2, BT_VDD_IPA_2p2_CURRENT}},
 };
 
 // Regulator structure for WCN399x BT SoC series
@@ -119,36 +107,23 @@ static struct bt_power bt_vreg_info_wcn399x = {
 	.num_vregs = 4,
 };
 
-static struct bt_power bt_vreg_info_qca6174 = {
-	.compatible = "qcom,qca6174",
-	.vregs = bt_vregs_info_qca61x4_937x,
-	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca61x4_937x),
-};
-
 static struct bt_power bt_vreg_info_qca6390 = {
 	.compatible = "qcom,qca6390",
-	.vregs = bt_vregs_info_qca6xx0,
-	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6xx0),
+	.vregs = bt_vregs_info_qca6x9x,
+	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6x9x),
 };
 
 static struct bt_power bt_vreg_info_qca6490 = {
 	.compatible = "qcom,qca6490",
-	.vregs = bt_vregs_info_qca6xx0,
-	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6xx0),
-};
-
-static struct bt_power bt_vreg_info_wcn6750 = {
-	.compatible = "qcom,wcn6750",
-	.vregs = bt_vregs_info_qca6xx0,
-	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6xx0),
+	.vregs = bt_vregs_info_qca6x9x,
+	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6x9x),
 };
 
 static const struct of_device_id bt_power_match_table[] = {
-	{	.compatible = "qcom,qca6174", .data = &bt_vreg_info_qca6174},
+	{	.compatible = "qcom,qca6174" },
 	{	.compatible = "qcom,wcn3990", .data = &bt_vreg_info_wcn399x},
 	{	.compatible = "qcom,qca6390", .data = &bt_vreg_info_qca6390},
 	{	.compatible = "qcom,qca6490", .data = &bt_vreg_info_qca6490},
-	{	.compatible = "qcom,wcn6750", .data = &bt_vreg_info_wcn6750},
 	{},
 };
 
@@ -166,6 +141,7 @@ static int pwr_state;
 static struct class *bt_class;
 static int bt_major;
 static int soc_id;
+static int sw_ctl_pin_rety_cnt;
 
 static int bt_vreg_enable(struct bt_power_vreg_data *vreg)
 {
@@ -331,7 +307,6 @@ static int bt_configure_gpios(int on)
 	int wl_reset_gpio = bt_power_pdata->wl_gpio_sys_rst;
 	int bt_sw_ctrl_gpio  =  bt_power_pdata->bt_gpio_sw_ctrl;
 	int bt_debug_gpio  =  bt_power_pdata->bt_gpio_debug;
-	int xo_reset_gpio =  bt_power_pdata->xo_gpio_sys_rst;
 	int assert_dbg_gpio = 0;
 
 	if (on) {
@@ -398,27 +373,6 @@ static int bt_configure_gpios(int on)
 			bt_power_src_status[BT_RESET_GPIO] =
 				gpio_get_value(bt_reset_gpio);
 		}
-		rc = gpio_request(xo_reset_gpio, "xo_reset_gpio_n");
-		if (rc) {
-			pr_err("%s: unable to request gpio %d (%d)\n",
-					__func__, xo_reset_gpio, rc);
-		} else {
-			pr_info("%s: gpio_request for xo_reset_gpio succeed\n",
-					__func__);
-			//pull GPIO high
-			rc = gpio_direction_output(xo_reset_gpio, 1);
-			if (rc) {
-				pr_err("%s: Unable to set direction of xo_reset_gpio\n",
-					 __func__);
-			}
-			udelay(2000);
-			//pull GPIO low after 2 ms delay
-			rc = gpio_direction_output(xo_reset_gpio, 0);
-			if (rc) {
-				pr_err("%s: Unable to set direction of xo_reset_gpio\n",
-					 __func__);
-			}
-		}
 		msleep(50);
 		/*  Check  if  SW_CTRL  is  asserted  */
 		if  (bt_sw_ctrl_gpio  >=  0)  {
@@ -452,6 +406,40 @@ static int bt_configure_gpios(int on)
 			pr_info("bt-sw-ctrl-gpio(%d) value(%d)\n",
 				bt_sw_ctrl_gpio,
 				bt_power_src_status[BT_SW_CTRL_GPIO]);
+		}
+
+		while ((gpio_get_value(bt_sw_ctrl_gpio) == 0) && (sw_ctl_pin_rety_cnt > 0)) {
+			sw_ctl_pin_rety_cnt--;
+			pr_info("BTON:bt-sw-ctrol-gpio is 0, retry %d",
+					SW_CTRL_GPIO_MAX_RETRY_TIMES - sw_ctl_pin_rety_cnt);
+
+			rc = gpio_direction_output(bt_reset_gpio, 0);
+			if (rc) {
+				pr_err("Unable to set direction to 0\n");
+				return rc;
+			}
+			msleep(50);
+			pr_info("BTON:Switch reset pin to low, bt-reset-gpio(%d) value(%d)\n",
+					bt_reset_gpio, gpio_get_value(bt_reset_gpio));
+			if (bt_sw_ctrl_gpio >= 0) {
+				pr_info("State: bt-sw-ctrl-gpio(%d) value(%d)",
+						bt_sw_ctrl_gpio,
+						gpio_get_value(bt_sw_ctrl_gpio));
+			}
+
+			rc = gpio_direction_output(bt_reset_gpio, 1);
+			if (rc) {
+				pr_err("Unable to set direction to 1\n");
+				return rc;
+			}
+			msleep(50);
+			pr_info("BTON:Switch reset pin to hight, bt-reset-gpio(%d) value(%d)\n",
+					bt_reset_gpio, gpio_get_value(bt_reset_gpio));
+			if (bt_sw_ctrl_gpio >= 0) {
+				pr_info("State: bt-sw-ctrl-gpio(%d) value(%d)",
+						bt_sw_ctrl_gpio,
+						gpio_get_value(bt_sw_ctrl_gpio));
+			}
 		}
 	} else {
 		gpio_set_value(bt_reset_gpio, 0);
@@ -499,6 +487,7 @@ static int bluetooth_power(int on)
 				DEFAULT_INVALID_VALUE;
 			bt_power_src_status[BT_SW_CTRL_GPIO] =
 				DEFAULT_INVALID_VALUE;
+			sw_ctl_pin_rety_cnt = SW_CTRL_GPIO_MAX_RETRY_TIMES;
 			rc = bt_configure_gpios(on);
 			if (rc < 0) {
 				pr_err("%s: bt_power gpio config failed\n",
@@ -515,11 +504,9 @@ gpio_fail:
 			gpio_free(bt_power_pdata->bt_gpio_sys_rst);
 		if (bt_power_pdata->wl_gpio_sys_rst > 0)
 			gpio_free(bt_power_pdata->wl_gpio_sys_rst);
-		if (bt_power_pdata->xo_gpio_sys_rst > 0)
-			gpio_free(bt_power_pdata->xo_gpio_sys_rst);
-		if  (bt_power_pdata->bt_gpio_sw_ctrl > 0)
+		if  (bt_power_pdata->bt_gpio_sw_ctrl  >  0)
 			gpio_free(bt_power_pdata->bt_gpio_sw_ctrl);
-		if  (bt_power_pdata->bt_gpio_debug > 0)
+		if  (bt_power_pdata->bt_gpio_debug  >  0)
 			gpio_free(bt_power_pdata->bt_gpio_debug);
 		if (bt_power_pdata->bt_chip_clk)
 			bt_clk_disable(bt_power_pdata->bt_chip_clk);
@@ -827,12 +814,6 @@ static int bt_power_populate_dt_pinfo(struct platform_device *pdev)
 						"qcom,bt-debug-gpio",  0);
 		if (bt_power_pdata->bt_gpio_debug < 0)
 			pr_warn("bt-debug-gpio not provided in devicetree\n");
-
-		bt_power_pdata->xo_gpio_sys_rst =
-			of_get_named_gpio(pdev->dev.of_node,
-						"qcom,xo-reset-gpio", 0);
-		if (bt_power_pdata->xo_gpio_sys_rst < 0)
-			pr_warn("xo-reset-gpio not provided in devicetree\n");
 
 		rc = bt_dt_parse_clk_info(&pdev->dev,
 					&bt_power_pdata->bt_chip_clk);

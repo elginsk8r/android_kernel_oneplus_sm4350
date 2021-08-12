@@ -1675,6 +1675,17 @@ static void sdhci_msm_set_uhs_signaling(struct sdhci_host *host,
 		sdhci_msm_hs400(host, &mmc->ios);
 }
 
+/*
+ * Ensure larger discard size by always setting max_busy_timeout to zero.
+ * This will always return max_busy_timeout as zero to the sdhci layer.
+ */
+#ifdef CONFIG_ARCH_HOLI
+static unsigned int sdhci_msm_get_max_timeout_count(struct sdhci_host *host)
+{
+       return 0;
+}
+#endif
+
 #define MAX_PROP_SIZE 32
 static int sdhci_msm_dt_parse_vreg_info(struct device *dev,
 		struct sdhci_msm_reg_data **vreg_data, const char *vreg_name)
@@ -2862,7 +2873,7 @@ static inline int sdhci_msm_bus_set_vote(struct sdhci_msm_host *msm_host,
 	struct sdhci_msm_bus_vote_data *bvd = msm_host->bus_vote_data;
 	struct msm_bus_path *usecase = bvd->usecase;
 	struct msm_bus_vectors *vec = usecase[vote].vec;
-	int ddr_rc = 0, cpu_rc = 0;
+	int ddr_rc, cpu_rc;
 
 	if (vote == bvd->curr_vote)
 		return 0;
@@ -2870,13 +2881,8 @@ static inline int sdhci_msm_bus_set_vote(struct sdhci_msm_host *msm_host,
 	pr_debug("%s: vote:%d sdhc_ddr ab:%llu ib:%llu cpu_sdhc ab:%llu ib:%llu\n",
 			mmc_hostname(host->mmc), vote, vec[0].ab,
 			vec[0].ib, vec[1].ab, vec[1].ib);
-
-	if (bvd->sdhc_ddr)
-		ddr_rc = icc_set_bw(bvd->sdhc_ddr, vec[0].ab, vec[0].ib);
-
-	if (bvd->cpu_sdhc)
-		cpu_rc = icc_set_bw(bvd->cpu_sdhc, vec[1].ab, vec[1].ib);
-
+	ddr_rc = icc_set_bw(bvd->sdhc_ddr, vec[0].ab, vec[0].ib);
+	cpu_rc = icc_set_bw(bvd->cpu_sdhc, vec[1].ab, vec[1].ib);
 	if (ddr_rc || cpu_rc) {
 		pr_err("%s: icc_set() failed\n",
 			mmc_hostname(host->mmc));
@@ -2899,8 +2905,8 @@ static void sdhci_msm_bus_get_and_set_vote(struct sdhci_host *host,
 	struct sdhci_msm_host *msm_host = sdhci_pltfm_priv(pltfm_host);
 
 	if (!msm_host->bus_vote_data ||
-		(!msm_host->bus_vote_data->sdhc_ddr &&
-		!msm_host->bus_vote_data->cpu_sdhc))
+		!msm_host->bus_vote_data->sdhc_ddr ||
+		!msm_host->bus_vote_data->cpu_sdhc)
 		return;
 	vote = sdhci_msm_bus_get_vote_for_bw(msm_host, bw);
 	sdhci_msm_bus_set_vote(msm_host, vote);
@@ -3009,16 +3015,20 @@ static int sdhci_msm_bus_register(struct sdhci_msm_host *host,
 
 	bsd->sdhc_ddr = of_icc_get(&pdev->dev, "sdhc-ddr");
 	if (IS_ERR_OR_NULL(bsd->sdhc_ddr)) {
-		dev_info(&pdev->dev, "(%ld): failed getting %s path\n",
+		dev_err(&pdev->dev, "(%ld): failed getting %s path\n",
 			PTR_ERR(bsd->sdhc_ddr), "sdhc-ddr");
+		ret = PTR_ERR(bsd->sdhc_ddr);
 		bsd->sdhc_ddr = NULL;
+		return ret;
 	}
 
 	bsd->cpu_sdhc = of_icc_get(&pdev->dev, "cpu-sdhc");
 	if (IS_ERR_OR_NULL(bsd->cpu_sdhc)) {
-		dev_info(&pdev->dev, "(%ld): failed getting %s path\n",
+		dev_err(&pdev->dev, "(%ld): failed getting %s path\n",
 			PTR_ERR(bsd->cpu_sdhc), "cpu-sdhc");
+		ret = PTR_ERR(bsd->cpu_sdhc);
 		bsd->cpu_sdhc = NULL;
+		return ret;
 	}
 
 	return ret;
@@ -3029,11 +3039,8 @@ static void sdhci_msm_bus_unregister(struct device *dev,
 {
 	struct sdhci_msm_bus_vote_data *bsd = host->bus_vote_data;
 
-	if (bsd->sdhc_ddr)
-		icc_put(bsd->sdhc_ddr);
-
-	if (bsd->cpu_sdhc)
-		icc_put(bsd->cpu_sdhc);
+	icc_put(bsd->sdhc_ddr);
+	icc_put(bsd->cpu_sdhc);
 }
 
 static void sdhci_msm_bus_voting(struct sdhci_host *host, bool enable)
@@ -3456,6 +3463,9 @@ static const struct sdhci_ops sdhci_msm_ops = {
 	.get_max_clock = sdhci_msm_get_max_clock,
 	.set_bus_width = sdhci_set_bus_width,
 	.set_uhs_signaling = sdhci_msm_set_uhs_signaling,
+#ifdef CONFIG_ARCH_HOLI
+	.get_max_timeout_count = sdhci_msm_get_max_timeout_count,
+#endif
 
 #if defined(CONFIG_SDC_QTI)
 	.dump_vendor_regs = sdhci_msm_dump_vendor_regs,
@@ -4422,7 +4432,9 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	 * This has to set only after sdhci_add_host so that our
 	 * value won't be over-written.
 	 */
+#ifndef CONFIG_ARCH_HOLI
 	host->mmc->max_busy_timeout = 0;
+#endif
 #if defined(CONFIG_SDC_QTI)
 	sdhci_msm_init_sysfs(pdev);
 #endif
