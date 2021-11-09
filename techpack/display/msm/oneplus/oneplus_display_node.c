@@ -1358,6 +1358,22 @@ static ssize_t cabc_show(struct device *dev,
 	return sprintf(buf, "%d\n", cabc_mode);
 }
 
+int oneplus_panel_status = 0;
+static ssize_t power_status_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", oneplus_panel_status);
+}
+
+static ssize_t power_status_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	sscanf(buf, "%d", &oneplus_panel_status);
+
+	return count;
+}
+
 static DEVICE_ATTR_RW(acl);
 static DEVICE_ATTR_RW(hbm);
 static DEVICE_ATTR_RW(hbm_brightness);
@@ -1396,6 +1412,7 @@ static DEVICE_ATTR_RW(dither_en);
 static DEVICE_ATTR_RW(seed_lp);
 static DEVICE_ATTR_RW(oplus_shutdownflag);
 static DEVICE_ATTR_RW(cabc);
+static DEVICE_ATTR_RW(power_status);
 
 static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_acl.attr,
@@ -1436,6 +1453,7 @@ static struct attribute *connector_dev_attrs[] = {
 	&dev_attr_seed_lp.attr,
 	&dev_attr_oplus_shutdownflag.attr,
 	&dev_attr_cabc.attr,
+	&dev_attr_power_status.attr,
 	NULL
 };
 
