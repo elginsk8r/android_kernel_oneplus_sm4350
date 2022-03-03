@@ -1,4 +1,3 @@
-
 #ifndef _oplus_BOOT_H
 #define _oplus_BOOT_H
 enum{
@@ -12,7 +11,6 @@ enum{
         MSM_BOOT_MODE__CHARGE,
         MSM_BOOT_MODE__SILENCE,
         MSM_BOOT_MODE__SAU,
-        /*xiaofan.yang@PSW.TECH.AgingTest, 2019/01/07,Add for factory agingtest*/
         MSM_BOOT_MODE__AGING = 998,
         MSM_BOOT_MODE__SAFE = 999,
 };
@@ -26,16 +24,13 @@ __weak get_boot_mode(void)
 }
 #endif
 
-
 extern bool qpnp_is_power_off_charging(void);
 
 extern bool qpnp_is_charger_reboot(void);
-
 #endif  /*_oplus_BOOT_H*/
 
 
 #ifdef PHOENIX_PROJECT
 extern bool op_is_monitorable_boot(void);
 #endif
-
 

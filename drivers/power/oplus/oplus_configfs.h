@@ -1,4 +1,3 @@
-
 #ifndef _OPLUS_CONFIGFS_H_
 #define _OPLUS_CONFIGFS_H_
 

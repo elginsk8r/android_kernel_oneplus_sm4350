@@ -340,7 +340,7 @@ struct io_kiocb {
 	u64			user_data;
 	u32			result;
 	u32			sequence;
-	struct files_struct	*files;
+	struct task_struct	*task;
 
 	struct fs_struct	*fs;
 
@@ -514,14 +514,12 @@ static inline void io_queue_async_work(struct io_ring_ctx *ctx,
 		}
 	}
 
-	if (req->work.func == io_sq_wq_submit_work) {
-		req->files = current->files;
+	req->task = current;
 
-		spin_lock_irqsave(&ctx->task_lock, flags);
-		list_add(&req->task_list, &ctx->task_list);
-		req->work_task = NULL;
-		spin_unlock_irqrestore(&ctx->task_lock, flags);
-	}
+	spin_lock_irqsave(&ctx->task_lock, flags);
+	list_add(&req->task_list, &ctx->task_list);
+	req->work_task = NULL;
+	spin_unlock_irqrestore(&ctx->task_lock, flags);
 
 	queue_work(ctx->sqo_wq[rw], &req->work);
 }
@@ -670,7 +668,6 @@ static struct io_kiocb *io_get_req(struct io_ring_ctx *ctx,
 		state->cur_req++;
 	}
 
-	INIT_LIST_HEAD(&req->task_list);
 	req->file = NULL;
 	req->ctx = ctx;
 	req->flags = 0;
@@ -2250,12 +2247,6 @@ restart:
 
 		if (!ret) {
 			req->work_task = current;
-
-			/*
-			 * Pairs with the smp_store_mb() (B) in
-			 * io_cancel_async_work().
-			 */
-			smp_mb(); /* A */
 			if (req->flags & REQ_F_CANCEL) {
 				ret = -ECANCELED;
 				goto end_req;
@@ -2275,11 +2266,13 @@ restart:
 					break;
 				cond_resched();
 			} while (1);
-		}
 end_req:
-		spin_lock_irq(&ctx->task_lock);
-		list_del_init(&req->task_list);
-		spin_unlock_irq(&ctx->task_lock);
+			if (!list_empty(&req->task_list)) {
+				spin_lock_irq(&ctx->task_lock);
+				list_del_init(&req->task_list);
+				spin_unlock_irq(&ctx->task_lock);
+			}
+		}
 
 		/* drop submission reference */
 		io_put_req(req);
@@ -2384,17 +2377,6 @@ static bool io_add_to_prev_work(struct async_list *list, struct io_kiocb *req)
 	if (!atomic_read(&list->cnt)) {
 		list_del_init(&req->list);
 		ret = false;
-	}
-
-	if (ret) {
-		struct io_ring_ctx *ctx = req->ctx;
-
-		req->files = current->files;
-
-		spin_lock_irq(&ctx->task_lock);
-		list_add(&req->task_list, &ctx->task_list);
-		req->work_task = NULL;
-		spin_unlock_irq(&ctx->task_lock);
 	}
 	spin_unlock(&list->lock);
 	return ret;
@@ -3721,28 +3703,19 @@ static int io_uring_fasync(int fd, struct file *file, int on)
 }
 
 static void io_cancel_async_work(struct io_ring_ctx *ctx,
-				 struct files_struct *files)
+				 struct task_struct *task)
 {
-	struct io_kiocb *req;
-
 	if (list_empty(&ctx->task_list))
 		return;
 
 	spin_lock_irq(&ctx->task_lock);
+	while (!list_empty(&ctx->task_list)) {
+		struct io_kiocb *req;
 
-	list_for_each_entry(req, &ctx->task_list, task_list) {
-		if (files && req->files != files)
-			continue;
-
-		/*
-		 * The below executes an smp_mb(), which matches with the
-		 * smp_mb() (A) in io_sq_wq_submit_work() such that either
-		 * we store REQ_F_CANCEL flag to req->flags or we see the
-		 * req->work_task setted in io_sq_wq_submit_work().
-		 */
-		smp_store_mb(req->flags, req->flags | REQ_F_CANCEL); /* B */
-
-		if (req->work_task)
+		req = list_first_entry(&ctx->task_list, struct io_kiocb, task_list);
+		list_del_init(&req->task_list);
+		req->flags |= REQ_F_CANCEL;
+		if (req->work_task && (!task || req->task == task))
 			send_sig(SIGINT, req->work_task, 1);
 	}
 	spin_unlock_irq(&ctx->task_lock);
@@ -3767,7 +3740,7 @@ static int io_uring_flush(struct file *file, void *data)
 	struct io_ring_ctx *ctx = file->private_data;
 
 	if (fatal_signal_pending(current) || (current->flags & PF_EXITING))
-		io_cancel_async_work(ctx, data);
+		io_cancel_async_work(ctx, current);
 
 	return 0;
 }

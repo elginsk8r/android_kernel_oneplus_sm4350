@@ -327,7 +327,6 @@ int cqhci_deactivate(struct mmc_host *mmc)
 	struct cqhci_host *cq_host = mmc->cqe_private;
 
 	cqhci_crypto_suspend(cq_host);
-
 	if (cq_host->enabled && cq_host->activated)
 		__cqhci_disable(cq_host);
 
@@ -655,7 +654,7 @@ static int cqhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		if (err) {
 			pr_err("%s: failed to retrieve crypto ctx for tag %d\n",
 				mmc_hostname(mmc), tag);
-			goto out;
+			return err;
 		}
 		task_desc = (__le64 __force *)get_desc(cq_host, tag);
 		cqhci_prep_task_desc(mrq, &data, 1);
@@ -698,7 +697,6 @@ out_unlock:
 
 	if (mrq->data)
 		cqhci_complete_crypto_desc(cq_host, mrq, NULL);
-out:
 	return err;
 }
 

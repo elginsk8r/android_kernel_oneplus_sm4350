@@ -443,8 +443,7 @@ static int stm32_spi_prepare_mbr(struct stm32_spi *spi, u32 speed_hz,
 {
 	u32 div, mbrdiv;
 
-	/* Ensure spi->clk_rate is even */
-	div = DIV_ROUND_UP(spi->clk_rate & ~0x1, speed_hz);
+	div = DIV_ROUND_UP(spi->clk_rate, speed_hz);
 
 	/*
 	 * SPI framework set xfer->speed_hz to master->max_speed_hz if
@@ -470,36 +469,26 @@ static int stm32_spi_prepare_mbr(struct stm32_spi *spi, u32 speed_hz,
 /**
  * stm32h7_spi_prepare_fthlv - Determine FIFO threshold level
  * @spi: pointer to the spi controller data structure
- * @xfer_len: length of the message to be transferred
  */
-static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi, u32 xfer_len)
+static u32 stm32h7_spi_prepare_fthlv(struct stm32_spi *spi)
 {
-	u32 fthlv, half_fifo, packet;
+	u32 fthlv, half_fifo;
 
 	/* data packet should not exceed 1/2 of fifo space */
 	half_fifo = (spi->fifo_size / 2);
 
-	/* data_packet should not exceed transfer length */
-	if (half_fifo > xfer_len)
-		packet = xfer_len;
-	else
-		packet = half_fifo;
-
 	if (spi->cur_bpw <= 8)
-		fthlv = packet;
+		fthlv = half_fifo;
 	else if (spi->cur_bpw <= 16)
-		fthlv = packet / 2;
+		fthlv = half_fifo / 2;
 	else
-		fthlv = packet / 4;
+		fthlv = half_fifo / 4;
 
 	/* align packet size with data registers access */
 	if (spi->cur_bpw > 8)
 		fthlv -= (fthlv % 2); /* multiple of 2 */
 	else
 		fthlv -= (fthlv % 4); /* multiple of 4 */
-
-	if (!fthlv)
-		fthlv = 1;
 
 	return fthlv;
 }
@@ -931,11 +920,7 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 	}
 
 	if (sr & STM32H7_SPI_SR_SUSP) {
-		static DEFINE_RATELIMIT_STATE(rs,
-					      DEFAULT_RATELIMIT_INTERVAL * 10,
-					      1);
-		if (__ratelimit(&rs))
-			dev_dbg_ratelimited(spi->dev, "Communication suspended\n");
+		dev_warn(spi->dev, "Communication suspended\n");
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi, false);
 		/*
@@ -977,13 +962,13 @@ static irqreturn_t stm32h7_spi_irq_thread(int irq, void *dev_id)
 		if (!spi->cur_usedma && (spi->rx_buf && (spi->rx_len > 0)))
 			stm32h7_spi_read_rxfifo(spi, false);
 
-	writel_relaxed(sr & mask, spi->base + STM32H7_SPI_IFCR);
+	writel_relaxed(mask, spi->base + STM32H7_SPI_IFCR);
 
 	spin_unlock_irqrestore(&spi->lock, flags);
 
 	if (end) {
-		stm32h7_spi_disable(spi);
 		spi_finalize_current_transfer(master);
+		stm32h7_spi_disable(spi);
 	}
 
 	return IRQ_HANDLED;
@@ -1411,7 +1396,7 @@ static void stm32h7_spi_set_bpw(struct stm32_spi *spi)
 	cfg1_setb |= (bpw << STM32H7_SPI_CFG1_DSIZE_SHIFT) &
 		     STM32H7_SPI_CFG1_DSIZE;
 
-	spi->cur_fthlv = stm32h7_spi_prepare_fthlv(spi, spi->cur_xferlen);
+	spi->cur_fthlv = stm32h7_spi_prepare_fthlv(spi);
 	fthlv = spi->cur_fthlv - 1;
 
 	cfg1_clrb |= STM32H7_SPI_CFG1_FTHLV;
@@ -1594,33 +1579,39 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 	unsigned long flags;
 	unsigned int comm_type;
 	int nb_words, ret = 0;
-	int mbr;
 
 	spin_lock_irqsave(&spi->lock, flags);
 
-	spi->cur_xferlen = transfer->len;
-
-	spi->cur_bpw = transfer->bits_per_word;
-	spi->cfg->set_bpw(spi);
-
-	/* Update spi->cur_speed with real clock speed */
-	mbr = stm32_spi_prepare_mbr(spi, transfer->speed_hz,
-				    spi->cfg->baud_rate_div_min,
-				    spi->cfg->baud_rate_div_max);
-	if (mbr < 0) {
-		ret = mbr;
-		goto out;
+	if (spi->cur_bpw != transfer->bits_per_word) {
+		spi->cur_bpw = transfer->bits_per_word;
+		spi->cfg->set_bpw(spi);
 	}
 
-	transfer->speed_hz = spi->cur_speed;
-	stm32_spi_set_mbr(spi, mbr);
+	if (spi->cur_speed != transfer->speed_hz) {
+		int mbr;
+
+		/* Update spi->cur_speed with real clock speed */
+		mbr = stm32_spi_prepare_mbr(spi, transfer->speed_hz,
+					    spi->cfg->baud_rate_div_min,
+					    spi->cfg->baud_rate_div_max);
+		if (mbr < 0) {
+			ret = mbr;
+			goto out;
+		}
+
+		transfer->speed_hz = spi->cur_speed;
+		stm32_spi_set_mbr(spi, mbr);
+	}
 
 	comm_type = stm32_spi_communication_type(spi_dev, transfer);
-	ret = spi->cfg->set_mode(spi, comm_type);
-	if (ret < 0)
-		goto out;
+	if (spi->cur_comm != comm_type) {
+		ret = spi->cfg->set_mode(spi, comm_type);
 
-	spi->cur_comm = comm_type;
+		if (ret < 0)
+			goto out;
+
+		spi->cur_comm = comm_type;
+	}
 
 	if (spi->cfg->set_data_idleness)
 		spi->cfg->set_data_idleness(spi, transfer->len);
@@ -1637,6 +1628,8 @@ static int stm32_spi_transfer_one_setup(struct stm32_spi *spi,
 		if (ret < 0)
 			goto out;
 	}
+
+	spi->cur_xferlen = transfer->len;
 
 	dev_dbg(spi->dev, "transfer communication mode set to %d\n",
 		spi->cur_comm);
@@ -2054,8 +2047,7 @@ static int stm32_spi_resume(struct device *dev)
 	}
 
 	ret = pm_runtime_get_sync(dev);
-	if (ret < 0) {
-		pm_runtime_put_noidle(dev);
+	if (ret) {
 		dev_err(dev, "Unable to power device:%d\n", ret);
 		return ret;
 	}

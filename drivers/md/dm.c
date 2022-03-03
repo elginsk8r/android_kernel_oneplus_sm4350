@@ -491,10 +491,8 @@ static int dm_blk_report_zones(struct gendisk *disk, sector_t sector,
 		return -EAGAIN;
 
 	map = dm_get_live_table(md, &srcu_idx);
-	if (!map) {
-		ret = -EIO;
-		goto out;
-	}
+	if (!map)
+		return -EIO;
 
 	do {
 		struct dm_target *tgt;
@@ -523,6 +521,7 @@ out:
 
 static int dm_prepare_ioctl(struct mapped_device *md, int *srcu_idx,
 			    struct block_device **bdev)
+	__acquires(md->io_barrier)
 {
 	struct dm_target *tgt;
 	struct dm_table *map;
@@ -556,6 +555,7 @@ retry:
 }
 
 static void dm_unprepare_ioctl(struct mapped_device *md, int srcu_idx)
+	__releases(md->io_barrier)
 {
 	dm_put_live_table(md, srcu_idx);
 }
@@ -1140,16 +1140,15 @@ static bool dm_dax_supported(struct dax_device *dax_dev, struct block_device *bd
 {
 	struct mapped_device *md = dax_get_private(dax_dev);
 	struct dm_table *map;
-	bool ret = false;
 	int srcu_idx;
+	bool ret;
 
 	map = dm_get_live_table(md, &srcu_idx);
 	if (!map)
-		goto out;
+		return false;
 
 	ret = dm_table_supports_dax(map, device_supports_dax, &blocksize);
 
-out:
 	dm_put_live_table(md, srcu_idx);
 
 	return ret;
@@ -1701,6 +1700,23 @@ out:
 	return ret;
 }
 
+static void dm_queue_split(struct mapped_device *md, struct dm_target *ti, struct bio **bio)
+{
+	unsigned len, sector_count;
+
+	sector_count = bio_sectors(*bio);
+	len = min_t(sector_t, max_io_len((*bio)->bi_iter.bi_sector, ti), sector_count);
+
+	if (sector_count > len) {
+		struct bio *split = bio_split(*bio, len, GFP_NOIO, &md->queue->bio_split);
+
+		bio_chain(split, *bio);
+		trace_block_split(md->queue, split, (*bio)->bi_iter.bi_sector);
+		generic_make_request(*bio);
+		*bio = split;
+	}
+}
+
 static blk_qc_t dm_process_bio(struct mapped_device *md,
 			       struct dm_table *map, struct bio *bio)
 {
@@ -1728,12 +1744,14 @@ static blk_qc_t dm_process_bio(struct mapped_device *md,
 	if (current->bio_list) {
 		if (is_abnormal_io(bio))
 			blk_queue_split(md->queue, &bio);
-		/* regular IO is split by __split_and_process_bio */
+		else
+			dm_queue_split(md, ti, &bio);
 	}
 
 	if (dm_get_md_type(md) == DM_TYPE_NVME_BIO_BASED)
 		return __process_bio(md, map, bio, ti);
-	return __split_and_process_bio(md, map, bio);
+	else
+		return __split_and_process_bio(md, map, bio);
 }
 
 static blk_qc_t dm_make_request(struct request_queue *q, struct bio *bio)

@@ -606,7 +606,7 @@
 #define BTF								\
 	.BTF : AT(ADDR(.BTF) - LOAD_OFFSET) {				\
 		__start_BTF = .;					\
-		KEEP(*(.BTF))						\
+		*(.BTF)							\
 		__stop_BTF = .;						\
 	}
 #else

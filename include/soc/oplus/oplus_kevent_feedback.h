@@ -1,4 +1,3 @@
-
 #ifndef _oplus_MM_KEVENT_FB_
 #define _oplus_MM_KEVENT_FB_
 
@@ -27,4 +26,4 @@ enum oplus_MM_DIRVER_FB_EVENT_MODULE {
 
 int upload_mm_kevent_feedback_data(enum oplus_MM_DIRVER_FB_EVENT_MODULE module, unsigned char *payload);
 
-#endif /* _oplus_MM_KEVENT_FB_ */
+#endif
