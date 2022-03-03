@@ -4113,7 +4113,7 @@ sub process {
 			}
 		}
 
-#
+
 # Checks which are anchored on the added line.
 #
 
