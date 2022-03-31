@@ -3437,7 +3437,7 @@ static ssize_t wpss_boot_store(struct device *dev,
 	struct icnss_priv *priv = dev_get_drvdata(dev);
 	int wpss_subsys = 0;
 
-	if (priv->device_id != WCN6750_DEVICE_ID)
+	if (!priv->wpss_supported)
 		return count;
 
 	if (sscanf(buf, "%du", &wpss_subsys) != 1) {
@@ -3937,6 +3937,11 @@ static void icnss_init_control_params(struct icnss_priv *priv)
 	priv->ctrl_params.quirks = ICNSS_QUIRKS_DEFAULT;
 	priv->ctrl_params.bdf_type = ICNSS_BDF_TYPE_DEFAULT;
 
+	if (priv->device_id == WCN6750_DEVICE_ID ||
+	    of_property_read_bool(priv->pdev->dev.of_node,
+				  "wpss-support-enable"))
+		priv->wpss_supported = true;
+
 	if (of_property_read_bool(priv->pdev->dev.of_node,
 				  "cnss-daemon-support")) {
 		priv->ctrl_params.quirks |= BIT(ENABLE_DAEMON_SUPPORT);
@@ -4130,7 +4135,6 @@ static int icnss_probe(struct platform_device *pdev)
 		priv->use_nv_mac = icnss_use_nv_mac(priv);
 		icnss_pr_dbg("NV MAC feature is %s\n",
 			     priv->use_nv_mac ? "Mandatory":"Not Mandatory");
-		INIT_WORK(&wpss_loader, icnss_wpss_load);
 #ifdef CONFIG_ICNSS2_RESTART_LEVEL_NOTIF
 		register_trace_pil_restart_level(pil_restart_level_notifier, NULL);
 #endif
@@ -4138,6 +4142,9 @@ static int icnss_probe(struct platform_device *pdev)
 		timer_setup(&priv->recovery_timer,
 			    icnss_recovery_timeout_hdlr, 0);
 	}
+
+	if (priv->wpss_supported)
+		INIT_WORK(&wpss_loader, icnss_wpss_load);
 
 	INIT_LIST_HEAD(&priv->icnss_tcdev_list);
 
