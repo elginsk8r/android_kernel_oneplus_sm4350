@@ -480,6 +480,7 @@ struct icnss_priv {
 	struct workqueue_struct *soc_update_wq;
 	unsigned long device_config;
 	struct timer_list recovery_timer;
+	bool wpss_supported;
 };
 
 struct icnss_reg_info {
