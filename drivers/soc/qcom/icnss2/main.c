@@ -900,7 +900,7 @@ static int icnss_driver_event_fw_ready_ind(struct icnss_priv *priv, void *data)
 	if (test_bit(ICNSS_PD_RESTART, &priv->state)) {
 		ret = icnss_pd_restart_complete(priv);
 	} else {
-		if (priv->device_id == WCN6750_DEVICE_ID)
+		if (priv->wpss_supported)
 			icnss_setup_dms_mac(priv);
 		ret = icnss_call_driver_probe(priv);
 	}
@@ -2988,7 +2988,7 @@ int icnss_wlan_enable(struct device *dev, struct icnss_wlan_enable_cfg *config,
 		return -EINVAL;
 	}
 
-	if (priv->device_id == WCN6750_DEVICE_ID &&
+	if (priv->wpss_supported &&
 	    !priv->dms.nv_mac_not_prov && !priv->dms.mac_valid)
 		icnss_setup_dms_mac(priv);
 
@@ -4121,9 +4121,6 @@ static int icnss_probe(struct platform_device *pdev)
 	init_completion(&priv->unblock_shutdown);
 
 	if (priv->device_id == WCN6750_DEVICE_ID) {
-		ret = icnss_dms_init(priv);
-		if (ret)
-			icnss_pr_err("ICNSS DMS init failed %d\n", ret);
 		ret = icnss_genl_init();
 		if (ret < 0)
 			icnss_pr_err("ICNSS genl init failed %d\n", ret);
@@ -4132,19 +4129,23 @@ static int icnss_probe(struct platform_device *pdev)
 		icnss_get_cpr_info(priv);
 		icnss_get_smp2p_info(priv);
 		set_bit(ICNSS_COLD_BOOT_CAL, &priv->state);
-		priv->use_nv_mac = icnss_use_nv_mac(priv);
-		icnss_pr_dbg("NV MAC feature is %s\n",
-			     priv->use_nv_mac ? "Mandatory":"Not Mandatory");
 #ifdef CONFIG_ICNSS2_RESTART_LEVEL_NOTIF
 		register_trace_pil_restart_level(pil_restart_level_notifier, NULL);
 #endif
-	} else {
-		timer_setup(&priv->recovery_timer,
-			    icnss_recovery_timeout_hdlr, 0);
 	}
 
-	if (priv->wpss_supported)
+	if (priv->wpss_supported) {
+		ret = icnss_dms_init(priv);
+		if (ret)
+			icnss_pr_err("ICNSS DMS init failed %d\n", ret);
+		priv->use_nv_mac = icnss_use_nv_mac(priv);
+		icnss_pr_dbg("NV MAC feature is %s\n",
+			     priv->use_nv_mac ? "Mandatory":"Not Mandatory");
 		INIT_WORK(&wpss_loader, icnss_wpss_load);
+	}
+
+	timer_setup(&priv->recovery_timer,
+		    icnss_recovery_timeout_hdlr, 0);
 
 	INIT_LIST_HEAD(&priv->icnss_tcdev_list);
 
@@ -4183,15 +4184,6 @@ static int icnss_remove(struct platform_device *pdev)
 
 	icnss_pr_info("Removing driver: state: 0x%lx\n", priv->state);
 
-	if (priv->device_id == WCN6750_DEVICE_ID) {
-		icnss_dms_deinit(priv);
-		icnss_genl_exit();
-		icnss_runtime_pm_deinit(priv);
-#ifdef CONFIG_ICNSS2_RESTART_LEVEL_NOTIF
-		unregister_trace_pil_restart_level(pil_restart_level_notifier, NULL);
-#endif
-	}
-
 	device_init_wakeup(&priv->pdev->dev, false);
 
 	icnss_debugfs_destroy(priv);
@@ -4204,7 +4196,15 @@ static int icnss_remove(struct platform_device *pdev)
 
 	destroy_ramdump_device(priv->msa0_dump_dev);
 
+	if (priv->wpss_supported)
+		icnss_dms_deinit(priv);
+
 	if (priv->device_id == WCN6750_DEVICE_ID) {
+		icnss_genl_exit();
+		icnss_runtime_pm_deinit(priv);
+#ifdef CONFIG_ICNSS2_RESTART_LEVEL_NOTIF
+		unregister_trace_pil_restart_level(pil_restart_level_notifier, NULL);
+#endif
 		icnss_wpss_ssr_unregister_notifier(priv);
 		destroy_ramdump_device(priv->m3_dump_dev_seg1);
 		destroy_ramdump_device(priv->m3_dump_dev_seg2);
