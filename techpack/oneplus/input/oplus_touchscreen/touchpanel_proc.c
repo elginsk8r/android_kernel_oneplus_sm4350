@@ -175,10 +175,8 @@ static const struct file_operations proc_debug_level_ops = {
 
 /*double_tap_enable - For black screen gesture
  * Input:
- * gesture_enable = 0 : disable gesture
- * gesture_enable = 1 : enable gesture when ps is far away
- * gesture_enable = 2 : disable gesture when ps is near
- * gesture_enable = 3 : enable single tap gesture when ps is far away
+ * gesture_enable = 0 : disable dt2w
+ * gesture_enable = 1 : enable dt2w
  */
 static ssize_t proc_gesture_control_write(struct file *file, const char __user *buffer, size_t count, loff_t *ppos)
 {
@@ -190,50 +188,22 @@ static ssize_t proc_gesture_control_write(struct file *file, const char __user *
 		return count;
 	tp_copy_from_user(buf, sizeof(buf), buffer, count, 2);
 
+	if (kstrtoint(buf, 10, &value))
+		return count;
 
-	TPD_INFO("%s write argc0[0x%x],argc1[0x%x]\n",__func__,buf[0],buf[1]);
 	if (ts->gesture_test_support && ts->gesture_test.flag)
 		return count;
 
-	UpVee_enable = (buf[0] & BIT0)?1:0;
-	DouSwip_enable = (buf[0] & BIT1)?1:0;
-	LeftVee_enable = (buf[0] & BIT3)?1:0;
-	RightVee_enable = (buf[0] & BIT4)?1:0;
-	Circle_enable = (buf[0] & BIT6)?1:0;
-	DouTap_enable = (buf[0] & BIT7)?1:0;
-	Sgestrue_enable = (buf[1] & BIT0)?1:0;
-	Mgestrue_enable = (buf[1] & BIT1)?1:0;
-	Wgestrue_enable = (buf[1] & BIT2)?1:0;
-	SingleTap_enable = (buf[1] & BIT3)?1:0;
-	Enable_gesture = (buf[1] & BIT7)?1:0;
-
-	if (UpVee_enable || DouSwip_enable || LeftVee_enable || RightVee_enable||
-		Circle_enable || DouTap_enable || Sgestrue_enable || Mgestrue_enable||
-		Wgestrue_enable || SingleTap_enable || Enable_gesture) {
-		value = 1;
-	} else {
-		value = 0;
-	}
 	mutex_lock(&ts->mutex);
-	if (ts->gesture_enable != value) {
-		ts->gesture_enable = value;
-		TP_INFO(ts->tp_index, "%s: gesture_enable = %d, is_suspended = %d\n",
-			__func__, ts->gesture_enable, ts->is_suspended);
-		if (ts->is_incell_panel && (ts->suspend_state == TP_RESUME_EARLY_EVENT ||
-			ts->disable_gesture_ctrl) && (ts->tp_resume_order == LCD_TP_RESUME)) {
-			TP_INFO(ts->tp_index, "tp will resume, no need mode_switch in incell panel\n"); /*avoid i2c error or tp rst pulled down in lcd resume*/
-		} else if (ts->is_suspended) {
-			if (ts->fingerprint_underscreen_support &&
-				ts->fp_enable && ts->ts_ops->enable_gesture_mask) {
-			ts->ts_ops->enable_gesture_mask(ts->chip_data,
-				(ts->gesture_enable & 0x01) == 1);
-			} else {
-				operate_mode_switch(ts);
-			}
-		}
-	} else {
-		TP_INFO(ts->tp_index, "%s: do not do same operator :%d\n", __func__, value);
-	}
+
+	if (value)
+		ts->gesture_enable |= (1 << DOU_TAP);
+	else
+		ts->gesture_enable &= ~(1 << DOU_TAP);
+
+	if (ts->ts_ops->enable_gesture_mask)
+		ts->ts_ops->enable_gesture_mask(ts->chip_data, ts->gesture_enable);
+
 	mutex_unlock(&ts->mutex);
 
 	return count;
@@ -241,21 +211,23 @@ static ssize_t proc_gesture_control_write(struct file *file, const char __user *
 
 /*double_tap_enable - For black screen gesture
  * Output:
- * gesture_enable = 0 : disable gesture
- * gesture_enable = 1 : enable gesture when ps is far away
- * gesture_enable = 2 : disable gesture when ps is near
+ * gesture_enable = 0 : disable dt2w
+ * gesture_enable = 1 : enable dt2w
  */
 static ssize_t proc_gesture_control_read(struct file *file, char __user *buffer, size_t count, loff_t *ppos)
 {
     int ret = 0;
+    int value = 0;
     char page[PAGESIZE] = {0};
     struct touchpanel_data *ts = PDE_DATA(file_inode(file));
 
     if (!ts)
         return 0;
 
-    TP_DEBUG(ts->tp_index, "double tap enable is: %d\n", ts->gesture_enable);
-    ret = snprintf(page, PAGESIZE - 1, "%d\n", ts->gesture_enable);
+    value = !!(ts->gesture_enable & (1 << DOU_TAP));
+
+    TP_DEBUG(ts->tp_index, "double tap enable is: %d\n", value);
+    ret = snprintf(page, PAGESIZE - 1, "%d\n", value);
     ret = simple_read_from_buffer(buffer, count, ppos, page, strlen(page));
 
     return ret;
