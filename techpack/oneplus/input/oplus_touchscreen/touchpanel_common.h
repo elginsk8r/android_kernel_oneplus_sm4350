@@ -764,7 +764,7 @@ struct touchpanel_data {
     /******For fb notify area********/
     struct work_struct     speed_up_work;               /*using for speedup resume*/
     struct workqueue_struct *speedup_resume_wq;         /*using for touchpanel speedup resume wq*/
-#if defined(CONFIG_DRM_MSM) || defined(CONFIG_FB)
+#if defined(CONFIG_QCOM_KGSL) || defined(CONFIG_FB)
     struct notifier_block fb_notif;                     /*register to control suspend/resume*/
 #endif
     struct notifier_block fb_drm_notif;                     /*register to control suspend/resume*/

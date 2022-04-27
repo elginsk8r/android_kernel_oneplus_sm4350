@@ -1968,7 +1968,7 @@ static void oplus_chg_load_lcd_panel(struct work_struct *work)
 	if (!rc || isOK) {
 #ifdef CONFIG_FB
 		chip->chg_fb_notify.notifier_call = fb_notifier_callback;
-#ifdef CONFIG_DRM_MSM
+#ifdef CONFIG_QCOM_KGSL
 		if (lcd_active_panel) {
 			rc = drm_panel_notifier_register(lcd_active_panel, &chip->chg_fb_notify);
 			pr_err("[OPLUS_CHG][%s]: lcd_active_panel drm_panel_notifier_register ok\n", __func__);
@@ -1979,7 +1979,7 @@ static void oplus_chg_load_lcd_panel(struct work_struct *work)
 		}
 #else
 		rc = fb_register_client(&chip->chg_fb_notify);
-#endif /*CONFIG_DRM_MSM*/
+#endif /*CONFIG_QCOM_KGSL*/
 		if (rc) {
 			pr_err("Unable to register chg_fb_notify: %d\n", rc);
 		}
@@ -4386,7 +4386,7 @@ static bool oplus_chg_check_time_is_good(struct oplus_chg_chip *chip)
 }
 
 #ifdef CONFIG_FB
-#ifdef CONFIG_DRM_MSM
+#ifdef CONFIG_QCOM_KGSL
 static int fb_notifier_callback(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -4439,7 +4439,7 @@ static int fb_notifier_callback(struct notifier_block *nb,
 	}
 	return 0;
 }
-#endif /* CONFIG_DRM_MSM */
+#endif /* CONFIG_QCOM_KGSL */
 
 void oplus_chg_set_allow_switch_to_fastchg(bool allow)
 {

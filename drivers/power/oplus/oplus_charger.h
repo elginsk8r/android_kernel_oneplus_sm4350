@@ -20,8 +20,8 @@
 #define CONFIG_FB
 #endif
 
-#ifndef CONFIG_DRM_MSM
-#define CONFIG_DRM_MSM
+#ifndef CONFIG_QCOM_KGSL
+#define CONFIG_QCOM_KGSL
 #endif
 
 #ifndef CONFIG_OPLUS_CALL_MODE_SUPPORT
@@ -39,7 +39,7 @@
 #elif defined CONFIG_FB
 #include <linux/notifier.h>
 #include <linux/fb.h>
-#ifdef CONFIG_DRM_MSM
+#ifdef CONFIG_QCOM_KGSL
 #include <linux/msm_drm_notify.h>
 #include <drm/drm_panel.h>
 #endif
