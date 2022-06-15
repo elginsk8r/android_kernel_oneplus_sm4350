@@ -49,7 +49,6 @@
 #define FINGER_PRINTDOWN     16
 #define FRINGER_PRINTUP      17
 
-#define KEY_GESTURE_START 246
 
 #define BIT0 (0x1 << 0)
 #define BIT1 (0x1 << 1)
@@ -682,7 +681,6 @@ struct touchpanel_data {
 	/******For gesture area********/
 	bool disable_gesture_ctrl;                          /*when lcd_trigger_load_tp_fw start no need to control gesture*/
 	int gesture_enable;                                 /*control state of black gesture*/
-	bool double_tap_to_wake_enable;                     /*control state of dt2w*/
 	struct gesture_info    gesture;                     /*gesture related info*/
 
 	/******For fingerprint area********/
