@@ -2269,7 +2269,7 @@ static void msm_geni_serial_shutdown(struct uart_port *uport)
 			disable_irq(msm_port->wakeup_irq);
 			free_irq(msm_port->wakeup_irq, uport);
 		}
-		
+
 		if (!IS_ERR_OR_NULL(msm_port->serial_rsc.geni_gpio_shutdown)) {
 			ret = pinctrl_select_state(msm_port->serial_rsc.geni_pinctrl,
 						msm_port->serial_rsc.geni_gpio_shutdown);
