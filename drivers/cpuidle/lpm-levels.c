@@ -273,7 +273,6 @@ static uint32_t get_next_event(struct lpm_cpu *cpu)
 
 	return ktime_to_us(ktime_sub(next_event, ktime_get()));
 }
-
 static void disable_rimps_timer(struct lpm_cpu *cpu)
 {
 	uint32_t ctrl_val;
@@ -1116,6 +1115,10 @@ static int cluster_configure(struct lpm_cluster *cluster, int idx,
 		 * LPMs (XO and Vmin).
 		 */
 		if (!from_idle) {
+			#ifdef CONFIG_OPLUS_POWER_UTIL
+			extern void oplus_get_clk_stats(void);
+			oplus_get_clk_stats();
+			#endif
 			clock_debug_print_enabled();
 			regulator_debug_print_enabled();
 		}
@@ -1532,7 +1535,7 @@ static int lpm_cpuidle_s2idle(struct cpuidle_device *dev,
 
 	cluster_unprepare(cpu->parent, cpumask, idx, false, 0, success);
 	cpu_unprepare(cpu, idx, true);
-	return ret;
+	return 0;
 }
 
 #ifdef CONFIG_CPU_IDLE_MULTIPLE_DRIVERS
@@ -1744,7 +1747,7 @@ static int lpm_suspend_enter(suspend_state_t state)
 	}
 	if (idx < 0) {
 		pr_err("Failed suspend\n");
-		return -EINVAL;
+		return 0;
 	}
 	cpu_prepare(lpm_cpu, idx, false);
 	cluster_prepare(cluster, cpumask, idx, false, 0);
@@ -1755,7 +1758,7 @@ static int lpm_suspend_enter(suspend_state_t state)
 
 	cluster_unprepare(cluster, cpumask, idx, false, 0, success);
 	cpu_unprepare(lpm_cpu, idx, false);
-	return ret;
+	return 0;
 }
 
 static const struct platform_suspend_ops lpm_suspend_ops = {

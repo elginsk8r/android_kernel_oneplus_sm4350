@@ -138,6 +138,7 @@
 #define DWC3_GEVNTCOUNT(n)	(0xc40c + ((n) * 0x10))
 
 #define DWC3_GHWPARAMS8		0xc600
+#define DWC3_GUCTL3		0xc60c
 #define DWC3_GFLADJ		0xc630
 
 /* Device Registers */
@@ -313,6 +314,7 @@
 
 /* Global USB2 PHY Vendor Control Register */
 #define DWC3_GUSB2PHYACC_NEWREGREQ	BIT(25)
+#define DWC3_GUSB2PHYACC_DONE		BIT(24)
 #define DWC3_GUSB2PHYACC_BUSY		BIT(23)
 #define DWC3_GUSB2PHYACC_WRITE		BIT(22)
 #define DWC3_GUSB2PHYACC_ADDR(n)	(n << 16)
@@ -321,6 +323,7 @@
 
 /* Global USB3 PIPE Control Register */
 #define DWC3_GUSB3PIPECTL_PHYSOFTRST	BIT(31)
+#define DWC3_GUSB3PIPECTL_HSTPRTCMPL	BIT(30)
 #define DWC3_GUSB3PIPECTL_U2SSINP3OK	BIT(29)
 #define DWC3_GUSB3PIPECTL_DISRXDETINP3	BIT(28)
 #define DWC3_GUSB3PIPECTL_UX_EXIT_PX	BIT(27)
@@ -408,6 +411,9 @@
 
 /* Global User Control Register 2 */
 #define DWC3_GUCTL2_RST_ACTBITLATER		BIT(14)
+
+/* Global User Control Register 3 */
+#define DWC3_GUCTL3_SPLITDISABLE		BIT(14)
 
 /* Device Configuration Register */
 #define DWC3_DCFG_DEVADDR(addr)	((addr) << 3)
@@ -772,6 +778,7 @@ struct dwc3_ep {
 #define DWC3_EP_END_TRANSFER_PENDING BIT(4)
 #define DWC3_EP_PENDING_REQUEST	BIT(5)
 #define DWC3_EP_DELAY_START	BIT(6)
+#define DWC3_EP_PENDING_CLEAR_STALL	BIT(11)
 
 	/* This last one is specific to EP0 */
 #define DWC3_EP0_DIR_IN		BIT(31)
@@ -848,6 +855,13 @@ enum dwc3_link_state {
 	DWC3_LINK_STATE_RESET		= 0x0e,
 	DWC3_LINK_STATE_RESUME		= 0x0f,
 	DWC3_LINK_STATE_MASK		= 0x0f,
+};
+
+enum gadget_state {
+	DWC3_GADGET_INACTIVE,
+	DWC3_GADGET_SOFT_CONN,
+	DWC3_GADGET_CABLE_CONN,
+	DWC3_GADGET_ACTIVE,
 };
 
 /* TRB Length, PCM and Status */
@@ -1129,15 +1143,7 @@ struct dwc3_scratchpad_array {
  * 	2	- No de-emphasis
  * 	3	- Reserved
  * @dis_metastability_quirk: set to disable metastability quirk.
- * @ssp_u3_u0_quirk: set to enable ss specific u3 to u0 quirk.
- * @err_evt_seen: previous event in queue was erratic error
- * @in_lpm: indicates if controller is in low power mode (no clocks)
- * @irq: irq number
- * @irq_cnt: total irq count
- * @bh_completion_time: time taken for IRQ bottom-half completion
- * @bh_handled_evt_cnt: no. of events handled per IRQ bottom-half
- * @irq_dbg_index: index for capturing IRQ stats
- * @vbus_draw: current to be drawn from USB
+ * @dis_split_quirk: set to disable split boundary.
  * @imod_interval: set the interrupt moderation interval in 250ns
  *                 increments or 0 to disable.
  * @xhci_imod_value: imod value to use with xhci
@@ -1322,6 +1328,7 @@ struct dwc3 {
 	unsigned		dis_start_transfer_quirk:1;
 	unsigned		usb3_lpm_capable:1;
 	unsigned		usb2_lpm_disable:1;
+	unsigned		usb2_gadget_lpm_disable:1;
 
 	unsigned		disable_scramble_quirk:1;
 	unsigned		u2exit_lfps_quirk:1;
@@ -1354,6 +1361,8 @@ struct dwc3 {
 	unsigned		dis_metastability_quirk:1;
 	unsigned		ssp_u3_u0_quirk:1;
 
+	unsigned		dis_split_quirk:1;
+
 	u16			imod_interval;
 	u32			xhci_imod_value;
 
@@ -1382,18 +1391,17 @@ struct dwc3 {
 	unsigned int		irq_event_count[MAX_INTR_STATS];
 	unsigned int		irq_dbg_index;
 
+	enum gadget_state	gadget_state;
 	/* Indicate if the gadget was powered by the otg driver */
 	unsigned int		vbus_active:1;
 	/* Indicate if software connect was issued by the usb_gadget_driver */
 	unsigned int		softconnect:1;
 	/*
-	 * If true, PM suspend/freeze allowed irrespective of host runtimePM
-	 * state. In PM suspend/resume case, core will stay powered and
-	 * connected devices will just be suspended/resumed.
-	 * In hibernation, core will power collapse and connected devices will
-	 * reset-resume on PM restore.
+	 * If true, PM suspend allowed irrespective of host runtimePM state
+	 * and core will power collapse. This also leads to reset-resume of
+	 * connected devices on PM resume.
 	 */
-	bool			ignore_wakeup_src_in_hostmode;
+	bool			host_poweroff_in_pm_suspend;
 	int			retries_on_error;
 	u32			gen2_tx_de_emph;
 	u32			gen2_tx_de_emph1;

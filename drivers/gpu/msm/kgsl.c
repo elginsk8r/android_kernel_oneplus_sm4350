@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -26,6 +26,9 @@
 #include "kgsl_sync.h"
 #include "kgsl_sysfs.h"
 #include "kgsl_trace.h"
+#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
+#include <linux/reserve_area.h>
+#endif
 
 #ifndef arch_mmap_check
 #define arch_mmap_check(addr, len, flags)	(0)
@@ -1929,17 +1932,14 @@ long kgsl_ioctl_gpu_aux_command(struct kgsl_device_private *dev_priv,
 	u32 queued, count;
 	int i, index = 0;
 	long ret;
+	struct kgsl_gpu_aux_command_generic generic;
 
-	/* Aux commands don't make sense without commands */
-	if (!param->numcmds)
+	/* We support only one aux command */
+	if (param->numcmds != 1)
 		return -EINVAL;
 
 	if (!(param->flags &
 		(KGSL_GPU_AUX_COMMAND_TIMELINE)))
-		return -EINVAL;
-
-	/* Make sure we don't overflow count */
-	if (param->numcmds == UINT_MAX)
 		return -EINVAL;
 
 	context = kgsl_context_get_owner(dev_priv, param->context_id);
@@ -1947,13 +1947,12 @@ long kgsl_ioctl_gpu_aux_command(struct kgsl_device_private *dev_priv,
 		return -EINVAL;
 
 	/*
-	 * We have one drawobj for the timestamp sync plus one for all of the
-	 * commands
+	 * param->numcmds is always one and we have one additional drawobj
+	 * for the timestamp sync if KGSL_GPU_AUX_COMMAND_SYNC flag is passed.
+	 * On top of that we make an implicit sync object for the last queued
+	 * timestamp on this context.
 	 */
-	count = param->numcmds + 1;
-
-	if (param->flags & KGSL_GPU_AUX_COMMAND_SYNC)
-		count++;
+	count = (param->flags & KGSL_GPU_AUX_COMMAND_SYNC) ? 3 : 2;
 
 	drawobjs = kvcalloc(count, sizeof(*drawobjs),
 		GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN);
@@ -2002,39 +2001,34 @@ long kgsl_ioctl_gpu_aux_command(struct kgsl_device_private *dev_priv,
 
 	cmdlist = u64_to_user_ptr(param->cmdlist);
 
-	/* Create a draw object for each command */
-	for (i = 0; i < param->numcmds; i++) {
-		struct kgsl_gpu_aux_command_generic generic;
+	 /* Create a draw object for KGSL_GPU_AUX_COMMAND_TIMELINE */
+	if (copy_struct_from_user(&generic, sizeof(generic),
+		cmdlist, param->cmdsize)) {
+		ret = -EFAULT;
+		goto err;
+	}
 
-		if (copy_struct_from_user(&generic, sizeof(generic),
-			cmdlist, param->cmdsize)) {
-			ret = -EFAULT;
+	if (generic.type == KGSL_GPU_AUX_COMMAND_TIMELINE) {
+		struct kgsl_drawobj_timeline *timelineobj;
+
+		timelineobj = kgsl_drawobj_timeline_create(device,
+			context);
+
+		if (IS_ERR(timelineobj)) {
+			ret = PTR_ERR(timelineobj);
 			goto err;
 		}
 
-		if (generic.type == KGSL_GPU_AUX_COMMAND_TIMELINE) {
-			struct kgsl_drawobj_timeline *timelineobj;
+		drawobjs[index++] = DRAWOBJ(timelineobj);
 
-			timelineobj = kgsl_drawobj_timeline_create(device,
-				context);
-
-			if (IS_ERR(timelineobj)) {
-				ret = PTR_ERR(timelineobj);
-				goto err;
-			}
-
-			ret = kgsl_drawobj_add_timeline(dev_priv, timelineobj,
-				cmdlist, param->cmdsize);
-			if (ret)
-				goto err;
-
-			drawobjs[index++] = DRAWOBJ(timelineobj);
-		} else {
-			ret = -EINVAL;
+		ret = kgsl_drawobj_add_timeline(dev_priv, timelineobj,
+			u64_to_user_ptr(generic.priv), generic.size);
+		if (ret)
 			goto err;
-		}
 
-		cmdlist += param->cmdsize;
+	} else {
+		ret = -EINVAL;
+		goto err;
 	}
 
 	ret = device->ftbl->queue_cmds(dev_priv, context,
@@ -2451,8 +2445,6 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 {
 	/* Map an anonymous memory chunk */
 
-	int ret;
-
 	if (size == 0 || offset != 0 ||
 		!IS_ALIGNED(size, PAGE_SIZE))
 		return -EINVAL;
@@ -2462,6 +2454,7 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 	entry->memdesc.flags |= (uint64_t)KGSL_MEMFLAGS_USERMEM_ADDR;
 
 	if (kgsl_memdesc_use_cpu_map(&entry->memdesc)) {
+		int ret;
 
 		/* Register the address in the database */
 		ret = kgsl_mmu_set_svm_region(pagetable,
@@ -2473,12 +2466,7 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 		entry->memdesc.gpuaddr = (uint64_t) hostptr;
 	}
 
-	ret =  memdesc_sg_virt(&entry->memdesc, hostptr);
-
-	if (ret && kgsl_memdesc_use_cpu_map(&entry->memdesc))
-		kgsl_mmu_put_gpuaddr(&entry->memdesc);
-
-	return ret;
+	return memdesc_sg_virt(&entry->memdesc, hostptr);
 }
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
@@ -4050,6 +4038,9 @@ kgsl_get_unmapped_area(struct file *file, unsigned long addr,
 					       pid_nr(private->pid), addr, pgoff, len,
 					       (int) val);
 	}
+#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
+	update_oom_pid_and_time(len, val, flags);
+#endif
 
 	kgsl_mem_entry_put(entry);
 	return val;
@@ -4382,8 +4373,8 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	rwlock_init(&device->context_lock);
 	spin_lock_init(&device->submit_lock);
 
-	/* Use XA_FLAGS_ALLOC1 to disallow 0 as an option */
-	xa_init_flags(&device->timelines, XA_FLAGS_ALLOC1);
+	idr_init(&device->timelines);
+	spin_lock_init(&device->timelines_lock);
 
 	kgsl_device_debugfs_init(device);
 
@@ -4392,8 +4383,17 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	/* Set up the GPU events for the device */
 	kgsl_device_events_probe(device);
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
+	if (sysctl_sched_assist_enabled)
+		device->events_wq = alloc_workqueue("kgsl-events",
+			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI | WQ_UX, 0);
+	else
+		device->events_wq = alloc_workqueue("kgsl-events",
+			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
+#else
 	device->events_wq = alloc_workqueue("kgsl-events",
-		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
+		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
+#endif
 
 	/* Initialize common sysfs entries */
 	kgsl_pwrctrl_init_sysfs(device);
@@ -4417,6 +4417,7 @@ void kgsl_device_platform_remove(struct kgsl_device *device)
 		kobject_del(&device->gpu_sysfs_kobj);
 
 	idr_destroy(&device->context_idr);
+	idr_destroy(&device->timelines);
 
 	kgsl_device_events_remove(device);
 

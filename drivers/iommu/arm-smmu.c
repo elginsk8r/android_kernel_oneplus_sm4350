@@ -365,7 +365,7 @@ static void arm_smmu_arch_write_sync(struct arm_smmu_device *smmu)
 		return;
 
 	/* Read to complete prior write transcations */
-	id = arm_smmu_gr0_read(smmu, ARM_SMMU_GR0_ID0);
+	id = arm_smmu_readl(smmu, ARM_SMMU_IMPL_DEF0, 0);
 
 	/* Wait for read to complete before off */
 	rmb();
@@ -656,8 +656,6 @@ static void arm_smmu_power_off_atomic(struct arm_smmu_device *smmu,
 {
 	unsigned long flags;
 
-	arm_smmu_arch_write_sync(smmu);
-
 	spin_lock_irqsave(&pwr->clock_refs_lock, flags);
 	if (pwr->clock_refs_count == 0) {
 		WARN(1, "%s: bad clock_ref_count\n", dev_name(pwr->dev));
@@ -670,6 +668,7 @@ static void arm_smmu_power_off_atomic(struct arm_smmu_device *smmu,
 		return;
 	}
 
+	arm_smmu_arch_write_sync(smmu);
 	arm_smmu_disable_clocks(pwr);
 
 	pwr->clock_refs_count = 0;
@@ -3289,6 +3288,7 @@ static size_t arm_smmu_unmap(struct iommu_domain *domain, unsigned long iova,
 	arm_smmu_rpm_get(smmu);
 	spin_lock_irqsave(&smmu_domain->cb_lock, flags);
 	ret = ops->unmap(ops, iova, size, gather);
+	arm_smmu_deferred_flush(smmu_domain);
 	spin_unlock_irqrestore(&smmu_domain->cb_lock, flags);
 	arm_smmu_rpm_put(smmu);
 
