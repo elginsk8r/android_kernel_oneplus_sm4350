@@ -148,4 +148,8 @@
 #define PSY_IIO_INPUT_SUSPEND			0x78
 #define PSY_IIO_PARALLEL_BATFET_MODE		0x79
 #define PSY_IIO_PARALLEL_FCC_MAX		0x7a
+
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+#define PSY_IIO_PD_SDP				0xa0
+//#endif
 #endif /* __QTI_POWER_SUPPLY_IIO_H__ */
