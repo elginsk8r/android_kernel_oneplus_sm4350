@@ -148,6 +148,7 @@ struct page *ion_msm_page_pool_alloc(struct ion_msm_page_pool *pool,
 	if (fatal_signal_pending(current))
 		return ERR_PTR(-EINTR);
 
+<<<<<<< HEAD
 #ifndef CONFIG_OPLUS_ION_BOOSTPOOL
 	if (*from_pool && mutex_trylock(&pool->mutex)) {
 		if (pool->high_count)
@@ -155,8 +156,26 @@ struct page *ion_msm_page_pool_alloc(struct ion_msm_page_pool *pool,
 		else if (pool->low_count)
 			page = ion_msm_page_pool_remove(pool, false);
 		mutex_unlock(&pool->mutex);
+=======
+	if (*from_pool) {
+		if (pool->boost_flag) {
+			mutex_lock(&pool->mutex);
+			if (pool->high_count)
+				page = ion_msm_page_pool_remove(pool, true);
+			else if (pool->low_count)
+				page = ion_msm_page_pool_remove(pool, false);
+			mutex_unlock(&pool->mutex);
+		} else if (mutex_trylock(&pool->mutex)) {
+			if (pool->high_count)
+				 page = ion_msm_page_pool_remove(pool, true);
+			else if (pool->low_count)
+				page = ion_msm_page_pool_remove(pool, false);
+			mutex_unlock(&pool->mutex);
+		}
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	}
-	if (!page) {
+
+	if (!page && !(pool->boost_flag)) {
 		page = ion_msm_page_pool_alloc_pages(pool);
 		*from_pool = false;
 	}

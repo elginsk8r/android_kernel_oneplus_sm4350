@@ -262,7 +262,10 @@ static const struct vadc_map_pt adcmap_100k_104ef_104fb_1875_vref[] = {
 	{46, 	125000},
 };
 #endif
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 /*
  * Voltage to temperature table for 100k pull up for bat_therm with
  * Alium.
@@ -491,7 +494,10 @@ static const struct vadc_map_pt adcmap_batt_therm_30k[] = {
 	{318 	,980},
 };
 #endif
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 /*
  * Voltage to temperature table for 400k pull up for bat_therm with
  * Alium.

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2008-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2008-2020, The Linux Foundation. All rights reserved.
  */
 
 #include <uapi/linux/sched/types.h>
@@ -1955,9 +1955,12 @@ long kgsl_ioctl_gpu_aux_command(struct kgsl_device_private *dev_priv,
 	 */
 	count = param->numcmds + 1;
 
+<<<<<<< HEAD
 	if (param->flags & KGSL_GPU_AUX_COMMAND_SYNC)
 		count++;
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	drawobjs = kvcalloc(count, sizeof(*drawobjs),
 		GFP_KERNEL | __GFP_NORETRY | __GFP_NOWARN);
 
@@ -2454,8 +2457,6 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 {
 	/* Map an anonymous memory chunk */
 
-	int ret;
-
 	if (size == 0 || offset != 0 ||
 		!IS_ALIGNED(size, PAGE_SIZE))
 		return -EINVAL;
@@ -2465,6 +2466,7 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 	entry->memdesc.flags |= (uint64_t)KGSL_MEMFLAGS_USERMEM_ADDR;
 
 	if (kgsl_memdesc_use_cpu_map(&entry->memdesc)) {
+		int ret;
 
 		/* Register the address in the database */
 		ret = kgsl_mmu_set_svm_region(pagetable,
@@ -2476,12 +2478,7 @@ static int kgsl_setup_anon_useraddr(struct kgsl_pagetable *pagetable,
 		entry->memdesc.gpuaddr = (uint64_t) hostptr;
 	}
 
-	ret =  memdesc_sg_virt(&entry->memdesc, hostptr);
-
-	if (ret && kgsl_memdesc_use_cpu_map(&entry->memdesc))
-		kgsl_mmu_put_gpuaddr(&entry->memdesc);
-
-	return ret;
+	return memdesc_sg_virt(&entry->memdesc, hostptr);
 }
 
 #ifdef CONFIG_DMA_SHARED_BUFFER
@@ -4388,8 +4385,13 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 	rwlock_init(&device->context_lock);
 	spin_lock_init(&device->submit_lock);
 
+<<<<<<< HEAD
 	/* Use XA_FLAGS_ALLOC1 to disallow 0 as an option */
 	xa_init_flags(&device->timelines, XA_FLAGS_ALLOC1);
+=======
+	idr_init(&device->timelines);
+	spin_lock_init(&device->timelines_lock);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	kgsl_device_debugfs_init(device);
 
@@ -4401,6 +4403,7 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 #if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
 	if (sysctl_sched_assist_enabled)
 		device->events_wq = alloc_workqueue("kgsl-events",
+<<<<<<< HEAD
 			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_UX, 0);
 	else
 		device->events_wq = alloc_workqueue("kgsl-events",
@@ -4408,6 +4411,15 @@ int kgsl_device_platform_probe(struct kgsl_device *device)
 #else
 	device->events_wq = alloc_workqueue("kgsl-events",
 		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS, 0);
+=======
+			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI | WQ_UX, 0);
+	else
+		device->events_wq = alloc_workqueue("kgsl-events",
+			WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
+#else
+	device->events_wq = alloc_workqueue("kgsl-events",
+		WQ_UNBOUND | WQ_MEM_RECLAIM | WQ_SYSFS | WQ_HIGHPRI, 0);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif
 
 	/* Initialize common sysfs entries */

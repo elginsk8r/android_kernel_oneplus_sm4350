@@ -24,6 +24,7 @@
 #include "kgsl_sharedmem.h"
 #include "kgsl_trace.h"
 
+
 #define _IOMMU_PRIV(_mmu) (&((_mmu)->priv.iommu))
 
 
@@ -679,6 +680,10 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 		no_page_fault_log = kgsl_mmu_log_fault_addr(mmu, ptbase, addr);
 
 	if (!no_page_fault_log && __ratelimit(&_rs)) {
+<<<<<<< HEAD
+=======
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		dev_crit(ctx->kgsldev->dev,
 			"GPU PAGE FAULT: addr = %lX pid= %d name=%s\n", addr,
 			ptname, comm);

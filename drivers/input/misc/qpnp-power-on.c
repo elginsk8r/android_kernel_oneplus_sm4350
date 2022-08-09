@@ -205,6 +205,10 @@ struct pon_regulator {
 };
 
 #ifndef CONFIG_OPLUS_FEATURE_QCOM_PMICWD
+<<<<<<< HEAD
+=======
+//Add for qcom pmic watchdog
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 struct qpnp_pon {
 	struct device		*dev;
 	struct regmap		*regmap;
@@ -242,7 +246,10 @@ struct qpnp_pon {
 	bool			resin_pon_reset;
 	ktime_t			kpdpwr_last_release_time;
 };
+#endif
 
+#ifndef CONFIG_OPLUS_FEATURE_QCOM_PMICWD
+//Add for qcom pmic watchdog
 static struct qpnp_pon *sys_reset_dev;
 #endif
 static struct qpnp_pon *modem_reset_dev;
@@ -2173,13 +2180,19 @@ static int qpnp_pon_read_hardware_info(struct qpnp_pon *pon, bool sys_reset)
 
 	/* PON reason */
 	rc = qpnp_pon_read(pon, QPNP_PON_REASON1(pon), &pon_sts);
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_FEATURE_QCOM_PMICWD)
 	if (rc) {
+=======
+	if (rc){
+#if IS_ENABLED(CONFIG_OPLUS_FEATURE_QCOM_PMICWD)
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		dev_err(dev,"Unable to read PON_RESASON1 reg rc: %d\n",rc);
 		if (!preason_initialized) {
 			snprintf(pon_reason, 128, "Unable to read PON_RESASON1 reg rc: %d\n", rc);
 			preason_initialized = 1;
 		}
+<<<<<<< HEAD
 		return rc;
 	}
 #else
@@ -2192,6 +2205,16 @@ static int qpnp_pon_read_hardware_info(struct qpnp_pon *pon, bool sys_reset)
 	if (pon_sts & 0x80)
 		index = 7;
 #endif /*CONFIG_OPLUS_FEATURE_QCOM_PMICWD*/
+=======
+#endif /*CONFIG_OPLUS_FEATURE_QCOM_PMICWD*/
+		return rc;
+	}
+	index = ffs(pon_sts) - 1;
+	#if IS_ENABLED(CONFIG_OPLUS_FEATURE_QCOM_PMICWD)
+		if (pon_sts & 0x80)
+			index = 7;
+	#endif /*CONFIG_OPLUS_FEATURE_QCOM_PMICWD*/
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	cold_boot = sys_reset_dev ? !_qpnp_pon_is_warm_reset(sys_reset_dev)
 				  : !_qpnp_pon_is_warm_reset(pon);
 	if (index >= ARRAY_SIZE(qpnp_pon_reason) || index < 0) {

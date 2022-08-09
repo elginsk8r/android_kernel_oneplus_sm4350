@@ -34,6 +34,7 @@ static struct poweroff_reason reasons[] = {
 	{ "keys clear",			0x06 },
 	#ifdef OPLUS_FEATUREB_BOOT
 	{ "silence",			0x21 },//PON_RESTART_REASON_SILENCE= 0x21,
+<<<<<<< HEAD
 	{ "sau",			0x22 },//PON_RESTART_REASON_SAU= 0x22,
 	{ "rf",				0x23 },//PON_RESTART_REASON_RF= 0x23,
 	{ "wlan",			0x24 },//PON_RESTART_REASON_WLAN= 0x24,
@@ -45,6 +46,20 @@ static struct poweroff_reason reasons[] = {
 	{ "modem",			0x28 },//PON_RESTART_REASON_MODEM= 0x28,
 	{ "android",			0x29 },//PON_RESTART_REASON_ANDROID= 0x29,
 	{ "safe",			0x2A },//PON_RESTART_REASON_SAFE= 0x2A,
+=======
+ 	{ "sau",			0x22 },//PON_RESTART_REASON_SAU= 0x22,
+        { "rf",	        		0x23 },//PON_RESTART_REASON_RF= 0x23,
+        { "wlan",			0x24 },//PON_RESTART_REASON_WLAN= 0x24,
+#ifdef USE_MOS_MODE
+        { "mos",			0x25 },//PON_RESTART_REASON_MOS= 0x25,
+#endif
+        { "ftm",			0x26 },//PON_RESTART_REASON_FACTORY= 0x26,
+        { "kernel",			0x27 },//PON_RESTART_REASON_KERNEL= 0x27,
+        { "modem",			0x28 },//PON_RESTART_REASON_MODEM= 0x28,
+        { "android",			0x29 },//PON_RESTART_REASON_ANDROID= 0x29,
+        { "safe",			0x2A },//PON_RESTART_REASON_SAFE= 0x2A,
+       // { "other",			0x3E },//PON_RESTART_REASON_NORMAL= 0x3E,
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /*OPLUS_FEATUREB_BOOT*/
 	{}
 };

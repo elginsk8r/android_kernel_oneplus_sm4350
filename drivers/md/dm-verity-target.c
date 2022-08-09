@@ -33,7 +33,11 @@
 #define DM_VERITY_OPT_IGN_ZEROES	"ignore_zero_blocks"
 #define DM_VERITY_OPT_AT_MOST_ONCE	"check_at_most_once"
 
+<<<<<<< HEAD
 #define DM_VERITY_OPTS_MAX		(2 + DM_VERITY_OPTS_FEC + \
+=======
+#define DM_VERITY_OPTS_MAX		(3 + DM_VERITY_OPTS_FEC + \
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 					 DM_VERITY_ROOT_HASH_VERIFICATION_OPTS)
 
 static unsigned dm_verity_prefetch_cluster = DM_VERITY_DEFAULT_PREFETCH_SIZE;
@@ -543,7 +547,12 @@ static int verity_verify_io(struct dm_verity_io *io)
 			continue;
 		else if (verity_handle_err(v, DM_VERITY_BLOCK_TYPE_DATA,
 					   cur_block))
+<<<<<<< HEAD
 			return -EIO;
+=======
+				return -EIO;
+	}
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	}
 
 	return 0;

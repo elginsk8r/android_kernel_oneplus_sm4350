@@ -967,5 +967,8 @@ int smblib_get_prop_voltage_wls_output(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_prop_dc_voltage_now(struct smb_charger *chg,
 				union power_supply_propval *val);
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /* __SMB5_CHARGER_H */

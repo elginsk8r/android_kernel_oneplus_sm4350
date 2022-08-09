@@ -256,10 +256,19 @@ void kgsl_timeline_signal(struct kgsl_timeline *timeline, u64 seqno)
 
 	timeline->value = seqno;
 
+<<<<<<< HEAD
 	/* Copy the list out so we can walk it without holding the lock */
 	spin_lock(&fence_lock);
 	list_replace_init(&timeline->fences, &temp);
 	spin_unlock(&fence_lock);
+=======
+	spin_lock(&timeline->fence_lock);
+	list_for_each_entry_safe(fence, tmp, &timeline->fences, node)
+	if (timeline_fence_signaled(&fence->base) &&
+			kref_get_unless_zero(&fence->base.refcount))
+		list_move(&fence->node, &temp);
+	spin_unlock(&timeline->fence_lock);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	list_for_each_entry_safe(fence, tmp, &temp, node) {
 		if (timeline_fence_signaled(&fence->base)) {
@@ -498,6 +507,16 @@ long kgsl_ioctl_timeline_destroy(struct kgsl_device_private *dev_priv,
 
 	INIT_LIST_HEAD(&temp);
 
+<<<<<<< HEAD
+=======
+	spin_lock(&timeline->fence_lock);
+	list_for_each_entry_safe(fence, tmp, &timeline->fences, node)
+	if (!kref_get_unless_zero(&fence->base.refcount))
+		list_del_init(&fence->node);
+	list_replace_init(&timeline->fences, &temp);
+	spin_unlock(&timeline->fence_lock);
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	spin_lock_irq(&timeline->lock);
 
 	/* Copy any still pending fences to a temporary list */
@@ -520,3 +539,4 @@ long kgsl_ioctl_timeline_destroy(struct kgsl_device_private *dev_priv,
 
 	return timeline ? 0 : -ENODEV;
 }
+

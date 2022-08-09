@@ -860,10 +860,13 @@ static int check_pad_bytes(struct kmem_cache *s, struct page *page, u8 *p)
 {
 	unsigned long off = s->inuse;	/* The end of info */
 
+<<<<<<< HEAD
 	if (s->offset)
 		/* Freepointer is placed after the object. */
 		off += sizeof(void *);
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #if !defined(OPLUS_FEATURE_MEMLEAK_DETECT) || !defined(CONFIG_KMALLOC_DEBUG) || defined(CONFIG_SLUB_DEBUG_ON) || defined(CONFIG_OPLUS_FEATURE_SLABTRACE_DEBUG)
 	if (s->flags & SLAB_STORE_USER)
 		/* We also have user information there */

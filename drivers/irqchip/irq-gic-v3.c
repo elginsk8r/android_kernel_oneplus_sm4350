@@ -602,11 +602,17 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 
 	if (!msm_show_resume_irq_mask)
 		return;
+<<<<<<< HEAD
 
 	#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
 	wakeup_reasons_statics(IRQ_NAME_WAKE_SUM, WS_CNT_SUM);
 	#endif
 
+=======
+	#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
+	wakeup_reasons_statics(IRQ_NAME_WAKE_SUM, WS_CNT_SUM);
+	#endif
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	for (i = 0; i * 32 < GIC_LINE_NR; i++) {
 		enabled = readl_relaxed(base + GICD_ICENABLER + i * 4);
 		pending[i] = readl_relaxed(base + GICD_ISPENDR + i * 4);
@@ -624,6 +630,12 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 			name = "stray irq";
 		else if (desc->action && desc->action->name)
 			name = desc->action->name;
+<<<<<<< HEAD
+=======
+
+
+		pr_warn("%s: %d triggered %s\n", __func__, irq, name);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 		pr_warn("%s: irq:%d hwirq:%u triggered %s\n",
 			 __func__, irq, i, name);

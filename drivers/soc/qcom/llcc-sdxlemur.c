@@ -50,11 +50,19 @@
 	}
 
 static struct llcc_slice_config sdxlemur_data[] =  {
+<<<<<<< HEAD
 	SCT_ENTRY(LLCC_MDMHPGRW, 7, 128, 1, 1, 0xF,  0x0, 0, 0, 0, 1, 0),
 	SCT_ENTRY(LLCC_MDMHW,    9, 128, 1, 1, 0xF,  0x0, 0, 0, 0, 1, 0),
 	SCT_ENTRY(LLCC_MDMVPE,  29,  64, 1, 1, 0xF,  0x0, 0, 0, 0, 1, 0),
 	SCT_ENTRY(LLCC_APTCM,   30, 128, 3, 1, 0xF,  0x2, 1, 0, 0, 1, 0),
 	SCT_ENTRY(LLCC_MDMCLD2, 25, 128, 1, 1, 0xF,  0x0, 0, 0, 0, 1, 0),
+=======
+	SCT_ENTRY(LLCC_MDMHPGRW, 7, 128, 1, 1, 0xF,  0xF, 0, 0, 0, 1, 0),
+	SCT_ENTRY(LLCC_MDMHW,    9, 128, 1, 1, 0xF,  0xF, 0, 0, 0, 1, 0),
+	SCT_ENTRY(LLCC_MDMVPE,  29,  64, 1, 1, 0xF,  0xF, 0, 0, 0, 1, 0),
+	SCT_ENTRY(LLCC_APTCM,   30, 128, 3, 1, 0xF,  0xF, 1, 0, 0, 1, 0),
+	SCT_ENTRY(LLCC_MDMCLD2, 25, 128, 1, 1, 0xF,  0xF, 0, 0, 0, 1, 0),
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 };
 
 static int sdxlemur_qcom_llcc_probe(struct platform_device *pdev)

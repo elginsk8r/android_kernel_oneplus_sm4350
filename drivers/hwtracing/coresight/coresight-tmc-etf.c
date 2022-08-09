@@ -235,6 +235,10 @@ static int tmc_enable_etf_sink_perf(struct coresight_device *csdev, void *data)
 	unsigned long flags;
 	struct tmc_drvdata *drvdata = dev_get_drvdata(csdev->dev.parent);
 	struct perf_output_handle *handle = data;
+<<<<<<< HEAD
+=======
+	struct cs_buffers *buf = etm_perf_sink_config(handle);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	spin_lock_irqsave(&drvdata->spinlock, flags);
 	do {

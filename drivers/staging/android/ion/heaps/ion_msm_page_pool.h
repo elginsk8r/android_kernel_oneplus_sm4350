@@ -66,9 +66,13 @@ struct ion_msm_page_pool {
 	struct mutex mutex;
 	gfp_t gfp_mask;
 	unsigned int order;
+<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 	bool boost_flag;
 #endif
+=======
+	bool boost_flag;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	struct plist_node list;
 	bool cached;
 	struct device *heap_dev;
@@ -86,6 +90,8 @@ void ion_msm_page_pool_free_immediate(struct ion_msm_page_pool *pool,
 				      struct page *page);
 int ion_msm_page_pool_total(struct ion_msm_page_pool *pool, bool high);
 size_t ion_system_heap_secure_page_pool_total(struct ion_heap *heap, int vmid);
+
+inline struct page *ion_msm_page_pool_alloc_pages(struct ion_msm_page_pool *pool);
 
 /** ion_msm_page_pool_shrink - shrinks the size of the memory cached in the pool
  * @pool:		the pool

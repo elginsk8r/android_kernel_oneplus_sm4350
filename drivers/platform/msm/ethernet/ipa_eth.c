@@ -83,6 +83,23 @@ static int ipa_eth_init_device(struct ipa_eth_device *eth_dev)
 	if (eth_dev->of_state != IPA_ETH_OF_ST_DEINITED)
 		return -EFAULT;
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_ep_init_headers(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to init EP headers");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	rc = ipa_eth_pm_register(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to register with IPA PM");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rc = ipa_eth_offload_init(eth_dev);
 	if (rc) {
 		ipa_eth_dev_err(eth_dev, "Failed to init offload");
@@ -90,6 +107,14 @@ static int ipa_eth_init_device(struct ipa_eth_device *eth_dev)
 		return rc;
 	}
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_uc_stats_init(eth_dev);
+	if (rc)
+		ipa_eth_dev_err(eth_dev,
+			"Failed to init uC stats monitor, continuing.");
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	ipa_eth_dev_log(eth_dev, "Initialized device");
 
 	eth_dev->of_state = IPA_ETH_OF_ST_INITED;
@@ -107,6 +132,14 @@ static int ipa_eth_deinit_device(struct ipa_eth_device *eth_dev)
 	if (eth_dev->of_state != IPA_ETH_OF_ST_INITED)
 		return -EFAULT;
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_uc_stats_deinit(eth_dev);
+	if (rc)
+		ipa_eth_dev_err(eth_dev,
+			"Failed to deinit uC stats monitor, continuing.");
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rc = ipa_eth_offload_deinit(eth_dev);
 	if (rc) {
 		ipa_eth_dev_err(eth_dev, "Failed to deinit offload");
@@ -114,6 +147,23 @@ static int ipa_eth_deinit_device(struct ipa_eth_device *eth_dev)
 		return rc;
 	}
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_pm_unregister(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to unregister with IPA PM");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	rc = ipa_eth_ep_deinit_headers(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to deinit EP headers");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	ipa_eth_dev_log(eth_dev, "Deinitialized device");
 
 	eth_dev->of_state = IPA_ETH_OF_ST_DEINITED;
@@ -131,6 +181,16 @@ static int ipa_eth_start_device(struct ipa_eth_device *eth_dev)
 	if (eth_dev->of_state != IPA_ETH_OF_ST_INITED)
 		return -EFAULT;
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_pm_activate(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to activate device PM");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rc = ipa_eth_offload_start(eth_dev);
 	if (rc) {
 		ipa_eth_dev_err(eth_dev, "Failed to start offload");
@@ -138,6 +198,36 @@ static int ipa_eth_start_device(struct ipa_eth_device *eth_dev)
 		return rc;
 	}
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_bus_disable_pc(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev,
+			"Failed to disable bus power collapse");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	/* We cannot register the interface during offload init phase because
+	 * it will cause IPACM to install IPA filter rules when it receives a
+	 * link-up netdev event, even if offload path is not started and/or no
+	 * ECM_CONNECT event is received from the driver. Since installing IPA
+	 * filter rules while offload path is stopped can cause DL data stall,
+	 * register the interface only after the offload path is started.
+	 */
+	rc = ipa_eth_ep_register_interface(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to register EP interface");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	rc = ipa_eth_uc_stats_start(eth_dev);
+	if (rc)
+		ipa_eth_dev_err(eth_dev,
+			"Failed to start uC stats monitor, continuing.");
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	ipa_eth_dev_log(eth_dev, "Started device");
 
 	eth_dev->of_state = IPA_ETH_OF_ST_STARTED;
@@ -155,6 +245,29 @@ static int ipa_eth_stop_device(struct ipa_eth_device *eth_dev)
 	if (eth_dev->of_state != IPA_ETH_OF_ST_STARTED)
 		return -EFAULT;
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_uc_stats_stop(eth_dev);
+	if (rc)
+		ipa_eth_dev_err(eth_dev,
+			"Failed to stop uC stats monitor, continuing.");
+
+	rc = ipa_eth_ep_unregister_interface(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to unregister IPA interface");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	rc = ipa_eth_bus_enable_pc(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev,
+			"Failed to enable bus power collapse");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rc = ipa_eth_offload_stop(eth_dev);
 	if (rc) {
 		ipa_eth_dev_err(eth_dev, "Failed to stop offload");
@@ -162,6 +275,16 @@ static int ipa_eth_stop_device(struct ipa_eth_device *eth_dev)
 		return rc;
 	}
 
+<<<<<<< HEAD
+=======
+	rc = ipa_eth_pm_deactivate(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to deactivate device PM");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	ipa_eth_dev_log(eth_dev, "Stopped device");
 
 	eth_dev->of_state = IPA_ETH_OF_ST_INITED;
@@ -186,7 +309,13 @@ static void ipa_eth_device_refresh(struct ipa_eth_device *eth_dev)
 
 	if (initable(eth_dev)) {
 		if (eth_dev->of_state == IPA_ETH_OF_ST_DEINITED) {
+<<<<<<< HEAD
 			(void) ipa_eth_init_device(eth_dev);
+=======
+			IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+			(void) ipa_eth_init_device(eth_dev);
+			IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 			if (eth_dev->of_state != IPA_ETH_OF_ST_INITED) {
 				ipa_eth_dev_err(eth_dev,
@@ -197,17 +326,49 @@ static void ipa_eth_device_refresh(struct ipa_eth_device *eth_dev)
 	}
 
 	if (startable(eth_dev)) {
+<<<<<<< HEAD
 		(void) ipa_eth_start_device(eth_dev);
+=======
+		IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+		(void) ipa_eth_start_device(eth_dev);
+		IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 		if (eth_dev->of_state != IPA_ETH_OF_ST_STARTED) {
 			ipa_eth_dev_err(eth_dev, "Failed to start device");
 			return;
 		}
+<<<<<<< HEAD
 	} else {
 		ipa_eth_dev_log(eth_dev, "Start is disallowed for the device");
 
 		if (eth_dev->of_state == IPA_ETH_OF_ST_STARTED) {
 			ipa_eth_stop_device(eth_dev);
+=======
+
+		if (ipa_eth_net_register_upper(eth_dev)) {
+			ipa_eth_dev_err(eth_dev,
+				"Failed to register upper interfaces");
+			eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		}
+
+		if (ipa_eth_pm_vote_bw(eth_dev))
+			ipa_eth_dev_err(eth_dev,
+					"Failed to vote for required BW");
+	} else {
+		ipa_eth_dev_log(eth_dev, "Start is disallowed for the device");
+
+		if (ipa_eth_net_unregister_upper(eth_dev)) {
+			ipa_eth_dev_err(eth_dev,
+				"Failed to unregister upper interfaces");
+			eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		}
+
+		if (eth_dev->of_state == IPA_ETH_OF_ST_STARTED) {
+			IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+			ipa_eth_stop_device(eth_dev);
+			IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 			if (eth_dev->of_state != IPA_ETH_OF_ST_INITED) {
 				ipa_eth_dev_err(eth_dev,
@@ -220,7 +381,169 @@ static void ipa_eth_device_refresh(struct ipa_eth_device *eth_dev)
 	if (!initable(eth_dev)) {
 		ipa_eth_dev_log(eth_dev, "Init is disallowed for the device");
 
+<<<<<<< HEAD
 		ipa_eth_deinit_device(eth_dev);
+=======
+		IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+		ipa_eth_deinit_device(eth_dev);
+		IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
+
+		if (eth_dev->of_state != IPA_ETH_OF_ST_DEINITED) {
+			ipa_eth_dev_err(eth_dev, "Failed to deinit device");
+			return;
+		}
+	}
+}
+
+static int ipa_eth_init_device_skip_ipa(struct ipa_eth_device *eth_dev)
+{
+	int rc;
+
+	if (eth_dev->of_state == IPA_ETH_OF_ST_INITED)
+		return 0;
+
+	if (eth_dev->of_state != IPA_ETH_OF_ST_DEINITED)
+		return -EFAULT;
+
+	rc = ipa_eth_offload_init(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to init offload");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	ipa_eth_dev_log(eth_dev, "Initialized device");
+
+	eth_dev->of_state = IPA_ETH_OF_ST_INITED;
+
+	return 0;
+}
+
+static int ipa_eth_deinit_device_skip_ipa(struct ipa_eth_device *eth_dev)
+{
+	int rc;
+
+	if (eth_dev->of_state == IPA_ETH_OF_ST_DEINITED)
+		return 0;
+
+	if (eth_dev->of_state != IPA_ETH_OF_ST_INITED)
+		return -EFAULT;
+
+	rc = ipa_eth_offload_deinit(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to deinit offload");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	ipa_eth_dev_log(eth_dev, "Deinitialized device");
+
+	eth_dev->of_state = IPA_ETH_OF_ST_DEINITED;
+
+	return 0;
+}
+
+static int ipa_eth_start_device_skip_ipa(struct ipa_eth_device *eth_dev)
+{
+	int rc;
+
+	if (eth_dev->of_state == IPA_ETH_OF_ST_STARTED)
+		return 0;
+
+	if (eth_dev->of_state != IPA_ETH_OF_ST_INITED)
+		return -EFAULT;
+
+	rc = ipa_eth_offload_start(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to start offload");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	ipa_eth_dev_log(eth_dev, "Started device");
+
+	eth_dev->of_state = IPA_ETH_OF_ST_STARTED;
+
+	return 0;
+}
+
+static int ipa_eth_stop_device_skip_ipa(struct ipa_eth_device *eth_dev)
+{
+	int rc;
+
+	if (eth_dev->of_state == IPA_ETH_OF_ST_DEINITED)
+		return 0;
+
+	if (eth_dev->of_state != IPA_ETH_OF_ST_STARTED)
+		return -EFAULT;
+
+	rc = ipa_eth_offload_stop(eth_dev);
+	if (rc) {
+		ipa_eth_dev_err(eth_dev, "Failed to stop offload");
+		eth_dev->of_state = IPA_ETH_OF_ST_ERROR;
+		return rc;
+	}
+
+	ipa_eth_dev_log(eth_dev, "Stopped device");
+
+	eth_dev->of_state = IPA_ETH_OF_ST_INITED;
+
+	return 0;
+}
+
+static void ipa_eth_device_refresh_skip_ipa(struct ipa_eth_device *eth_dev)
+{
+	ipa_eth_dev_log(eth_dev, "Refreshing offload state for device");
+
+	if (!ipa_eth_offload_device_paired(eth_dev)) {
+		ipa_eth_dev_log(eth_dev, "Device is not paired. Skipping.");
+		return;
+	}
+
+	if (eth_dev->of_state == IPA_ETH_OF_ST_ERROR) {
+		ipa_eth_dev_err(eth_dev,
+				"Device in ERROR state, skipping refresh");
+		return;
+	}
+
+	if (initable(eth_dev)) {
+		if (eth_dev->of_state == IPA_ETH_OF_ST_DEINITED) {
+			(void) ipa_eth_init_device_skip_ipa(eth_dev);
+
+			if (eth_dev->of_state != IPA_ETH_OF_ST_INITED) {
+				ipa_eth_dev_err(eth_dev,
+						"Failed to init device");
+				return;
+			}
+		}
+	}
+
+	if (startable(eth_dev)) {
+		(void) ipa_eth_start_device_skip_ipa(eth_dev);
+
+		if (eth_dev->of_state != IPA_ETH_OF_ST_STARTED) {
+			ipa_eth_dev_err(eth_dev, "Failed to start device");
+			return;
+		}
+	} else {
+		ipa_eth_dev_log(eth_dev, "Start is disallowed for the device");
+
+		if (eth_dev->of_state == IPA_ETH_OF_ST_STARTED) {
+			ipa_eth_stop_device_skip_ipa(eth_dev);
+
+			if (eth_dev->of_state != IPA_ETH_OF_ST_INITED) {
+				ipa_eth_dev_err(eth_dev,
+						"Failed to stop device");
+				return;
+			}
+		}
+	}
+
+	if (!initable(eth_dev)) {
+		ipa_eth_dev_log(eth_dev, "Init is disallowed for the device");
+
+		ipa_eth_deinit_device_skip_ipa(eth_dev);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 		if (eth_dev->of_state != IPA_ETH_OF_ST_DEINITED) {
 			ipa_eth_dev_err(eth_dev, "Failed to deinit device");
@@ -234,7 +557,14 @@ static void ipa_eth_device_refresh_work(struct work_struct *work)
 	struct ipa_eth_device *eth_dev = container_of(work,
 				struct ipa_eth_device, refresh);
 
+<<<<<<< HEAD
 	ipa_eth_device_refresh(eth_dev);
+=======
+	if (unlikely(eth_dev->skip_ipa))
+		ipa_eth_device_refresh_skip_ipa(eth_dev);
+	else
+		ipa_eth_device_refresh(eth_dev);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 }
 
 void ipa_eth_device_refresh_sched(struct ipa_eth_device *eth_dev)
@@ -288,7 +618,13 @@ static int ipa_eth_device_prepare_reset(
 	 */
 	set_bit(IPA_ETH_DEV_F_RESETTING, &eth_dev->flags);
 
+<<<<<<< HEAD
 	rc = ipa_eth_offload_prepare_reset(eth_dev, data);
+=======
+	IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+	rc = ipa_eth_offload_prepare_reset(eth_dev, data);
+	IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	return rc;
 }
@@ -298,7 +634,13 @@ static int ipa_eth_device_complete_reset(
 {
 	int rc = 0;
 
+<<<<<<< HEAD
 	rc = ipa_eth_offload_complete_reset(eth_dev, data);
+=======
+	IPA_ACTIVE_CLIENTS_INC_SIMPLE();
+	rc = ipa_eth_offload_complete_reset(eth_dev, data);
+	IPA_ACTIVE_CLIENTS_DEC_SIMPLE();
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	/* Clear the flag before unlocking the mutex so that blocked threads
 	 * can resume with the updated value.
@@ -371,9 +713,15 @@ int ipa_eth_device_notify(struct ipa_eth_device *eth_dev,
 }
 EXPORT_SYMBOL(ipa_eth_device_notify);
 
+<<<<<<< HEAD
 static void ipa_eth_dev_start_timer_cb(struct timer_list *t)
 {
 	struct ipa_eth_device *eth_dev = from_timer(eth_dev, t, start_timer);
+=======
+static void ipa_eth_dev_start_timer_cb(unsigned long data)
+{
+	struct ipa_eth_device *eth_dev = (struct ipa_eth_device *)data;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	ipa_eth_dev_log(eth_dev, "Start timer has fired");
 
@@ -485,13 +833,33 @@ struct ipa_eth_device *ipa_eth_alloc_device(
 	eth_dev->dev = dev;
 	eth_dev->nd = nd;
 
+<<<<<<< HEAD
 	eth_dev->of_state = IPA_ETH_OF_ST_DEINITED;
+=======
+	/* Network/offload driver supports direct call to IPA driver. Skip IPA
+	 * driver calls for the device.
+	 */
+	if (nd->features & IPA_ETH_DEV_F_IPA_API) {
+		ipa_eth_dev_log(eth_dev, "Device requests for skipping IPA");
+		eth_dev->skip_ipa = true;
+	}
+
+	eth_dev->of_state = IPA_ETH_OF_ST_DEINITED;
+	eth_dev->pm_handle = IPA_PM_MAX_CLIENTS;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	INIT_WORK(&eth_dev->refresh, ipa_eth_device_refresh_work);
 
 	INIT_LIST_HEAD(&eth_dev->rx_channels);
 	INIT_LIST_HEAD(&eth_dev->tx_channels);
 
+<<<<<<< HEAD
 	timer_setup(&eth_dev->start_timer, ipa_eth_dev_start_timer_cb, 0);
+=======
+	init_timer(&eth_dev->start_timer);
+
+	eth_dev->start_timer.function = ipa_eth_dev_start_timer_cb;
+	eth_dev->start_timer.data = (unsigned long)eth_dev;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	eth_dev->init = eth_dev->start = !ipa_eth_noauto;
 
@@ -676,7 +1044,10 @@ void ipa_eth_unregister_net_driver(struct ipa_eth_net_driver *nd)
 }
 EXPORT_SYMBOL(ipa_eth_unregister_net_driver);
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 /**
  * ipa_eth_register_offload_driver - Register an offload driver with the offload
  *                                   subsystem
@@ -808,7 +1179,10 @@ err_wq:
 err_ipclog:
 	return rc;
 }
+<<<<<<< HEAD
 module_init(ipa_eth_init);
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 void ipa_eth_exit(void)
 {
@@ -837,4 +1211,7 @@ void ipa_eth_exit(void)
 
 	ipa_eth_ipc_log_cleanup();
 }
+<<<<<<< HEAD
 module_exit(ipa_eth_exit);
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)

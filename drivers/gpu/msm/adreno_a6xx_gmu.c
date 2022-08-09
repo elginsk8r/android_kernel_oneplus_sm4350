@@ -2816,7 +2816,12 @@ static int a6xx_gmu_power_off(struct adreno_device *adreno_dev)
 	clk_bulk_disable_unprepare(gmu->num_clks, gmu->clks);
 
 	/* Pool to make sure that the CX is off */
+<<<<<<< HEAD
 	if (!a6xx_cx_regulator_disable_wait(gmu->cx_gdsc, device, 5000))
+=======
+	if (!a6xx_cx_regulator_disable_wait(gmu->cx_gdsc, device,
+			IS_ENABLED(CONFIG_ARM_SMMU_POWER_ALWAYS_ON) ? 0 : 5000))
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		dev_err(&gmu->pdev->dev, "GMU CX gdsc off timeout\n");
 
 	a6xx_rdpm_cx_freq_update(gmu, 0);
@@ -3102,8 +3107,6 @@ no_gx_power:
 	del_timer_sync(&device->idle_timer);
 
 	kgsl_pwrscale_sleep(device);
-
-	kgsl_pwrctrl_clear_l3_vote(device);
 
 	trace_kgsl_pwr_set_state(device, KGSL_STATE_SLUMBER);
 

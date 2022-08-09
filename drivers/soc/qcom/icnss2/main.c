@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2015-2020, 2021, The Linux Foundation.
- * All rights reserved.
+ * Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.
  */
 
 #define pr_fmt(fmt) "icnss2: " fmt
@@ -75,7 +74,7 @@
 #define WLFW_TIMEOUT			msecs_to_jiffies(3000)
 
 static struct icnss_priv *penv;
-static struct work_struct wpss_loader;
+
 uint64_t dynamic_feature_mask = ICNSS_DEFAULT_FEATURE_MASK;
 
 #define ICNSS_EVENT_PENDING			2989
@@ -184,8 +183,11 @@ char *icnss_driver_event_to_str(enum icnss_driver_event_type type)
 		return "QDSS_TRACE_FREE";
 	case ICNSS_DRIVER_EVENT_M3_DUMP_UPLOAD_REQ:
 		return "M3_DUMP_UPLOAD";
+<<<<<<< HEAD
 	case ICNSS_DRIVER_EVENT_QDSS_TRACE_REQ_DATA:
 		return "QDSS_TRACE_REQ_DATA";
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	case ICNSS_DRIVER_EVENT_MAX:
 		return "EVENT_MAX";
 	}
@@ -836,9 +838,6 @@ static int icnss_driver_event_fw_init_done(struct icnss_priv *priv, void *data)
 
 	icnss_pr_info("WLAN FW Initialization done: 0x%lx\n", priv->state);
 
-	if (icnss_wlfw_qdss_dnld_send_sync(priv))
-		icnss_pr_info("Failed to download qdss configuration file");
-
 	if (test_bit(ICNSS_COLD_BOOT_CAL, &priv->state))
 		ret = wlfw_wlan_mode_send_sync_msg(priv,
 			(enum wlfw_driver_mode_enum_v01)ICNSS_CALIBRATION);
@@ -1014,6 +1013,7 @@ static inline int icnss_atomic_dec_if_greater_one(atomic_t *v)
 	return dec;
 }
 
+<<<<<<< HEAD
 static int icnss_qdss_trace_req_data_hdlr(struct icnss_priv *priv,
 					  void *data)
 {
@@ -1033,6 +1033,8 @@ static int icnss_qdss_trace_req_data_hdlr(struct icnss_priv *priv,
 	return ret;
 }
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 static int icnss_event_soc_wake_request(struct icnss_priv *priv, void *data)
 {
 	int ret = 0;
@@ -1222,15 +1224,6 @@ static int icnss_driver_event_pd_service_down(struct icnss_priv *priv,
 
 	if (priv->force_err_fatal)
 		ICNSS_ASSERT(0);
-
-	if (priv->device_id == WCN6750_DEVICE_ID) {
-		priv->smp2p_info.seq = 0;
-		if (qcom_smem_state_update_bits(
-				priv->smp2p_info.smem_state,
-				ICNSS_SMEM_VALUE_MASK,
-				0))
-			icnss_pr_dbg("Error in SMP2P sent ret: %d\n");
-	}
 
 	icnss_send_hang_event_data(priv);
 
@@ -1457,9 +1450,12 @@ static void icnss_driver_event_work(struct work_struct *work)
 			break;
 		case ICNSS_DRIVER_EVENT_M3_DUMP_UPLOAD_REQ:
 			ret = icnss_m3_dump_upload_req_hdlr(priv, event->data);
+<<<<<<< HEAD
 		case ICNSS_DRIVER_EVENT_QDSS_TRACE_REQ_DATA:
 			ret = icnss_qdss_trace_req_data_hdlr(priv,
 							     event->data);
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			break;
 		default:
 			icnss_pr_err("Invalid Event type: %d", event->type);
@@ -1597,6 +1593,7 @@ static void icnss_update_state_send_modem_shutdown(struct icnss_priv *priv,
 	}
 }
 
+<<<<<<< HEAD
 static int icnss_wpss_notifier_nb(struct notifier_block *nb,
 				  unsigned long code,
 				  void *data)
@@ -1654,6 +1651,8 @@ out:
 	return NOTIFY_OK;
 }
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 static int icnss_modem_notifier_nb(struct notifier_block *nb,
 				  unsigned long code,
 				  void *data)
@@ -1727,30 +1726,6 @@ out:
 	return NOTIFY_OK;
 }
 
-static int icnss_wpss_ssr_register_notifier(struct icnss_priv *priv)
-{
-	int ret = 0;
-
-	priv->wpss_ssr_nb.notifier_call = icnss_wpss_notifier_nb;
-	/*
-	 * Assign priority of icnss wpss notifier callback over IPA
-	 * modem notifier callback which is 0
-	 */
-	priv->wpss_ssr_nb.priority = 1;
-
-	priv->wpss_notify_handler =
-		subsys_notif_register_notifier("wpss", &priv->wpss_ssr_nb);
-
-	if (IS_ERR(priv->wpss_notify_handler)) {
-		ret = PTR_ERR(priv->wpss_notify_handler);
-		icnss_pr_err("WPSS register notifier failed: %d\n", ret);
-	}
-
-	set_bit(ICNSS_SSR_REGISTERED, &priv->state);
-
-	return ret;
-}
-
 static int icnss_modem_ssr_register_notifier(struct icnss_priv *priv)
 {
 	int ret = 0;
@@ -1773,18 +1748,6 @@ static int icnss_modem_ssr_register_notifier(struct icnss_priv *priv)
 	set_bit(ICNSS_SSR_REGISTERED, &priv->state);
 
 	return ret;
-}
-
-static int icnss_wpss_ssr_unregister_notifier(struct icnss_priv *priv)
-{
-	if (!test_and_clear_bit(ICNSS_SSR_REGISTERED, &priv->state))
-		return 0;
-
-	subsys_notif_unregister_notifier(priv->wpss_notify_handler,
-					 &priv->wpss_ssr_nb);
-	priv->wpss_notify_handler = NULL;
-
-	return 0;
 }
 
 static int icnss_modem_ssr_unregister_notifier(struct icnss_priv *priv)
@@ -2086,11 +2049,6 @@ static int icnss_enable_recovery(struct icnss_priv *priv)
 	ret = icnss_create_ramdump_devices(priv);
 	if (ret)
 		return ret;
-
-	if (priv->device_id == WCN6750_DEVICE_ID) {
-		icnss_wpss_ssr_register_notifier(priv);
-		return 0;
-	}
 
 	icnss_modem_ssr_register_notifier(priv);
 	if (test_bit(SSR_ONLY, &priv->ctrl_params.quirks)) {
@@ -3094,31 +3052,27 @@ void icnss_disallow_recursive_recovery(struct device *dev)
 	icnss_pr_info("Recursive recovery disallowed for WLAN\n");
 }
 
-static int icnss_create_shutdown_sysfs(struct icnss_priv *priv)
+static void icnss_sysfs_create(struct icnss_priv *priv)
 {
 	struct kobject *icnss_kobject;
-	int ret = 0;
+	int error = 0;
 
 	atomic_set(&priv->is_shutdown, false);
 
 	icnss_kobject = kobject_create_and_add("shutdown_wlan", kernel_kobj);
 	if (!icnss_kobject) {
-		icnss_pr_err("Unable to create shutdown_wlan kernel object");
-		return -EINVAL;
+		icnss_pr_err("Unable to create kernel object");
+		return;
 	}
 
 	priv->icnss_kobject = icnss_kobject;
 
-	ret = sysfs_create_file(icnss_kobject, &icnss_sysfs_attribute.attr);
-	if (ret) {
-		icnss_pr_err("Unable to create icnss sysfs file err:%d", ret);
-		return ret;
-	}
-
-	return ret;
+	error = sysfs_create_file(icnss_kobject, &icnss_sysfs_attribute.attr);
+	if (error)
+		icnss_pr_err("Unable to create icnss sysfs file");
 }
 
-static void icnss_destroy_shutdown_sysfs(struct icnss_priv *priv)
+static void icnss_sysfs_destroy(struct icnss_priv *priv)
 {
 	struct kobject *icnss_kobject;
 
@@ -3127,6 +3081,7 @@ static void icnss_destroy_shutdown_sysfs(struct icnss_priv *priv)
 		kobject_put(icnss_kobject);
 }
 
+<<<<<<< HEAD
 static ssize_t qdss_tr_start_store(struct device *dev,
 				   struct device_attribute *attr,
 				   const char *buf, size_t count)
@@ -3294,6 +3249,8 @@ static void icnss_sysfs_destroy(struct icnss_priv *priv)
 	devm_device_remove_group(&priv->pdev->dev, &icnss_attr_group);
 }
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 static int icnss_get_vbatt_info(struct icnss_priv *priv)
 {
 	struct adc_tm_chip *adc_tm_dev = NULL;
@@ -3785,7 +3742,10 @@ static int icnss_probe(struct platform_device *pdev)
 		icnss_get_cpr_info(priv);
 		icnss_get_smp2p_info(priv);
 		set_bit(ICNSS_COLD_BOOT_CAL, &priv->state);
+<<<<<<< HEAD
 		INIT_WORK(&wpss_loader, icnss_wpss_load);
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	}
 
 	INIT_LIST_HEAD(&priv->icnss_tcdev_list);
@@ -3826,19 +3786,19 @@ static int icnss_remove(struct platform_device *pdev)
 
 	complete_all(&priv->unblock_shutdown);
 
+	icnss_modem_ssr_unregister_notifier(priv);
+
 	destroy_ramdump_device(priv->msa0_dump_dev);
 
 	if (priv->device_id == WCN6750_DEVICE_ID) {
-		icnss_wpss_ssr_unregister_notifier(priv);
 		destroy_ramdump_device(priv->m3_dump_dev_seg1);
 		destroy_ramdump_device(priv->m3_dump_dev_seg2);
 		destroy_ramdump_device(priv->m3_dump_dev_seg3);
 		destroy_ramdump_device(priv->m3_dump_dev_seg4);
 		destroy_ramdump_device(priv->m3_dump_dev_seg5);
-	} else {
-		icnss_modem_ssr_unregister_notifier(priv);
-		icnss_pdr_unregister_notifier(priv);
 	}
+
+	icnss_pdr_unregister_notifier(priv);
 
 	icnss_unregister_fw_service(priv);
 	if (priv->event_wq)

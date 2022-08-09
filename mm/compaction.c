@@ -1654,6 +1654,10 @@ static unsigned long fast_find_migrateblock(struct compact_control *cc)
 #if defined(CONFIG_PHYSICAL_ANTI_FRAGMENTATION)
 	int flc = 0;
 #endif
+<<<<<<< HEAD
+=======
+	bool found_block = false;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	/* Skip hints are relied on to avoid repeats on the fast search */
 	if (cc->ignore_skip_hint)

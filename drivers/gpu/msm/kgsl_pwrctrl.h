@@ -169,8 +169,11 @@ struct kgsl_pwrctrl {
 	struct timer_list minbw_timer;
 	/** @minbw_timeout - Timeout for entering minimum bandwidth state */
 	u32 minbw_timeout;
+<<<<<<< HEAD
 	/** @ddr_qos_devfreq: Devfreq device for setting DDR qos policy */
 	struct devfreq *ddr_qos_devfreq;
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 };
 
 int kgsl_pwrctrl_init(struct kgsl_device *device);
@@ -253,11 +256,4 @@ void kgsl_idle_check(struct work_struct *work);
  *
  */
 void kgsl_pwrctrl_irq(struct kgsl_device *device, int state);
-/**
- * kgsl_pwrctrl_clear_l3_vote - Relinquish l3 vote
- * @device: Handle to the kgsl device
- *
- * Clear the l3 vote when going into slumber
- */
-void kgsl_pwrctrl_clear_l3_vote(struct kgsl_device *device);
 #endif /* __KGSL_PWRCTRL_H */

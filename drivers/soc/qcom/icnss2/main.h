@@ -1,7 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /*
- * Copyright (c) 2017-2020, 2021, The Linux Foundation.
- * All rights reserved.
+ * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  */
 
 #ifndef __MAIN_H__
@@ -26,7 +25,11 @@
 #define ICNSS_SMEM_VALUE_MASK 0xFFFFFFFF
 #define ICNSS_SMEM_SEQ_NO_POS 16
 #define QCA6750_PATH_PREFIX    "qca6750/"
+<<<<<<< HEAD
 #define ICNSS_MAX_FILE_NAME      35
+=======
+#define ICNSS_MAX_FILE_NAME      20
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 extern uint64_t dynamic_feature_mask;
 
@@ -58,7 +61,10 @@ enum icnss_driver_event_type {
 	ICNSS_DRIVER_EVENT_QDSS_TRACE_SAVE,
 	ICNSS_DRIVER_EVENT_QDSS_TRACE_FREE,
 	ICNSS_DRIVER_EVENT_M3_DUMP_UPLOAD_REQ,
+<<<<<<< HEAD
 	ICNSS_DRIVER_EVENT_QDSS_TRACE_REQ_DATA,
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	ICNSS_DRIVER_EVENT_MAX,
 };
 
@@ -388,9 +394,7 @@ struct icnss_priv {
 	int total_domains;
 	struct notifier_block get_service_nb;
 	void *modem_notify_handler;
-	void *wpss_notify_handler;
 	struct notifier_block modem_ssr_nb;
-	struct notifier_block wpss_ssr_nb;
 	uint32_t diag_reg_read_addr;
 	uint32_t diag_reg_read_mem_type;
 	uint32_t diag_reg_read_len;
@@ -422,7 +426,6 @@ struct icnss_priv {
 	bool is_ssr;
 	bool smmu_s1_enable;
 	struct kobject *icnss_kobject;
-	void *subsys;
 	atomic_t is_shutdown;
 	u32 qdss_mem_seg_len;
 	struct icnss_fw_mem qdss_mem[QMI_WLFW_MAX_NUM_MEM_SEG];
@@ -437,7 +440,10 @@ struct icnss_priv {
 	struct mutex tcdev_lock;
 	bool is_chain1_supported;
 	bool chain_reg_info_updated;
+<<<<<<< HEAD
 	u32 hw_trc_override;
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 };
 
 struct icnss_reg_info {

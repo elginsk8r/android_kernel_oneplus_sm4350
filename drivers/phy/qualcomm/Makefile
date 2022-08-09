@@ -6,7 +6,11 @@ obj-$(CONFIG_PHY_QCOM_PCIE2)		+= phy-qcom-pcie2.o
 obj-$(CONFIG_PHY_QCOM_QMP)		+= phy-qcom-qmp.o
 obj-$(CONFIG_PHY_QCOM_QUSB2)		+= phy-qcom-qusb2.o
 obj-$(CONFIG_PHY_QCOM_UFS)		+= phy-qcom-ufs.o
+<<<<<<< HEAD
 obj-$(CONFIG_PHY_QCOM_UFS_V4)		+= phy-qcom-ufs-qmp-v4-yupik.o phy-qcom-ufs-qmp-v4-lahaina.o phy-qcom-ufs-qmp-v4.o
+=======
+obj-$(CONFIG_PHY_QCOM_UFS_V4)		+= phy-qcom-ufs-qmp-v4-lahaina.o phy-qcom-ufs-qmp-v4.o
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 obj-$(CONFIG_PHY_QCOM_UFS_V3)           += phy-qcom-ufs-qmp-v3.o
 obj-$(CONFIG_PHY_QCOM_UFS_14NM)		+= phy-qcom-ufs-qmp-14nm.o
 obj-$(CONFIG_PHY_QCOM_UFS_20NM)		+= phy-qcom-ufs-qmp-20nm.o

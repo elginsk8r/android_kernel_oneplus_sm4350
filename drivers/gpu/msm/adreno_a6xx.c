@@ -127,6 +127,7 @@ static void a6xx_gmu_wrapper_init(struct adreno_device *adreno_dev)
 
 	if (!adreno_dev->gmu_wrapper_virt)
 		dev_warn(device->dev, "gmu_wrapper ioremap failed\n");
+<<<<<<< HEAD
 }
 
 static int match_name(struct device *dev, void *data)
@@ -157,6 +158,8 @@ static void find_ddr_qos_device(struct adreno_device *adreno_dev)
 
 	device->pwrctrl.ddr_qos_devfreq = container_of(devfreq_dev,
 					struct devfreq, dev);
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 }
 
 int a6xx_init(struct adreno_device *adreno_dev)
@@ -186,8 +189,6 @@ int a6xx_init(struct adreno_device *adreno_dev)
 		if (IS_ERR(adreno_dev->pwrup_reglist))
 			return PTR_ERR(adreno_dev->pwrup_reglist);
 	}
-
-	find_ddr_qos_device(adreno_dev);
 
 	return a6xx_get_cp_init_cmds(adreno_dev);
 }

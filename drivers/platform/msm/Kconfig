@@ -143,6 +143,7 @@ config R8125
 	  To compile this driver as a module, choose M here: the module
 	  will be called r8125.
 
+<<<<<<< HEAD
 config R8125_IPA_OFFLOAD
 	bool "Enable IPA offload on Realtek R8125 driver"
 	depends on IPA3
@@ -171,6 +172,27 @@ config IPA_ETH_NOAUTO
 	  to enable offloading. This feature is meant only for debugging.
 	  If unsure, say N.
 
+=======
+config IPA_ETH
+	bool "IPA Ethernet Offload Sub-system support"
+	depends on IPA3
+	help
+	  Enables IPA Ethernet Offload Subsystem for offloading PCI based
+	  ethernet devices to IPA. The offload subsystem still require a
+	  compatible network driver to register with it and a corresponding
+	  offload driver to manage one of more offload data paths that uses
+	  the network device.
+
+config IPA_ETH_NOAUTO
+	bool "Disable automatic offload initialization of interfaces"
+	depends on IPA_ETH
+	help
+	  Enabling this option prevents automatic initialization of offload on
+	  ethernet interfaces. Debugfs control interface will instead be used
+	  to enable offloading. This feature is meant only for debugging.
+	  If unsure, say N.
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 config IPA_ETH_DEBUG
 	bool "Enable addtional debug logging in the offload sub-system"
 	depends on IPA_ETH

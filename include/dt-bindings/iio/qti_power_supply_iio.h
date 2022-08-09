@@ -149,6 +149,12 @@
 #define PSY_IIO_PARALLEL_BATFET_MODE		0x79
 #define PSY_IIO_PARALLEL_FCC_MAX		0x7a
 
+<<<<<<< HEAD
 /* OPLUS_FEATURE_CHG_BASIC */
 #define PSY_IIO_PD_SDP				0xa0
+=======
+//#ifdef OPLUS_FEATURE_CHG_BASIC
+#define PSY_IIO_PD_SDP				0xa0
+//#endif
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /* __QTI_POWER_SUPPLY_IIO_H__ */

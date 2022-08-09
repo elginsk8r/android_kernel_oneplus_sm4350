@@ -28,7 +28,6 @@
 #include "main.h"
 #include "qmi.h"
 #include "debug.h"
-#include "genl.h"
 
 #define WLFW_SERVICE_WCN_INS_ID_V01	3
 #define WLFW_SERVICE_INS_ID_V01		0
@@ -42,8 +41,6 @@
 #define BIN_BDF_FILE_NAME_PREFIX	"bdwlan.b"
 #define REGDB_FILE_NAME			"regdb.bin"
 #define DUMMY_BDF_FILE_NAME		"bdwlan.dmy"
-
-#define QDSS_TRACE_CONFIG_FILE "qdss_trace_config.cfg"
 
 #define DEVICE_BAR_SIZE			0x200000
 #define M3_SEGMENT_ADDR_MASK		0xFFFFFFFF
@@ -651,14 +648,12 @@ int wlfw_cap_send_sync_msg(struct icnss_priv *priv)
 				    ret);
 		goto out;
 	} else if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
-		ret = -resp->resp.result;
-		if (resp->resp.error == QMI_ERR_PLAT_CCPM_CLK_INIT_FAILED) {
-			icnss_pr_err("RF card not present\n");
-			goto out;
-		}
 		icnss_qmi_fatal_err(
 			"QMI Capability request rejected, result:%d error:%d\n",
 			resp->resp.result, resp->resp.error);
+		ret = -resp->resp.result;
+		if (resp->resp.error == QMI_ERR_PLAT_CCPM_CLK_INIT_FAILED)
+			icnss_qmi_fatal_err("RF card not present\n");
 		goto out;
 	}
 
@@ -889,6 +884,7 @@ err_send:
 err_req_fw:
 	if (bdf_type != ICNSS_BDF_REGDB)
 		ICNSS_ASSERT(0);
+<<<<<<< HEAD
 	kfree(req);
 	kfree(resp);
 	return ret;
@@ -1121,6 +1117,8 @@ err_send:
 	release_firmware(fw_entry);
 err_req_fw:
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	kfree(req);
 	kfree(resp);
 	return ret;
@@ -1215,96 +1213,8 @@ out:
 	return ret;
 }
 
-static int wlfw_send_qdss_trace_mode_req
-		(struct icnss_priv *priv,
-		 enum wlfw_qdss_trace_mode_enum_v01 mode,
-		 unsigned long long option)
-{
-	int rc = 0;
-	int tmp = 0;
-	struct wlfw_qdss_trace_mode_req_msg_v01 *req;
-	struct wlfw_qdss_trace_mode_resp_msg_v01 *resp;
-	struct qmi_txn txn;
-
-	if (!priv)
-		return -ENODEV;
-
-	req = kzalloc(sizeof(*req), GFP_KERNEL);
-	if (!req)
-		return -ENOMEM;
-
-	resp = kzalloc(sizeof(*resp), GFP_KERNEL);
-	if (!resp) {
-		kfree(req);
-		return -ENOMEM;
-	}
-
-	req->mode_valid = 1;
-	req->mode = mode;
-	req->option_valid = 1;
-	req->option = option;
-
-	tmp = priv->hw_trc_override;
-
-	req->hw_trc_disable_override_valid = 1;
-	req->hw_trc_disable_override =
-	(tmp > QMI_PARAM_DISABLE_V01 ? QMI_PARAM_DISABLE_V01 :
-		 (tmp < 0 ? QMI_PARAM_INVALID_V01 : tmp));
-
-	icnss_pr_dbg("%s: mode %u, option %llu, hw_trc_disable_override: %u",
-		     __func__, mode, option, req->hw_trc_disable_override);
-
-	rc = qmi_txn_init(&priv->qmi, &txn,
-			  wlfw_qdss_trace_mode_resp_msg_v01_ei, resp);
-	if (rc < 0) {
-		icnss_qmi_fatal_err("Fail to init txn for QDSS Mode resp %d\n",
-				    rc);
-		goto out;
-	}
-
-	rc = qmi_send_request(&priv->qmi, NULL, &txn,
-			      QMI_WLFW_QDSS_TRACE_MODE_REQ_V01,
-			      WLFW_QDSS_TRACE_MODE_REQ_MSG_V01_MAX_MSG_LEN,
-			      wlfw_qdss_trace_mode_req_msg_v01_ei, req);
-	if (rc < 0) {
-		qmi_txn_cancel(&txn);
-		icnss_qmi_fatal_err("Fail to send QDSS Mode req %d\n", rc);
-		goto out;
-	}
-
-	rc = qmi_txn_wait(&txn, priv->ctrl_params.qmi_timeout);
-	if (rc < 0) {
-		icnss_qmi_fatal_err("QDSS Mode resp wait failed with rc %d\n",
-				    rc);
-		goto out;
-	} else if (resp->resp.result != QMI_RESULT_SUCCESS_V01) {
-		icnss_qmi_fatal_err(
-			"QMI QDSS Mode request rejected, result:%d error:%d\n",
-			resp->resp.result, resp->resp.error);
-		rc = -resp->resp.result;
-		goto out;
-	}
-
-out:
-	kfree(resp);
-	kfree(req);
-	return rc;
-}
-
-int wlfw_qdss_trace_start(struct icnss_priv *priv)
-{
-	return wlfw_send_qdss_trace_mode_req(priv,
-					     QMI_WLFW_QDSS_TRACE_ON_V01, 0);
-}
-
-int wlfw_qdss_trace_stop(struct icnss_priv *priv, unsigned long long option)
-{
-	return wlfw_send_qdss_trace_mode_req(priv, QMI_WLFW_QDSS_TRACE_OFF_V01,
-					     option);
-}
-
 int wlfw_wlan_cfg_send_sync_msg(struct icnss_priv *priv,
-				struct wlfw_wlan_cfg_req_msg_v01 *data)
+		struct wlfw_wlan_cfg_req_msg_v01 *data)
 {
 	int ret;
 	struct wlfw_wlan_cfg_req_msg_v01 *req;
@@ -2274,6 +2184,9 @@ static void wlfw_qdss_trace_save_ind_cb(struct qmi_handle *qmi,
 		     ind_msg->source, ind_msg->total_size,
 		     ind_msg->file_name_valid, ind_msg->file_name);
 
+	if (ind_msg->source == 1)
+		return;
+
 	event_data = kzalloc(sizeof(*event_data), GFP_KERNEL);
 	if (!event_data)
 		return;
@@ -2301,20 +2214,12 @@ static void wlfw_qdss_trace_save_ind_cb(struct qmi_handle *qmi,
 	if (ind_msg->file_name_valid)
 		strlcpy(event_data->file_name, ind_msg->file_name,
 			QDSS_TRACE_FILE_NAME_MAX + 1);
+	else
+		strlcpy(event_data->file_name, "qdss_trace",
+			QDSS_TRACE_FILE_NAME_MAX + 1);
 
-	if (ind_msg->source == 1) {
-		if (!ind_msg->file_name_valid)
-			strlcpy(event_data->file_name, "qdss_trace_wcss_etb",
-				QDSS_TRACE_FILE_NAME_MAX + 1);
-	icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_QDSS_TRACE_REQ_DATA,
-				0, event_data);
-	} else {
-		if (!ind_msg->file_name_valid)
-			strlcpy(event_data->file_name, "qdss_trace_ddr",
-				QDSS_TRACE_FILE_NAME_MAX + 1);
 	icnss_driver_event_post(priv, ICNSS_DRIVER_EVENT_QDSS_TRACE_SAVE,
 				0, event_data);
-	}
 
 	return;
 

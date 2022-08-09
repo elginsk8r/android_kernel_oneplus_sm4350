@@ -94,9 +94,15 @@ obj-y			+= tilcdc/
 obj-$(CONFIG_DRM_QXL) += qxl/
 obj-$(CONFIG_DRM_BOCHS) += bochs/
 obj-$(CONFIG_DRM_VIRTIO_GPU) += virtio/
+<<<<<<< HEAD
 ifneq ($(CONFIG_OPLUS_BUG_STABILITY), y)
 obj-$(CONFIG_DRM_MSM) += msm/
 endif
+=======
+#ifdef OPLUS_BUG_STABILITY
+#obj-$(CONFIG_DRM_MSM) += msm/
+#endif /* OPLUS_BUG_STABILITY */
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 obj-$(CONFIG_DRM_TEGRA) += tegra/
 obj-$(CONFIG_DRM_STM) += stm/
 obj-$(CONFIG_DRM_STI) += sti/

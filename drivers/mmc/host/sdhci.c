@@ -55,9 +55,15 @@ void sdhci_dumpregs(struct sdhci_host *host)
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
 	static int flag = 0;
 	if(!flag)
+<<<<<<< HEAD
 		flag++;
 	else
 		return;
+=======
+		    flag++;
+	else
+		    return;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif
 	mmc_log_string(host->mmc,
 	"BLOCK_SIZE=0x%08x BLOCK_COUNT=0x%08x COMMAND=0x%08x INT_STATUS=0x%08x INT_ENABLE=0x%08x SIGNAL_ENABLE=0x%08x\n",

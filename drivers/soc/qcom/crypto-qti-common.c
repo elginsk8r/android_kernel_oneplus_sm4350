@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
  * Common crypto library for storage encryption.
+ * Copyright (C) 2021 Oplus. All rights reserved.
  *
  * Copyright (c) 2020, Linux Foundation. All rights reserved.
  */
@@ -408,6 +409,7 @@ int crypto_qti_keyslot_program(void *priv_data,
 
 	err = crypto_qti_program_key(ice_entry, key, slot,
 				data_unit_mask, capid);
+<<<<<<< HEAD
 	if (err) {
 		pr_err("%s: program key failed with error %d\n", __func__, err);
 		err = crypto_qti_invalidate_key(ice_entry, slot);
@@ -415,6 +417,15 @@ int crypto_qti_keyslot_program(void *priv_data,
 			pr_err("%s: invalidate key failed with error %d\n",
 				__func__, err);
 			return err;
+=======
+	if (err1) {
+		pr_err("%s: program key failed with error %d\n", __func__, err1);
+		err2 = crypto_qti_invalidate_key(ice_entry, slot);
+		if (err2) {
+			pr_err("%s: invalidate key failed with error %d\n",
+				__func__, err2);
+			return err2;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		}
 	}
 

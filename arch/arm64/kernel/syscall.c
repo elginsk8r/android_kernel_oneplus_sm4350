@@ -119,13 +119,19 @@ static void el0_svc_common(struct pt_regs *regs, int scno, int sc_nr,
 		if (scno == NO_SYSCALL)
 			goto trace_exit;
 	}
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #ifdef CONFIG_OPLUS_KERNEL_SECURE_GUARD
 	oplus_invoke_syscall(regs, scno, sc_nr, syscall_table);
 #else
 	invoke_syscall(regs, scno, sc_nr, syscall_table);
 #endif/* CONFIG_OPLUS_KERNEL_SECURE_GUARD */
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	/*
 	 * The tracing status may have changed under our feet, so we have to
 	 * check again. However, if we were tracing entry, then we always trace

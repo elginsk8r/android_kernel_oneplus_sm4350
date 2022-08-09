@@ -472,7 +472,12 @@ static int sla_skb_reroute(struct sk_buff *skb, struct nf_conn *ct,
 {
 	int err;
 
+<<<<<<< HEAD
 	err = ip_route_me_harder(state->net, skb, RTN_UNSPEC);
+=======
+	err = ip_route_me_harder(state->net, state->sk, skb, RTN_UNSPEC);
+	//err = ip_route_me_harder(state->net, skb, RTN_UNSPEC);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	if (err < 0) {
 		return NF_DROP_ERR(err);

@@ -2237,6 +2237,7 @@ static const struct msm_pingroup sdmshrike_groups[] = {
 	[194] = SDC_QDSD_PINGROUP(sdc2_data, 0x9b2000, 9, 0),
 };
 
+<<<<<<< HEAD
 static const struct msm_gpio_wakeirq_map sdmshrike_pdc_map[] = {
 	{ 3, 31 }, { 5, 32 }, { 8, 33 }, { 9, 34 }, { 10, 100 },
 	{ 24, 37 }, { 26, 38 }, { 27, 41 }, { 28, 42 }, { 30, 39 },
@@ -2257,6 +2258,8 @@ static struct msm_dir_conn sdmshrike_dir_conn[] = {
 	  {-1, 0}, {-1, 0}, {-1, 0}, {-1, 0}
 };
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 static struct msm_pinctrl_soc_data sdmshrike_pinctrl = {
 	.pins = sdmshrike_pins,
 	.npins = ARRAY_SIZE(sdmshrike_pins),
@@ -2265,9 +2268,6 @@ static struct msm_pinctrl_soc_data sdmshrike_pinctrl = {
 	.groups = sdmshrike_groups,
 	.ngroups = ARRAY_SIZE(sdmshrike_groups),
 	.ngpios = 192,
-	.wakeirq_map = sdmshrike_pdc_map,
-	.nwakeirq_map = ARRAY_SIZE(sdmshrike_pdc_map),
-	.dir_conn = sdmshrike_dir_conn,
 };
 
 static int sdmshrike_pinctrl_probe(struct platform_device *pdev)

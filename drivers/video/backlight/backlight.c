@@ -124,8 +124,13 @@ static void backlight_generate_event(struct backlight_device *bd,
 		break;
 	}
 	envp[1] = NULL;
+<<<<<<< HEAD
 #ifndef OPLUS_BUG_STABILITY
 	kobject_uevent_env(&bd->dev.kobj, KOBJ_CHANGE, envp);
+=======
+#ifdef OPLUS_BUG_STABILITY
+	//kobject_uevent_env(&bd->dev.kobj, KOBJ_CHANGE, envp);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /*OPLUS_BUG_STABILITY*/
 	sysfs_notify(&bd->dev.kobj, NULL, "actual_brightness");
 }

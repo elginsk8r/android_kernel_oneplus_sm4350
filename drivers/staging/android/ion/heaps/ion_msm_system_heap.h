@@ -58,6 +58,7 @@ void free_buffer_page(struct ion_msm_system_heap *heap,
 		      struct ion_buffer *buffer, struct page *page,
 		      unsigned int order);
 
+<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 void ion_msm_system_heap_destroy_pools(struct ion_msm_page_pool **pools);
 
@@ -73,4 +74,11 @@ inline struct page *ion_msm_page_pool_alloc_pages(struct ion_msm_page_pool *pool
 #endif
 #endif  /* OPLUS_FEATURE_HEALTHINFO */
 
+=======
+int ion_msm_system_heap_create_pools(struct ion_msm_system_heap *sys_heap,
+					struct ion_msm_page_pool **pools, bool cached,
+					bool boost_flag);
+
+void ion_msm_system_heap_destroy_pools(struct ion_msm_page_pool **pools);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /* _ION_MSM_SYSTEM_HEAP_H */

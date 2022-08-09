@@ -23,6 +23,11 @@
 #include <linux/memblock.h>
 
 #define MAX_RESERVED_REGIONS	64
+
+#ifdef CONFIG_OPLUS_FEATURE_LOWMEM_DBG
+static unsigned long reserved_mem_size;
+#endif /* CONFIG_OPLUS_FEATURE_LOWMEM_DBG */
+
 static struct reserved_mem reserved_mem[MAX_RESERVED_REGIONS];
 static int reserved_mem_count;
 

@@ -494,8 +494,14 @@ static void msm_restart_prepare(const char *cmd)
 					     restart_reason);
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
+<<<<<<< HEAD
 #ifdef OPLUS_FEATUREB_BOOT
 		} else if (!strncmp(cmd, "rf", 2)) {
+=======
+		}
+#ifdef OPLUS_FEATUREB_BOOT
+		else if (!strncmp(cmd, "rf", 2)) {
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			reason = PON_RESTART_REASON_RF;
 		} else if (!strncmp(cmd, "wlan",4)) {
 			reason = PON_RESTART_REASON_WLAN;
@@ -517,15 +523,23 @@ static void msm_restart_prepare(const char *cmd)
 			reason = PON_RESTART_REASON_SAU;
 		} else if (!strncmp(cmd, "safe", 4)) {
 			reason = PON_RESTART_REASON_SAFE;
+<<<<<<< HEAD
 		} else {
 			reason = PON_RESTART_REASON_NORMAL;
 			__raw_writel(0x77665501, restart_reason);
 #else
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		} else {
+			reason = PON_RESTART_REASON_NORMAL;
 			__raw_writel(0x77665501, restart_reason);
 #endif /*OPLUS_FEATUREB_BOOT*/
 		}
-
+#else
+		else {
+			__raw_writel(0x77665501, restart_reason);
+		}
+#endif /*OPLUS_FEATUREB_BOOT*/
 		if (reason && nvmem_cell)
 			nvmem_cell_write(nvmem_cell, &reason, sizeof(reason));
 		else

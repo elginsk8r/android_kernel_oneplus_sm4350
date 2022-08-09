@@ -73,6 +73,7 @@ obj-$(CONFIG_SDX_GCC_LEMUR) += gcc-sdxlemur.o
 obj-$(CONFIG_SDX_GCC_NIGHTJAR) += gcc-sdxnightjar.o
 obj-$(CONFIG_SM_CAMCC_8150) += camcc-sm8150.o
 obj-$(CONFIG_SM_CAMCC_SHIMA) += camcc-shima.o
+<<<<<<< HEAD
 obj-$(CONFIG_SM_CAMCC_YUPIK) += camcc-yupik.o
 obj-$(CONFIG_SM_DEBUGCC_8150) += debugcc-sm8150.o
 obj-$(CONFIG_SM_DEBUGCC_HOLI) += debugcc-holi.o
@@ -82,6 +83,14 @@ obj-$(CONFIG_SM_DISPCC_8150) += dispcc-sm8150.o
 obj-$(CONFIG_SM_DISPCC_HOLI) += dispcc-holi.o
 obj-$(CONFIG_SM_DISPCC_SHIMA) += dispcc-shima.o
 obj-$(CONFIG_SM_DISPCC_YUPIK) += dispcc-yupik.o
+=======
+obj-$(CONFIG_SM_DEBUGCC_8150) += debugcc-sm8150.o
+obj-$(CONFIG_SM_DEBUGCC_HOLI) += debugcc-holi.o
+obj-$(CONFIG_SM_DEBUGCC_SHIMA) += debugcc-shima.o
+obj-$(CONFIG_SM_DISPCC_8150) += dispcc-sm8150.o
+obj-$(CONFIG_SM_DISPCC_HOLI) += dispcc-holi.o
+obj-$(CONFIG_SM_DISPCC_SHIMA) += dispcc-shima.o
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 obj-$(CONFIG_SM_GCC_8150) += gcc-sm8150.o
 obj-$(CONFIG_SM_GCC_HOLI) += gcc-holi.o
 obj-$(CONFIG_SM_GCC_SHIMA) += gcc-shima.o
@@ -99,4 +108,7 @@ obj-$(CONFIG_SPMI_PMIC_CLKDIV) += clk-spmi-pmic-div.o
 obj-$(CONFIG_KPSS_XCC) += kpss-xcc.o
 obj-$(CONFIG_QCOM_HFPLL) += hfpll.o
 obj-$(CONFIG_KRAITCC) += krait-cc.o
+<<<<<<< HEAD
 obj-$(CONFIG_VIRTIO_CLK) += virtio_clk.o virtio_clk_sm8150.o virtio_clk_sm6150.o virtio_clk_sa8195p.o
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)

@@ -242,7 +242,10 @@ static struct smb_params smb5_pm8150b_params = {
 		.set_proc = smblib_set_aicl_cont_threshold,
 	},
 };
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #ifndef OPLUS_FEATURE_CHG_BASIC
 struct smb_dt_props {
 	int			usb_icl_ua;
@@ -1605,7 +1608,11 @@ static int smb5_configure_internal_pull(struct smb_charger *chg, int type,
 #else
 #define MICRO_3PA			1500000
 #endif
+<<<<<<< HEAD
 #define MICRO_4PA			4000000
+=======
+#define MICRO_4PA                       4000000
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #define OTG_DEFAULT_DEGLITCH_TIME_MS	50
 #define DEFAULT_WD_BARK_TIME		64
 #define DEFAULT_WD_SNARL_TIME_8S	0x07
@@ -1618,6 +1625,7 @@ static int smb5_parse_dt_misc(struct smb5 *chip, struct device_node *node)
 
 	of_property_read_u32(node, "qcom,sec-charger-config",
 					&chip->dt.sec_charger_config);
+
 	chg->sec_cp_present =
 		chip->dt.sec_charger_config ==
 		QTI_POWER_SUPPLY_CHARGER_SEC_CP ||
@@ -1831,12 +1839,19 @@ static int smb5_parse_dt_adc_channels(struct smb_charger *chg)
 	if (rc < 0)
 		return rc;
 
+<<<<<<< HEAD
 #ifndef OPLUS_FEATURE_CHG_BASIC
 	rc = smblib_get_iio_channel(chg, "conn_temp",
 					&chg->iio.connector_temp_chan);
 	if (rc < 0)
 		return rc;
 #endif
+=======
+	//rc = smblib_get_iio_channel(chg, "conn_temp",
+	//				&chg->iio.connector_temp_chan);
+	//if (rc < 0)
+	//	return rc;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	rc = smblib_get_iio_channel(chg, "skin_temp", &chg->iio.skin_temp_chan);
 	if (rc < 0)
@@ -2411,6 +2426,7 @@ static int smb5_usb_port_get_prop(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_TYPE_USB;
 		break;
 	case POWER_SUPPLY_PROP_ONLINE:
+<<<<<<< HEAD
 #ifndef OPLUS_FEATURE_CHG_BASIC
 		rc = smblib_get_prop_usb_online(chg, val);
 #else
@@ -2423,6 +2439,22 @@ static int smb5_usb_port_get_prop(struct power_supply *psy,
 			val->intval = 1;
 			break;
 		}
+=======
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		if (use_present_status)
+			rc = smblib_get_prop_usb_present(chg, val);
+		else
+			rc = smblib_get_prop_usb_online(chg, val);
+
+		if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB_PD
+				&& chg->pd_sdp == true) {
+			val->intval = 1;
+			break;
+		}
+
+#else
+		rc = smblib_get_prop_usb_online(chg, val);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif
 		if (!val->intval)
 			break;
@@ -2983,12 +3015,14 @@ static int smb5_configure_typec(struct smb_charger *chg)
 	}
 
 	/*
-	 * Across reboot, standard typeC cables get detected as legacy
-	 * cables due to VBUS attachment prior to CC attach/detach.
-	 * Reset the legacy detection logic by enabling/disabling the typeC mode.
+	 * Across reboot, standard typeC cables get detected as legacy cables
+	 * due to VBUS attachment prior to CC attach/dettach. To handle this,
+	 * "early_usb_attach" flag is used, which assumes that across reboot,
+	 * the cable connected can be standard typeC. However, its jurisdiction
+	 * is limited to PD capable designs only. Hence, for non-PD type designs
+	 * reset legacy cable detection by disabling/enabling typeC mode.
 	 */
-
-	if (value & TYPEC_LEGACY_CABLE_STATUS_BIT) {
+	if (chg->pd_not_supported && (value & TYPEC_LEGACY_CABLE_STATUS_BIT)) {
 		val = QTI_POWER_SUPPLY_TYPEC_PR_NONE;
 		rc = smblib_set_prop_typec_power_role(chg, val);
 		if (rc < 0) {
@@ -3678,7 +3712,10 @@ static int smb5_init_hw(struct smb5 *chip)
 		return rc;
 	}
 #endif
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rc = smblib_write(chg, AICL_RERUN_TIME_CFG_REG,
 				AICL_RERUN_TIME_12S_VAL);
 	if (rc < 0) {
@@ -4323,8 +4360,14 @@ static int force_dc_psy_update_write(void *data, u64 val)
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	if (chg->dc_psy)
+<<<<<<< HEAD
 #endif
+=======
+		power_supply_changed(chg->dc_psy);
+#else
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	power_supply_changed(chg->dc_psy);
+#endif
 	return 0;
 }
 DEFINE_DEBUGFS_ATTRIBUTE(force_dc_psy_update_ops, NULL,

@@ -17,6 +17,11 @@ obj-$(CONFIG_NFC_ST_NCI)	+= st-nci/
 obj-$(CONFIG_NFC_NXP_NCI)	+= nxp-nci/
 obj-$(CONFIG_NFC_S3FWRN5)	+= s3fwrn5/
 obj-$(CONFIG_NFC_ST95HF)	+= st95hf/
+obj-$(CONFIG_NFC_ST21NFC)            += st21nfc/
 obj-y				+= qti/
+<<<<<<< HEAD
 obj-$(CONFIG_NFC_ST21NFC)	+= st21nfc/
 obj-$(CONFIG_OPLUS_NFC)		+= oplus_nfc/
+=======
+obj-$(CONFIG_OPLUS_NFC)          += oplus_nfc/
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)

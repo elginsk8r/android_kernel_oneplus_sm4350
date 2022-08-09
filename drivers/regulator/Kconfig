@@ -1211,6 +1211,7 @@ config REGULATOR_STUB
 	  Consumers can use stub regulator device with proper constraint
 	  checking while the real regulator driver is being developed.
 
+<<<<<<< HEAD
 config VIRTIO_REGULATOR
 	tristate "Virtio regulator driver"
 	depends on VIRTIO
@@ -1220,5 +1221,7 @@ config VIRTIO_REGULATOR
 	  regulator for pass through peripheral devices via regulator backend in
 	  host.
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 endif
 

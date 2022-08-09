@@ -17,7 +17,6 @@
  *
  */
 #include <linux/kernel.h>
-#include <linux/irq.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
@@ -26,7 +25,6 @@
 #include <linux/input/mt.h>
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
-#include <dt-bindings/interrupt-controller/arm-gic.h>
 
 #if defined(CONFIG_DRM_PANEL)
 #include <drm/drm_panel.h>
@@ -41,22 +39,6 @@
 #if NVT_TOUCH_ESD_PROTECT
 #include <linux/jiffies.h>
 #endif /* #if NVT_TOUCH_ESD_PROTECT */
-
-#if defined(CONFIG_NOVATEK_TRUSTED_TOUCH)
-#include <linux/atomic.h>
-#include <linux/clk.h>
-#include <linux/pm_runtime.h>
-#include <linux/debugfs.h>
-#include <linux/fs.h>
-#include <linux/uaccess.h>
-#include <linux/kobject.h>
-#include <linux/sysfs.h>
-#include "linux/haven/hh_irq_lend.h"
-#include "linux/haven/hh_msgq.h"
-#include "linux/haven/hh_mem_notifier.h"
-#include "linux/haven/hh_rm_drv.h"
-#include <linux/sort.h>
-#endif
 
 #if NVT_TOUCH_ESD_PROTECT
 static struct delayed_work nvt_esd_check_work;
@@ -96,11 +78,6 @@ static void nvt_ts_early_suspend(struct early_suspend *h);
 static void nvt_ts_late_resume(struct early_suspend *h);
 #endif
 
-static void nvt_irq_enable(bool enable);
-static irqreturn_t nvt_ts_work_func(int irq, void *data);
-static int32_t nvt_ts_late_probe_sub(struct i2c_client *client,
-	const struct i2c_device_id *id);
-
 #if TOUCH_KEY_NUM > 0
 const uint16_t touch_key_array[TOUCH_KEY_NUM] = {
 	KEY_BACK,
@@ -129,6 +106,7 @@ const uint16_t gesture_key_array[] = {
 
 static uint8_t bTouchIsAwake = 0;
 
+<<<<<<< HEAD
 #ifdef CONFIG_NOVATEK_TRUSTED_TOUCH
 
 static void nvt_ts_trusted_touch_abort_handler(struct nvt_ts_data *ts,
@@ -1195,6 +1173,8 @@ static void nvt_ts_trusted_touch_init(struct nvt_ts_data *ts)
 
 #endif
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 /*******************************************************
  * Description:
  *     Novatek touchscreen irq enable/disable function.
@@ -2359,188 +2339,43 @@ out:
 }
 #endif
 
-#ifdef CONFIG_NOVATEK_TRUSTED_TOUCH
-static ssize_t trusted_touch_enable_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct nvt_ts_data *ts;
-
-	if (!client)
-		return scnprintf(buf, PAGE_SIZE, "client is null\n");
-
-	ts = i2c_get_clientdata(client);
-	if (!ts) {
-		pr_err("info is null\n");
-		return scnprintf(buf, PAGE_SIZE, "info is null\n");
-	}
-
-	return scnprintf(buf, PAGE_SIZE, "%d",
-			atomic_read(&ts->trusted_touch_enabled));
-}
-
-static ssize_t trusted_touch_enable_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct nvt_ts_data *info;
-	unsigned long value;
-	int err = 0;
-
-	if (!client)
-		return -EIO;
-	info = i2c_get_clientdata(client);
-	if (!info) {
-		pr_err("info is null\n");
-		return -EIO;
-	}
-	if (count > 2)
-		return -EINVAL;
-	err = kstrtoul(buf, 10, &value);
-	if (err != 0)
-		return err;
-
-	if (!atomic_read(&info->trusted_touch_initialized))
-		return -EIO;
-
-#ifdef CONFIG_ARCH_QTI_VM
-	err = nvt_ts_handle_trusted_touch_tvm(info, value);
-	if (err) {
-		pr_err("Failed to handle trusted touch in tvm\n");
-		return -EINVAL;
-	}
-#else
-	err = nvt_ts_handle_trusted_touch_pvm(info, value);
-	if (err) {
-		pr_err("Failed to handle trusted touch in pvm\n");
-		return -EINVAL;
-	}
-#endif
-	err = count;
-	return err;
-}
-
-static ssize_t trusted_touch_event_show(struct device *dev,
-				struct device_attribute *attr, char *buf)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct nvt_ts_data *info;
-
-	if (!client)
-		return scnprintf(buf, PAGE_SIZE, "client is null\n");
-
-	info = i2c_get_clientdata(client);
-	if (!info) {
-		NVT_ERR("info is null\n");
-		return scnprintf(buf, PAGE_SIZE, "info is null\n");
-	}
-
-	return scnprintf(buf, PAGE_SIZE, "%d",
-			atomic_read(&info->trusted_touch_event));
-}
-
-static ssize_t trusted_touch_event_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	struct i2c_client *client = to_i2c_client(dev);
-	struct nvt_ts_data *info;
-	unsigned long value;
-	int err = 0;
-
-	if (!client)
-		return -EIO;
-	info = i2c_get_clientdata(client);
-	if (!info) {
-		NVT_ERR("info is null\n");
-		return -EIO;
-	}
-	if (count > 2)
-		return -EINVAL;
-
-	err = kstrtoul(buf, 10, &value);
-	if (err != 0)
-		return err;
-
-	if (!atomic_read(&info->trusted_touch_initialized))
-		return -EIO;
-
-	if (value)
-		return -EIO;
-
-	atomic_set(&info->trusted_touch_event, value);
-
-	return count;
-}
-
-static DEVICE_ATTR_RW(trusted_touch_enable);
-static DEVICE_ATTR_RW(trusted_touch_event);
-
-static struct attribute *nvt_attributes[] = {
-	&dev_attr_trusted_touch_enable.attr,
-	&dev_attr_trusted_touch_event.attr,
-	NULL,
-};
-
-static struct attribute_group nvt_attribute_group = {
-	.attrs = nvt_attributes
-};
-
-static int ts_create_sysfs(struct nvt_ts_data *ts)
-{
-	int ret = 0;
-
-	ret = sysfs_create_group(&ts->client->dev.kobj, &nvt_attribute_group);
-	if (ret) {
-		pr_err("[EX]: sysfs_create_group() failed!!\n");
-		sysfs_remove_group(&ts->client->dev.kobj, &nvt_attribute_group);
-		return -ENOMEM;
-	}
-
-	pr_info("[EX]: sysfs_create_group() succeeded!!\n");
-	return ret;
-}
-
-#ifdef CONFIG_ARCH_QTI_VM
-static int32_t nvt_ts_late_probe_tvm(struct i2c_client *client,
-	const struct i2c_device_id *id)
-{
-	int32_t ret = 0;
-
-	if (!atomic_read(&ts->delayed_vm_probe_pending)) {
-		ts->fw_ver = 0;
-		ts->abs_x_max = TOUCH_DEFAULT_MAX_WIDTH;
-		ts->abs_y_max = TOUCH_DEFAULT_MAX_HEIGHT;
-		ret = nvt_ts_late_probe_sub(ts->client, ts->id);
-		if (ret) {
-			pr_err("Failed to enable resources\n");
-			return ret;
-		}
-		atomic_set(&ts->delayed_vm_probe_pending, 1);
-	}
-
-	NVT_ERR("irq:%d\n", ts->client->irq);
-	ret = request_threaded_irq(ts->client->irq, NULL, nvt_ts_work_func,
-			IRQ_TYPE_EDGE_RISING | IRQF_ONESHOT, NVT_I2C_NAME, ts);
-	if (ret != 0) {
-		NVT_ERR("request_threaded_irq failed\n");
-		return ret;
-	}
-
-	ts->irq_enabled = true;
-	bTouchIsAwake = 1;
-	NVT_LOG("end\n");
-	return 0;
-}
-#endif
-#endif
-
-static int32_t nvt_ts_late_probe_sub(struct i2c_client *client,
+/*******************************************************
+ * Description:
+ *     Novatek touchscreen driver probe function.
+ *
+ * return:
+ *     Executive outcomes. 0---succeed. negative---failed
+ *******************************************************/
+static int32_t nvt_ts_late_probe(struct i2c_client *client,
 	const struct i2c_device_id *id)
 {
 	int32_t ret = 0;
 #if ((TOUCH_KEY_NUM > 0) || WAKEUP_GESTURE)
 	int32_t retry = 0;
 #endif
+	//---request and config GPIOs---
+	ret = nvt_gpio_config(ts);
+	if (ret) {
+		NVT_ERR("gpio config error!\n");
+		goto err_gpio_config_failed;
+	}
+
+	//---check chip version trim---
+	ret = nvt_ts_check_chip_ver_trim(CHIP_VER_TRIM_ADDR);
+	if (ret) {
+		NVT_LOG("try to check from old chip ver trim address\n");
+		ret = nvt_ts_check_chip_ver_trim(CHIP_VER_TRIM_OLD_ADDR);
+		if (ret) {
+			NVT_ERR("chip is not identified\n");
+			ret = -EINVAL;
+			goto err_chipvertrim_failed;
+		}
+	}
+
+	nvt_bootloader_reset();
+	nvt_check_fw_reset_state(RESET_STATE_INIT);
+	nvt_get_fw_info();
+
 	//---allocate input device---
 	ts->input_dev = input_allocate_device();
 	if (ts->input_dev == NULL) {
@@ -2603,58 +2438,6 @@ static int32_t nvt_ts_late_probe_sub(struct i2c_client *client,
 	if (ret) {
 		NVT_ERR("register input device (%s) failed. ret=%d\n", ts->input_dev->name, ret);
 		goto err_input_register_device_failed;
-	}
-
-	return 0;
-
-err_input_register_device_failed:
-	if (ts->input_dev) {
-		input_free_device(ts->input_dev);
-		ts->input_dev = NULL;
-	}
-err_input_dev_alloc_failed:
-	NVT_ERR("ret = %d\n", ret);
-	return ret;
-}
-
-/*******************************************************
- * Description:
- *     Novatek touchscreen driver probe function.
- *
- * return:
- *     Executive outcomes. 0---succeed. negative---failed
- *******************************************************/
-static int32_t nvt_ts_late_probe(struct i2c_client *client,
-	const struct i2c_device_id *id)
-{
-	int32_t ret = 0;
-
-	//---request and config GPIOs---
-	ret = nvt_gpio_config(ts);
-	if (ret) {
-		NVT_ERR("gpio config error!\n");
-		goto err_gpio_config_failed;
-	}
-
-	//---check chip version trim---
-	ret = nvt_ts_check_chip_ver_trim(CHIP_VER_TRIM_ADDR);
-	if (ret) {
-		NVT_LOG("try to check from old chip ver trim address\n");
-		ret = nvt_ts_check_chip_ver_trim(CHIP_VER_TRIM_OLD_ADDR);
-		if (ret) {
-			NVT_ERR("chip is not identified\n");
-			ret = -EINVAL;
-			goto err_chipvertrim_failed;
-		}
-	}
-
-	nvt_bootloader_reset();
-	nvt_check_fw_reset_state(RESET_STATE_INIT);
-	nvt_get_fw_info();
-	ret = nvt_ts_late_probe_sub(ts->client, ts->id);
-	if (ret) {
-		NVT_ERR("Failed to enable resources\n");
-		goto err_chipvertrim_failed;
 	}
 
 	//---set int-pin & request irq---
@@ -2769,6 +2552,12 @@ err_create_nvt_fwu_wq_failed:
 err_int_request_failed:
 	input_unregister_device(ts->input_dev);
 	ts->input_dev = NULL;
+err_input_register_device_failed:
+	if (ts->input_dev) {
+		input_free_device(ts->input_dev);
+		ts->input_dev = NULL;
+	}
+err_input_dev_alloc_failed:
 err_chipvertrim_failed:
 	nvt_gpio_deconfig(ts);
 err_gpio_config_failed:
@@ -2848,23 +2637,8 @@ static int32_t nvt_ts_probe(struct i2c_client *client,
 #endif
 
 	NVT_LOG("end\n");
-#ifdef CONFIG_NOVATEK_TRUSTED_TOUCH
-	nvt_ts_trusted_touch_init(ts);
-	mutex_init(&(ts->nvt_clk_io_ctrl_mutex));
-	ret = ts_create_sysfs(ts);
-	if (ret)
-		NVT_ERR("create sysfs node fail\n");
-#endif
-
-#ifdef CONFIG_NOVATEK_TRUSTED_TOUCH
-#ifdef CONFIG_ARCH_QTI_VM
-	ret = nvt_ts_late_probe_tvm(ts->client, ts->id);
-	if (ret)
-		NVT_ERR("Failed to enable resources\n");
-
-#endif
-#endif
 	return 0;
+
 #if defined(CONFIG_DRM)
 	if (active_panel)
 		drm_panel_notifier_unregister(active_panel, &ts->drm_notif);
@@ -3022,12 +2796,15 @@ static int32_t nvt_ts_suspend(struct device *dev)
 		return 0;
 	}
 
+<<<<<<< HEAD
 #ifdef CONFIG_NOVATEK_TRUSTED_TOUCH
 	if (atomic_read(&ts->trusted_touch_enabled))
 		wait_for_completion_interruptible(
 			&ts->trusted_touch_powerdown);
 #endif
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #if !WAKEUP_GESTURE
 	nvt_irq_enable(false);
 #endif
@@ -3102,11 +2879,14 @@ static int32_t nvt_ts_resume(struct device *dev)
 		return 0;
 	}
 
+<<<<<<< HEAD
 #ifdef CONFIG_ST_TRUSTED_TOUCH
 	if (atomic_read(&ts->trusted_touch_enabled))
 		wait_for_completion_interruptible(
 			&ts->trusted_touch_powerdown);
 #endif
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	mutex_lock(&ts->lock);
 
 	// make sure display reset(RESX) sequence and dsi cmds sent before this
@@ -3285,11 +3065,7 @@ static void __exit nvt_driver_exit(void)
 	i2c_del_driver(&nvt_i2c_driver);
 }
 
-#ifdef CONFIG_ARCH_QTI_VM
-module_init(nvt_driver_init);
-#else
 late_initcall(nvt_driver_init);
-#endif
 //module_init(nvt_driver_init);
 module_exit(nvt_driver_exit);
 

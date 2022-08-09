@@ -1267,7 +1267,10 @@ void kgsl_device_snapshot_probe(struct kgsl_device *device, u32 size)
 
 	WARN_ON(sysfs_create_bin_file(&device->snapshot_kobj, &snapshot_attr));
 	WARN_ON(sysfs_create_files(&device->snapshot_kobj, snapshot_attrs));
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	#if IS_ENABLED(CONFIG_DRM_MSM)
 	WARN_ON(sysfs_create_file(&device->snapshot_kobj, &attr_snapshot_hashid.attr));
 

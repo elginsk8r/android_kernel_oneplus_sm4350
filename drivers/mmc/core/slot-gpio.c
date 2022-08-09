@@ -39,7 +39,11 @@ static irqreturn_t mmc_gpio_cd_irqt(int irq, void *dev_id)
 
 	host->trigger_card_event = true;
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
+<<<<<<< HEAD
 	host->detect_change_retry = 5;
+=======
+        host->detect_change_retry = 5;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
 	mmc_detect_change(host, msecs_to_jiffies(ctx->cd_debounce_delay_ms));
 

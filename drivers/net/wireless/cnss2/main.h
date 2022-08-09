@@ -324,7 +324,6 @@ enum cnss_debug_quirks {
 	DISABLE_DRV,
 	DISABLE_IO_COHERENCY,
 	IGNORE_PCI_LINK_FAILURE,
-	DISABLE_TIME_SYNC,
 };
 
 enum cnss_bdf_type {
@@ -386,6 +385,7 @@ struct cnss_dms_data {
 	u8 mac[QMI_WLFW_MAC_ADDR_SIZE_V01];
 };
 
+<<<<<<< HEAD
 enum cnss_timeout_type {
 	CNSS_TIMEOUT_QMI,
 	CNSS_TIMEOUT_POWER_UP,
@@ -394,6 +394,8 @@ enum cnss_timeout_type {
 	CNSS_TIMEOUT_WLAN_WATCHDOG,
 };
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 struct cnss_plat_data {
 	struct platform_device *plat_dev;
 	void *bus_priv;
@@ -479,7 +481,10 @@ struct cnss_plat_data {
 	bool fw_pcie_gen_switch;
 	u8 pcie_gen_speed;
 	struct cnss_dms_data dms;
+<<<<<<< HEAD
 	int power_up_error;
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 };
 
 #ifdef CONFIG_ARCH_QCOM
@@ -541,7 +546,10 @@ int cnss_minidump_remove_region(struct cnss_plat_data *plat_priv,
 				void *va, phys_addr_t pa, size_t size);
 int cnss_enable_int_pow_amp_vreg(struct cnss_plat_data *plat_priv);
 int cnss_get_tcs_info(struct cnss_plat_data *plat_priv);
+<<<<<<< HEAD
 unsigned int cnss_get_timeout(struct cnss_plat_data *plat_priv,
 			      enum cnss_timeout_type);
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 #endif /* _CNSS_MAIN_H */

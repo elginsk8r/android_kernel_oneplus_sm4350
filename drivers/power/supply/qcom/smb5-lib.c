@@ -2125,7 +2125,7 @@ int smblib_vconn_regulator_enable(struct regulator_dev *rdev)
 		return rc;
 	}
 
-	/* VCONN orientation is opposite to that of CC */
+	/* VCONN orientation is oplussite to that of CC */
 	orientation =
 		stat & TYPEC_CCOUT_VALUE_BIT ? 0 : VCONN_EN_ORIENTATION_BIT;
 	rc = smblib_masked_write(chg, TYPE_C_VCONN_CONTROL_REG,
@@ -3082,11 +3082,21 @@ int smblib_disable_hw_jeita(struct smb_charger *chg, bool disable)
 	mask = JEITA_EN_COLD_SL_FCV_BIT
 		| JEITA_EN_HOT_SL_FCV_BIT
 		| JEITA_EN_HOT_SL_CCC_BIT
+<<<<<<< HEAD
+=======
+//#ifndef OPLUS_FEATURE_CHG_BASIC
+	//	| JEITA_EN_COLD_SL_CCC_BIT,
+//#else
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		| JEITA_EN_COLD_SL_CCC_BIT
 		| JEITA_EN_HARDLIMIT_BIT
 		| JEITA_EN_FVCOMP_IN_CV_BIT
 		| JEITA_EN_AFP_COLD_BIT
 		| JEITA_EN_AFP_HOT_BIT;
+<<<<<<< HEAD
+=======
+//#endif
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rc = smblib_masked_write(chg, JEITA_EN_CFG_REG, mask,
 			disable ? 0 : mask);
 	if (rc < 0) {
@@ -8612,11 +8622,18 @@ static void smblib_lpd_ra_open_work(struct work_struct *work)
 		chg->lpd_reason = LPD_MOISTURE_DETECTED;
 		chg->moisture_present =  true;
 		vote(chg->usb_icl_votable, LPD_VOTER, true, 0);
+<<<<<<< HEAD
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 		smblib_err(chg, "%s: LPD_MOISTURE_DETECTED detected\n", __func__);
 		if ((oplus_get_usb_status() & USB_WATER_DETECT) == 0 && g_oplus_chip) {
 			oplus_vooc_set_disable_adapter_output(true);
+=======
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		smblib_err(chg, "%s: LPD_MOISTURE_DETECTED detected\n", __func__);
+		if ((oplus_get_usb_status() & USB_WATER_DETECT) == 0 && g_oplus_chip) {
+                    oplus_vooc_set_disable_adapter_output(true);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			oplus_set_usb_status(USB_WATER_DETECT);
 			power_supply_changed(g_oplus_chip->usb_psy);
 		}

@@ -254,6 +254,7 @@ static int soc_sleep_stats_create_sysfs(struct platform_device *pdev,
 	drv->kobj = kobject_create_and_add("soc_sleep", power_kobj);
 	if (!drv->kobj)
 		return -ENOMEM;
+<<<<<<< HEAD
 
 	sysfs_attr_init(&drv->ka.attr);
 	drv->ka.attr.mode = 0444;
@@ -270,6 +271,25 @@ static int soc_sleep_stats_create_sysfs(struct platform_device *pdev,
 	return ret;
 }
 #endif
+=======
+
+	sysfs_attr_init(&drv->ka.attr);
+	drv->ka.attr.mode = 0444;
+	drv->ka.attr.name = "stats";
+	drv->ka.show = stats_show;
+
+	sysfs_attr_init(&drv->ka_oplus.attr);
+	drv->ka_oplus.attr.mode = 0444;
+	drv->ka_oplus.attr.name = "oplus_rpmh_stats";
+	drv->ka_oplus.show = oplus_rpmh_stats_show;
+
+	ret = sysfs_create_file(drv->kobj, &drv->ka.attr);
+	ret |= sysfs_create_file(drv->kobj, &drv->ka_oplus.attr);
+	return ret;
+}
+#endif
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 static const struct stats_config rpm_data = {
 	.offset_addr = 0x14,

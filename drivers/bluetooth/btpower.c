@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2016-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2016-2020, The Linux Foundation. All rights reserved.
  */
 
 /*
@@ -65,6 +65,7 @@ enum power_src_pos {
 	BT_VDD_IO_LDO_CURRENT,
 	BT_VDD_LDO_CURRENT,
 	BT_VDD_RFA_0p8_CURRENT,
+<<<<<<< HEAD
 	BT_VDD_RFACMN_CURRENT,
 	BT_VDD_IPA_2p2,
 	BT_VDD_IPA_2p2_CURRENT
@@ -82,6 +83,13 @@ static struct bt_power_vreg_data bt_vregs_info_qca61x4_937x[] = {
 
 // Regulator structure for QCA6390,QCA6490 and WCN6750 BT SoC series
 static struct bt_power_vreg_data bt_vregs_info_qca6xx0[] = {
+=======
+	BT_VDD_RFACMN_CURRENT
+};
+
+// Regulator structure for QCA6390 and QCA6490 BT SoC series
+static struct bt_power_vreg_data bt_vregs_info_qca6x9x[] = {
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	{NULL, "qcom,bt-vdd-io",      1800000, 1800000, 0, false, true,
 		{BT_VDD_IO_LDO, BT_VDD_IO_LDO_CURRENT}},
 	{NULL, "qcom,bt-vdd-aon",     950000,  950000,  0, false, true,
@@ -99,8 +107,6 @@ static struct bt_power_vreg_data bt_vregs_info_qca6xx0[] = {
 		{BT_VDD_RFA2_LDO, BT_VDD_RFA2_LDO_CURRENT}},
 	{NULL, "qcom,bt-vdd-asd",      2800000, 2800000, 0, false, true,
 		{BT_VDD_ASD_LDO, BT_VDD_ASD_LDO_CURRENT}},
-	{NULL, "qcom,bt-vdd-ipa-2p2",  2200000, 2210000, 0, false, true,
-		{BT_VDD_IPA_2p2, BT_VDD_IPA_2p2_CURRENT}},
 };
 
 // Regulator structure for WCN399x BT SoC series
@@ -117,22 +123,26 @@ static struct bt_power bt_vreg_info_wcn399x = {
 			{BT_VDD_XTAL_LDO, BT_VDD_XTAL_LDO_CURRENT}},
 	},
 	.num_vregs = 4,
+<<<<<<< HEAD
 };
 
 static struct bt_power bt_vreg_info_qca6174 = {
 	.compatible = "qcom,qca6174",
 	.vregs = bt_vregs_info_qca61x4_937x,
 	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca61x4_937x),
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 };
 
 static struct bt_power bt_vreg_info_qca6390 = {
 	.compatible = "qcom,qca6390",
-	.vregs = bt_vregs_info_qca6xx0,
-	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6xx0),
+	.vregs = bt_vregs_info_qca6x9x,
+	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6x9x),
 };
 
 static struct bt_power bt_vreg_info_qca6490 = {
 	.compatible = "qcom,qca6490",
+<<<<<<< HEAD
 	.vregs = bt_vregs_info_qca6xx0,
 	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6xx0),
 };
@@ -141,14 +151,21 @@ static struct bt_power bt_vreg_info_wcn6750 = {
 	.compatible = "qcom,wcn6750",
 	.vregs = bt_vregs_info_qca6xx0,
 	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6xx0),
+=======
+	.vregs = bt_vregs_info_qca6x9x,
+	.num_vregs = ARRAY_SIZE(bt_vregs_info_qca6x9x),
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 };
 
 static const struct of_device_id bt_power_match_table[] = {
-	{	.compatible = "qcom,qca6174", .data = &bt_vreg_info_qca6174},
+	{	.compatible = "qcom,qca6174" },
 	{	.compatible = "qcom,wcn3990", .data = &bt_vreg_info_wcn399x},
 	{	.compatible = "qcom,qca6390", .data = &bt_vreg_info_qca6390},
 	{	.compatible = "qcom,qca6490", .data = &bt_vreg_info_qca6490},
+<<<<<<< HEAD
 	{	.compatible = "qcom,wcn6750", .data = &bt_vreg_info_wcn6750},
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	{},
 };
 
@@ -397,6 +414,7 @@ static int bt_configure_gpios(int on)
 			}
 			bt_power_src_status[BT_RESET_GPIO] =
 				gpio_get_value(bt_reset_gpio);
+<<<<<<< HEAD
 		}
 		rc = gpio_request(xo_reset_gpio, "xo_reset_gpio_n");
 		if (rc) {
@@ -418,6 +436,8 @@ static int bt_configure_gpios(int on)
 				pr_err("%s: Unable to set direction of xo_reset_gpio\n",
 					 __func__);
 			}
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		}
 		msleep(50);
 		/*  Check  if  SW_CTRL  is  asserted  */
@@ -515,11 +535,17 @@ gpio_fail:
 			gpio_free(bt_power_pdata->bt_gpio_sys_rst);
 		if (bt_power_pdata->wl_gpio_sys_rst > 0)
 			gpio_free(bt_power_pdata->wl_gpio_sys_rst);
+<<<<<<< HEAD
 		if (bt_power_pdata->xo_gpio_sys_rst > 0)
 			gpio_free(bt_power_pdata->xo_gpio_sys_rst);
 		if  (bt_power_pdata->bt_gpio_sw_ctrl > 0)
 			gpio_free(bt_power_pdata->bt_gpio_sw_ctrl);
 		if  (bt_power_pdata->bt_gpio_debug > 0)
+=======
+		if  (bt_power_pdata->bt_gpio_sw_ctrl  >  0)
+			gpio_free(bt_power_pdata->bt_gpio_sw_ctrl);
+		if  (bt_power_pdata->bt_gpio_debug  >  0)
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			gpio_free(bt_power_pdata->bt_gpio_debug);
 		if (bt_power_pdata->bt_chip_clk)
 			bt_clk_disable(bt_power_pdata->bt_chip_clk);
@@ -827,12 +853,6 @@ static int bt_power_populate_dt_pinfo(struct platform_device *pdev)
 						"qcom,bt-debug-gpio",  0);
 		if (bt_power_pdata->bt_gpio_debug < 0)
 			pr_warn("bt-debug-gpio not provided in devicetree\n");
-
-		bt_power_pdata->xo_gpio_sys_rst =
-			of_get_named_gpio(pdev->dev.of_node,
-						"qcom,xo-reset-gpio", 0);
-		if (bt_power_pdata->xo_gpio_sys_rst < 0)
-			pr_warn("xo-reset-gpio not provided in devicetree\n");
 
 		rc = bt_dt_parse_clk_info(&pdev->dev,
 					&bt_power_pdata->bt_chip_clk);

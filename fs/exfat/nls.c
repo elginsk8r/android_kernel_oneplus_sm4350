@@ -675,7 +675,11 @@ static int exfat_load_upcase_table(struct super_block *sb,
 	unsigned char skip = false;
 	unsigned short *upcase_table;
 
+<<<<<<< HEAD
 	upcase_table = kcalloc(UTBL_COUNT, sizeof(unsigned short), GFP_KERNEL);
+=======
+	upcase_table = kvzalloc(UTBL_COUNT * sizeof(unsigned short), GFP_KERNEL);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	if (!upcase_table)
 		return -ENOMEM;
 
@@ -739,7 +743,11 @@ static int exfat_load_default_upcase_table(struct super_block *sb)
 	unsigned short uni = 0, *upcase_table;
 	unsigned int index = 0;
 
+<<<<<<< HEAD
 	upcase_table = kcalloc(UTBL_COUNT, sizeof(unsigned short), GFP_KERNEL);
+=======
+	upcase_table = kvzalloc(UTBL_COUNT * sizeof(unsigned short), GFP_KERNEL);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	if (!upcase_table)
 		return -ENOMEM;
 

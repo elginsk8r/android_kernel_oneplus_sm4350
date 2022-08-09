@@ -6,6 +6,8 @@
  */
 #include "internal.h"
 #include <linux/prefetch.h>
+#include <linux/uio.h>
+#include <linux/blkdev.h>
 
 #include <trace/events/erofs.h>
 
@@ -327,7 +329,11 @@ static int erofs_get_block(struct inode *inode, sector_t iblock,
 			   struct buffer_head *bh, int create)
 {
 	struct erofs_map_blocks map = {
+<<<<<<< HEAD
 		.m_la = iblock << 9,
+=======
+		.m_la = blknr_to_addr(iblock),
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	};
 	int err;
 
@@ -336,11 +342,54 @@ static int erofs_get_block(struct inode *inode, sector_t iblock,
 		return err;
 
 	if (map.m_flags & EROFS_MAP_MAPPED)
+<<<<<<< HEAD
 		bh->b_blocknr = erofs_blknr(map.m_pa);
+=======
+		map_bh(bh, inode->i_sb, erofs_blknr(map.m_pa));
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	return err;
 }
 
+<<<<<<< HEAD
+=======
+static int check_direct_IO(struct inode *inode, struct iov_iter *iter,
+			   loff_t offset)
+{
+	unsigned i_blkbits = READ_ONCE(inode->i_blkbits);
+	unsigned blkbits = i_blkbits;
+	unsigned blocksize_mask = (1 << blkbits) - 1;
+	unsigned long align = offset | iov_iter_alignment(iter);
+	struct block_device *bdev = inode->i_sb->s_bdev;
+
+	if (align & blocksize_mask) {
+		if (bdev)
+			blkbits = blksize_bits(bdev_logical_block_size(bdev));
+		blocksize_mask = (1 << blkbits) - 1;
+		if (align & blocksize_mask)
+			return -EINVAL;
+		return 1;
+	}
+	return 0;
+}
+
+static ssize_t erofs_direct_IO(struct kiocb *iocb, struct iov_iter *iter)
+{
+	struct address_space *mapping = iocb->ki_filp->f_mapping;
+	struct inode *inode = mapping->host;
+	loff_t offset = iocb->ki_pos;
+	int err;
+
+	err = check_direct_IO(inode, iter, offset);
+	if (err)
+		return err < 0 ? err : 0;
+
+	return __blockdev_direct_IO(iocb, inode, inode->i_sb->s_bdev, iter,
+				    erofs_get_block, NULL, NULL,
+				    DIO_LOCKING | DIO_SKIP_HOLES);
+}
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 static sector_t erofs_bmap(struct address_space *mapping, sector_t block)
 {
 	struct inode *inode = mapping->host;
@@ -359,6 +408,7 @@ static sector_t erofs_bmap(struct address_space *mapping, sector_t block)
 const struct address_space_operations erofs_raw_access_aops = {
 	.readpage = erofs_raw_access_readpage,
 	.readpages = erofs_raw_access_readpages,
+	.direct_IO = erofs_direct_IO,
 	.bmap = erofs_bmap,
 };
 

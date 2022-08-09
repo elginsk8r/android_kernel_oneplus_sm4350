@@ -237,8 +237,18 @@ static const struct file_operations fops_eth_dev_ready = {
 
 int ipa_eth_debugfs_init(void)
 {
+<<<<<<< HEAD
 	ipa_eth_debugfs =
 		debugfs_create_dir("ethernet", NULL);
+=======
+	struct dentry *ipa_debugfs = ipa_debugfs_get_root();
+
+	if (IS_ERR_OR_NULL(ipa_debugfs))
+		return -EFAULT;
+
+	ipa_eth_debugfs =
+		debugfs_create_dir("ethernet", ipa_debugfs);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	if (IS_ERR_OR_NULL(ipa_eth_debugfs)) {
 		ipa_eth_log("Unable to create debugfs root");
 		goto err_exit;

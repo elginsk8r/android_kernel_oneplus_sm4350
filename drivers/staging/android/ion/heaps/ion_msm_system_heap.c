@@ -795,11 +795,15 @@ static struct msm_ion_heap_ops msm_system_heap_ops = {
 	.debug_show = ion_msm_system_heap_debug_show,
 };
 
+<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 void ion_msm_system_heap_destroy_pools(struct ion_msm_page_pool **pools)
 #else
 static void ion_msm_system_heap_destroy_pools(struct ion_msm_page_pool **pools)
 #endif
+=======
+void ion_msm_system_heap_destroy_pools(struct ion_msm_page_pool **pools)
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 {
 	int i;
 
@@ -820,6 +824,7 @@ static void ion_msm_system_heap_destroy_pools(struct ion_msm_page_pool **pools)
  * nothing. If it succeeds you'll eventually need to use
  * ion_msm_system_heap_destroy_pools to destroy the pools.
  */
+<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 int
 ion_msm_system_heap_create_pools(struct ion_msm_system_heap *sys_heap,
@@ -830,6 +835,12 @@ static int
 ion_msm_system_heap_create_pools(struct ion_msm_system_heap *sys_heap,
 				 struct ion_msm_page_pool **pools, bool cached)
 #endif
+=======
+int
+ion_msm_system_heap_create_pools(struct ion_msm_system_heap *sys_heap,
+				 struct ion_msm_page_pool **pools, bool cached,
+				 bool boost_flag)
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 {
 	int i;
 
@@ -840,9 +851,13 @@ ion_msm_system_heap_create_pools(struct ion_msm_system_heap *sys_heap,
 		if (orders[i])
 			gfp_flags = high_order_gfp_flags;
 		pool = ion_msm_page_pool_create(gfp_flags, orders[i], cached);
+<<<<<<< HEAD
 #ifdef CONFIG_OPLUS_ION_BOOSTPOOL
 		pool->boost_flag = boost_flag;
 #endif
+=======
+		pool->boost_flag = boost_flag;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		if (!pool)
 			goto err_create_pool;
 		pool->heap_dev = sys_heap->heap.dev;
@@ -945,13 +960,13 @@ struct ion_heap *ion_msm_system_heap_create(struct ion_platform_heap *data)
 		if (is_secure_vmid_valid(i) &&
 		    ion_msm_system_heap_create_pools(heap,
 						     heap->secure_pools[i],
-						     false))
+						     false, false))
 			goto destroy_secure_pools;
 
-	if (ion_msm_system_heap_create_pools(heap, heap->uncached_pools, false))
+	if (ion_msm_system_heap_create_pools(heap, heap->uncached_pools, false, false))
 		goto destroy_secure_pools;
 
-	if (ion_msm_system_heap_create_pools(heap, heap->cached_pools, true))
+	if (ion_msm_system_heap_create_pools(heap, heap->cached_pools, true, false))
 		goto destroy_uncached_pools;
 #endif
 

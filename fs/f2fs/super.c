@@ -1275,9 +1275,12 @@ static void f2fs_put_super(struct super_block *sb)
 #ifdef CONFIG_F2FS_BD_STAT
 	f2fs_destroy_bd_stat(sbi);
 #endif
+<<<<<<< HEAD
 
 	f2fs_unregister_sysfs(sbi);
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	sb->s_fs_info = NULL;
 	if (sbi->s_chksum_driver)
 		crypto_free_shash(sbi->s_chksum_driver);

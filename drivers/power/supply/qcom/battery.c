@@ -1991,7 +1991,10 @@ static void status_change_work(struct work_struct *work)
 #else
 	rerun_election(chip->usb_icl_votable);
 #endif
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	rerun_election(chip->fcc_votable);
 	rerun_election(chip->fv_votable);
 

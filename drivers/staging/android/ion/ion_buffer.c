@@ -43,6 +43,7 @@ static void track_buffer_destroyed(struct ion_buffer *buffer)
 	trace_ion_stat(buffer->sg_table, -buffer->size, total);
 }
 
+
 /* this function should only be called while dev->lock is held */
 static struct ion_buffer *ion_buffer_create(struct ion_heap *heap,
 					    struct ion_device *dev,
@@ -179,7 +180,10 @@ struct ion_buffer *ion_buffer_alloc(struct ion_device *dev, size_t len,
 	unsigned long ionwait_start = jiffies;
 #endif
 #endif /* OPLUS_FEATURE_HEALTHINFO */
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	if (!dev || !len) {
 		return ERR_PTR(-EINVAL);
 	}
@@ -222,13 +226,19 @@ struct ion_buffer *ion_buffer_alloc(struct ion_device *dev, size_t len,
 
 	if (IS_ERR(buffer))
 		return ERR_CAST(buffer);
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #ifdef OPLUS_FEATURE_HEALTHINFO
 #if defined(CONFIG_OPLUS_HEALTHINFO) && defined (CONFIG_OPLUS_MEM_MONITOR)
 	ionwait_monitor(jiffies_to_msecs(jiffies - ionwait_start));
 #endif 
 #endif /* OPLUS_FEATURE_HEALTHINFO */
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	return buffer;
 }
 

@@ -365,7 +365,11 @@ static void arm_smmu_arch_write_sync(struct arm_smmu_device *smmu)
 		return;
 
 	/* Read to complete prior write transcations */
+<<<<<<< HEAD
 	id = arm_smmu_gr0_read(smmu, ARM_SMMU_GR0_ID0);
+=======
+	id = arm_smmu_readl(smmu, ARM_SMMU_IMPL_DEF0, 0);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	/* Wait for read to complete before off */
 	rmb();
@@ -3289,6 +3293,7 @@ static size_t arm_smmu_unmap(struct iommu_domain *domain, unsigned long iova,
 	arm_smmu_rpm_get(smmu);
 	spin_lock_irqsave(&smmu_domain->cb_lock, flags);
 	ret = ops->unmap(ops, iova, size, gather);
+	arm_smmu_deferred_flush(smmu_domain);
 	spin_unlock_irqrestore(&smmu_domain->cb_lock, flags);
 	arm_smmu_rpm_put(smmu);
 

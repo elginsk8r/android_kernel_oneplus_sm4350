@@ -892,6 +892,7 @@ static int qcom_wdt_init(struct msm_watchdog_data *wdog_dd,
 			return -EINVAL;
 		}
 	}
+
 	INIT_WORK(&wdog_dd->irq_counts_work, compute_irq_stat);
 	atomic_set(&wdog_dd->irq_counts_running, 0);
 	delay_time = msecs_to_jiffies(wdog_dd->pet_time);

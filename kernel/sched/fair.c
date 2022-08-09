@@ -4121,14 +4121,22 @@ place_entity(struct cfs_rq *cfs_rq, struct sched_entity *se, int initial)
 
 		vruntime -= thresh;
 #ifdef CONFIG_SCHED_WALT
-		if (entity_is_task(se)) {
 #if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
+		if (entity_is_task(se)) {
+<<<<<<< HEAD
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			if (((per_task_boost(task_of(se)) ==
 					TASK_BOOST_STRICT_MAX) ||
 					walt_low_latency_task(task_of(se)) ||
 					task_rtg_high_prio(task_of(se))) &&
 					!test_task_ux(task_of(se))) {
 #else /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
+<<<<<<< HEAD
+=======
+		if (entity_is_task(se)) {
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			if ((per_task_boost(task_of(se)) ==
 					TASK_BOOST_STRICT_MAX) ||
 					walt_low_latency_task(task_of(se)) ||

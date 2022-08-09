@@ -25,6 +25,44 @@
 #include "mmc_ops.h"
 #include "sd.h"
 #include "sd_ops.h"
+#ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
+struct menfinfo {
+	unsigned int manfid;
+	char *manfstring;
+};
+
+struct menfinfo manufacturers[] = {
+	{0x41, "KINGSTONE"},
+	{0x1b, "SAMSUNG"},
+	{0x03, "SANDISK"},
+	{0x02, "TOSHIBA"}
+};
+#define MANFINFS_SIZE (sizeof(manufacturers)/sizeof(struct menfinfo))
+
+const char *string_class[] = {
+	"Class 0",
+	"Class 2",
+	"Class 4",
+	"Class 6",
+	"Class 10"
+};
+#define CLASS_TYPE_SIZE (sizeof(string_class)/sizeof(const char*))
+
+struct card_blk_data {
+	spinlock_t	lock;
+	struct gendisk	*disk;
+};
+
+#define STR_OTHER	"other"
+#define STR_UNKNOW	"unknown"
+#define STR_TYPE_SDXC	"SDXC"
+#define STR_TYPE_SDHC	"SDHC"
+#define STR_TYPE_SD	"SD"
+
+#define STR_SPEED_UHS	"ultra high speed "
+#define STR_SPEED_HS	"high speed "
+
+#endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
 
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
 struct menfinfo {
@@ -130,6 +168,7 @@ void mmc_decode_cid(struct mmc_card *card)
 	card->cid.month			= UNSTUFF_BITS(resp, 8, 4);
 
 	card->cid.year += 2000; /* SD cards year offset */
+
 }
 
 /*
@@ -1290,21 +1329,17 @@ static void mmc_sd_detect(struct mmc_host *host)
 {
 	int err;
 
-#if defined(CONFIG_SDC_QTI)
 	/*
 	 * Try to acquire claim host. If failed to get the lock in 2 sec,
 	 * just return; This is to ensure that when this call is invoked
 	 * due to pm_suspend, not to block suspend for longer duration.
 	 */
 	pm_runtime_get_sync(&host->card->dev);
-	if (!mmc_try_claim_host(host, NULL, 2000)) {
+	if (!mmc_try_claim_host(host, 2000)) {
 		pm_runtime_mark_last_busy(&host->card->dev);
 		pm_runtime_put_autosuspend(&host->card->dev);
 		return;
 	}
-#else
-	 mmc_get_card(host->card, NULL);
-#endif
 
 	/*
 	 * Just check if our card has been removed.
@@ -1481,9 +1516,15 @@ int mmc_attach_sd(struct mmc_host *host)
 
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
 	if (!host->detect_change_retry) {
+<<<<<<< HEAD
 		pr_err("%s have init error 5 times\n", __func__);
 		return -ETIMEDOUT;
 	}
+=======
+        pr_err("%s have init error 5 times\n", __func__);
+        return -ETIMEDOUT;
+    }
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
 	err = mmc_send_app_op_cond(host, 0, &ocr);
 	if (err)
@@ -1524,10 +1565,17 @@ int mmc_attach_sd(struct mmc_host *host)
 	 * Detect and init the card.
 	 */
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
+<<<<<<< HEAD
 	if (host->detect_change_retry < 5)
 		retries = 1;
 	else
 		retries = 5;
+=======
+    if (host->detect_change_retry < 5)
+        retries = 1;
+    else
+        retries = 5;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
 	err = mmc_sd_init_card(host, rocr, NULL);
 	if (err)
@@ -1556,11 +1604,18 @@ err:
 	mmc_detach_bus(host);
 
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
+<<<<<<< HEAD
 	if (err)
 		host->detect_change_retry--;
 	pr_err("detect_change_retry = %d !!!,err = %d\n", host->detect_change_retry,err);
 #endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
 
+=======
+        if (err)
+    host->detect_change_retry--;
+    pr_err("detect_change_retry = %d !!!,err = %d\n", host->detect_change_retry,err);
+#endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	pr_err("%s: error %d whilst initialising SD card\n",
 		mmc_hostname(host), err);
 

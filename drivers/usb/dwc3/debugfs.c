@@ -1224,7 +1224,11 @@ void dwc3_debugfs_init(struct dwc3 *dwc)
 				    &dwc3_testmode_fops);
 		debugfs_create_file("link_state", S_IRUGO | S_IWUSR, root, dwc,
 				    &dwc3_link_state_fops);
+<<<<<<< HEAD
 		dwc3_debugfs_create_endpoint_dirs(dwc, root);
+=======
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 		file = debugfs_create_file("int_events", 0644, root, dwc,
 				&dwc3_gadget_int_events_fops);

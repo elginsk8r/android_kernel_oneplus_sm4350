@@ -1654,7 +1654,11 @@ static const struct adreno_a6xx_core adreno_gpu_core_a660_shima = {
 		.compatible = "qcom,adreno-gpu-a660-shima",
 		.features = ADRENO_RPMH | ADRENO_GPMU | ADRENO_APRIV |
 				ADRENO_IOCOHERENT | ADRENO_CONTENT_PROTECTION |
+<<<<<<< HEAD
 				ADRENO_IFPC | ADRENO_PREEMPTION | ADRENO_ACD,
+=======
+				ADRENO_IFPC | ADRENO_PREEMPTION,
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		.gpudev = &adreno_a6xx_gmu_gpudev,
 		.perfcounters = &adreno_a6xx_perfcounters,
 		.gmem_base = 0,

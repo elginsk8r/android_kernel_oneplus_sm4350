@@ -50,6 +50,7 @@ config ATLFWD_FWD_NETLINK
           Expose forwarding engine APIs over the netlink socket.
 
 endif
+<<<<<<< HEAD
 
 config AQFWD_QCOM_IPA
 	bool "QTI IPA offload support"
@@ -59,3 +60,5 @@ config AQFWD_QCOM_IPA
 	help
 	  Enable support for Qualcomm Technologies, Inc. IPA (Internet Protocol Accelerator).
 	  If unsure, say N.
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)

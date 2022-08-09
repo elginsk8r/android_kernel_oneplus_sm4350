@@ -212,12 +212,12 @@ void device_pm_move_last(struct device *dev)
 
 static ktime_t initcall_debug_start(struct device *dev, void *cb)
 {
-	if (!pm_print_times_enabled)
-		return 0;
+	//if (!pm_print_times_enabled)
+	//	return 0;
 
-	dev_info(dev, "calling %pS @ %i, parent: %s\n", cb,
-		 task_pid_nr(current),
-		 dev->parent ? dev_name(dev->parent) : "none");
+	//dev_info(dev, "calling %pS @ %i, parent: %s\n", cb,
+	//	 task_pid_nr(current),
+	//	 dev->parent ? dev_name(dev->parent) : "none");
 	return ktime_get();
 }
 
@@ -227,14 +227,16 @@ static void initcall_debug_report(struct device *dev, ktime_t calltime,
 	ktime_t rettime;
 	s64 nsecs;
 
-	if (!pm_print_times_enabled)
-		return;
+	//if (!pm_print_times_enabled)
+	//	return;
 
 	rettime = ktime_get();
 	nsecs = (s64) ktime_to_ns(ktime_sub(rettime, calltime));
 
-	dev_info(dev, "%pS returned %d after %Ld usecs\n", cb, error,
-		 (unsigned long long)nsecs >> 10);
+	if(((unsigned long long)nsecs >> 10) >= 1000) {
+		dev_err(dev, "%pS returned %d after %Ld usecs\n", cb, error,
+			(unsigned long long)nsecs >> 10);
+	}
 }
 
 /**

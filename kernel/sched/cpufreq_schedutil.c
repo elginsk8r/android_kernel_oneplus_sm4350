@@ -490,6 +490,7 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	struct cpufreq_policy *policy = sg_policy->policy;
 	unsigned int freq = arch_scale_freq_invariant() ?
 				policy->cpuinfo.max_freq : policy->cur;
+<<<<<<< HEAD
 #ifdef OPLUS_FEATURE_POWER_CPUFREQ
 	unsigned int prev_freq = freq;
 	unsigned int prev_laf = prev_freq * util * 100 / max;
@@ -497,6 +498,20 @@ static unsigned int get_next_freq(struct sugov_policy *sg_policy,
 	freq = choose_freq(sg_policy, prev_laf);
 	trace_sugov_next_freq_tl(policy->cpu, util, max, freq, prev_laf, prev_freq);
 #else
+=======
+	
+#ifdef OPLUS_FEATURE_POWER_CPUFREQ
+	unsigned int prev_freq = freq;
+	unsigned int prev_laf = prev_freq * util * 100 / max;
+	freq = choose_freq(sg_policy, prev_laf);
+	trace_sugov_next_freq_tl(policy->cpu, util, max, freq, prev_laf, prev_freq);
+#else
+ 	unsigned long next_freq = 0;
+	trace_android_vh_map_util_freq(util, freq, max, &next_freq);
+	if (next_freq)
+		freq = next_freq;
+	else
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	freq = map_util_freq(util, freq, max);
 	trace_sugov_next_freq(policy->cpu, util, max, freq);
 #endif

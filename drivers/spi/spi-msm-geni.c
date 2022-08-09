@@ -175,7 +175,6 @@ struct spi_geni_master {
 	bool slave_setup;
 	bool slave_state;
 	bool slave_cross_connected;
-	bool use_fixed_timeout;
 };
 
 static void spi_slv_setup(struct spi_geni_master *mas);
@@ -240,23 +239,6 @@ static struct spi_master *get_spi_master(struct device *dev)
 	return spi;
 }
 
-static inline void spi_geni_clk_conf(struct spi_geni_master *mas,
-		int clk_div, int clk_idx)
-{
-	u32 clk_sel = 0;
-	u32 m_clk_cfg = 0;
-
-	clk_sel |= (clk_idx & CLK_SEL_MSK);
-	m_clk_cfg |= ((clk_div << CLK_DIV_SHFT) | SER_CLK_EN);
-	geni_write_reg(clk_sel, mas->base, SE_GENI_CLK_SEL);
-	geni_write_reg(m_clk_cfg, mas->base, GENI_SER_M_CLK_CFG);
-
-	/*
-	 * Ensure Clk config completes before return.
-	 */
-	mb();
-}
-
 static int get_spi_clk_cfg(u32 speed_hz, struct spi_geni_master *mas,
 			int *clk_idx, int *clk_div)
 {
@@ -286,8 +268,6 @@ static int get_spi_clk_cfg(u32 speed_hz, struct spi_geni_master *mas,
 
 	dev_dbg(mas->dev, "%s: req %u resultant %lu sclk %lu, idx %d, div %d\n",
 		__func__, speed_hz, res_freq, sclk_freq, *clk_idx, *clk_div);
-
-	spi_geni_clk_conf(mas, *clk_div, *clk_idx);
 
 	ret = clk_set_rate(rsc->se_clk, sclk_freq);
 	if (ret) {
@@ -343,6 +323,8 @@ static int setup_fifo_params(struct spi_device *spi_slv,
 	u32 cpha = geni_read_reg(mas->base, SE_SPI_CPHA);
 	u32 demux_sel = 0;
 	u32 demux_output_inv = 0;
+	u32 clk_sel = 0;
+	u32 m_clk_cfg = 0;
 	int ret = 0;
 	int idx;
 	int div;
@@ -402,19 +384,23 @@ static int setup_fifo_params(struct spi_device *spi_slv,
 		goto setup_fifo_params_exit;
 	}
 
+	clk_sel |= (idx & CLK_SEL_MSK);
+	m_clk_cfg |= ((div << CLK_DIV_SHFT) | SER_CLK_EN);
 	spi_setup_word_len(mas, spi_slv->mode, spi_slv->bits_per_word);
 	geni_write_reg(loopback_cfg, mas->base, SE_SPI_LOOPBACK);
 	geni_write_reg(demux_sel, mas->base, SE_SPI_DEMUX_SEL);
 	geni_write_reg(cpha, mas->base, SE_SPI_CPHA);
 	geni_write_reg(cpol, mas->base, SE_SPI_CPOL);
 	geni_write_reg(demux_output_inv, mas->base, SE_SPI_DEMUX_OUTPUT_INV);
+	geni_write_reg(clk_sel, mas->base, SE_GENI_CLK_SEL);
+	geni_write_reg(m_clk_cfg, mas->base, GENI_SER_M_CLK_CFG);
 	geni_write_reg(spi_delay_params, mas->base, SE_SPI_DELAY_COUNTERS);
 	GENI_SE_DBG(mas->ipc, false, mas->dev,
-		"%s:Loopback%d demux_sel0x%x demux_op_inv 0x%x\n",
-		__func__, loopback_cfg, demux_sel, demux_output_inv);
+		"%s:Loopback%d demux_sel0x%x demux_op_inv 0x%x clk_cfg 0x%x\n",
+		__func__, loopback_cfg, demux_sel, demux_output_inv, m_clk_cfg);
 	GENI_SE_DBG(mas->ipc, false, mas->dev,
-		"%s:cpol %d cpha %d delay 0x%x\n", __func__,
-					cpol, cpha, spi_delay_params);
+		"%s:clk_sel 0x%x cpol %d cpha %d delay 0x%x\n", __func__,
+					clk_sel, cpol, cpha, spi_delay_params);
 	/* Ensure message level attributes are written before returning */
 	mb();
 setup_fifo_params_exit:
@@ -1035,6 +1021,29 @@ static int spi_geni_prepare_message(struct spi_master *spi,
 		}
 	}
 
+<<<<<<< HEAD
+=======
+	if (pm_runtime_status_suspended(mas->dev) && !mas->is_le_vm) {
+		if (!pm_runtime_enabled(mas->dev)) {
+			GENI_SE_ERR(mas->ipc, false, NULL,
+				"%s: System suspended\n", __func__);
+			return -EACCES;
+		}
+
+		ret = pm_runtime_get_sync(mas->dev);
+		if (ret < 0) {
+			dev_err(mas->dev,
+			"%s:pm_runtime_get_sync failed %d\n", __func__, ret);
+			WARN_ON_ONCE(1);
+			pm_runtime_put_noidle(mas->dev);
+			/* Set device in suspended since resume failed */
+			pm_runtime_set_suspended(mas->dev);
+			return ret;
+		}
+	}
+
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	mas->cur_xfer_mode = select_xfer_mode(spi, spi_msg);
 
 	if (mas->cur_xfer_mode < 0) {
@@ -1309,6 +1318,17 @@ static int spi_geni_prepare_transfer_hardware(struct spi_master *spi)
 	if (mas->is_le_vm)
 		return 0;
 
+<<<<<<< HEAD
+=======
+	/* Client to respect system suspend */
+	if (!pm_runtime_enabled(mas->dev)) {
+		GENI_SE_ERR(mas->ipc, false, NULL,
+			"%s: System suspended\n", __func__);
+		return -EACCES;
+	}
+
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	if (mas->gsi_mode && !mas->shared_ee) {
 		struct se_geni_rsc *rsc;
 		int ret = 0;
@@ -1402,6 +1422,8 @@ static int setup_fifo_xfer(struct spi_transfer *xfer,
 
 	/* Speed and bits per word can be overridden per transfer */
 	if (xfer->speed_hz != mas->cur_speed_hz) {
+		u32 clk_sel = 0;
+		u32 m_clk_cfg = 0;
 		int idx = 0;
 		int div = 0;
 
@@ -1412,6 +1434,10 @@ static int setup_fifo_xfer(struct spi_transfer *xfer,
 			return ret;
 		}
 		mas->cur_speed_hz = xfer->speed_hz;
+		clk_sel |= (idx & CLK_SEL_MSK);
+		m_clk_cfg |= ((div << CLK_DIV_SHFT) | SER_CLK_EN);
+		geni_write_reg(clk_sel, mas->base, SE_GENI_CLK_SEL);
+		geni_write_reg(m_clk_cfg, mas->base, GENI_SER_M_CLK_CFG);
 	}
 
 	mas->tx_rem_bytes = 0;
@@ -1583,7 +1609,7 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 {
 	int ret = 0;
 	struct spi_geni_master *mas = spi_master_get_devdata(spi);
-	unsigned long timeout, xfer_timeout;
+	unsigned long timeout;
 
 	if ((xfer->tx_buf == NULL) && (xfer->rx_buf == NULL)) {
 		dev_err(mas->dev, "Invalid xfer both tx rx are NULL\n");
@@ -1596,6 +1622,7 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 		return -EINVAL;
 	}
 
+<<<<<<< HEAD
 	if (mas->use_fixed_timeout)
 		xfer_timeout = msecs_to_jiffies(SPI_XFER_TIMEOUT_MS);
 	else
@@ -1604,6 +1631,18 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 			DIV_ROUND_UP(xfer->speed_hz, MSEC_PER_SEC)));
 	GENI_SE_DBG(mas->ipc, false, mas->dev,
 			"current xfer_timeout:%lu ms.\n", xfer_timeout);
+=======
+	/* Double check PM status, client might have not taken wakelock and
++	 * continue to queue more transfers. Post auto-suspend, system suspend
++	 * can keep driver to forced suspend, hence it's client's responsibility
++	 * to not allow system suspend to trigger.
++	 */
+	if (pm_runtime_status_suspended(mas->dev)) {
+		GENI_SE_ERR(mas->ipc, true, mas->dev,
+			"%s: device is PM suspended\n", __func__);
+		return -EACCES;
+	}
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	if (mas->cur_xfer_mode != GSI_DMA) {
 		reinit_completion(&mas->xfer_done);
@@ -1618,7 +1657,7 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 		if (spi->slave)
 			mas->slave_state = true;
 		timeout = wait_for_completion_timeout(&mas->xfer_done,
-					xfer_timeout);
+					msecs_to_jiffies(SPI_XFER_TIMEOUT_MS));
 		if (spi->slave)
 			mas->slave_state = false;
 
@@ -1663,7 +1702,8 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 			for (i = 0 ; i < mas->num_tx_eot; i++) {
 				timeout =
 				wait_for_completion_timeout(
-					&mas->tx_cb, xfer_timeout);
+					&mas->tx_cb,
+					msecs_to_jiffies(SPI_XFER_TIMEOUT_MS));
 				if (timeout <= 0) {
 					GENI_SE_ERR(mas->ipc, true, mas->dev,
 					"Tx[%d] timeout%lu\n", i, timeout);
@@ -1674,7 +1714,8 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 			for (i = 0 ; i < mas->num_rx_eot; i++) {
 				timeout =
 				wait_for_completion_timeout(
-					&mas->rx_cb, xfer_timeout);
+					&mas->rx_cb,
+					msecs_to_jiffies(SPI_XFER_TIMEOUT_MS));
 				if (timeout <= 0) {
 					GENI_SE_ERR(mas->ipc, true, mas->dev,
 					 "Rx[%d] timeout%lu\n", i, timeout);
@@ -2041,9 +2082,7 @@ static int spi_geni_probe(struct platform_device *pdev)
 	geni_mas->dis_autosuspend =
 		of_property_read_bool(pdev->dev.of_node,
 				"qcom,disable-autosuspend");
-	geni_mas->use_fixed_timeout =
-		of_property_read_bool(pdev->dev.of_node,
-				"qcom,use-fixed-timeout");
+
 	/*
 	 * shared_se property is set when spi is being used simultaneously
 	 * from two Execution Environments.
@@ -2122,6 +2161,7 @@ static int spi_geni_probe(struct platform_device *pdev)
 	ret = sysfs_create_file(&(geni_mas->dev->kobj),
 			&dev_attr_spi_slave_state.attr);
 	return ret;
+	dev_info(&pdev->dev, "%s: completed\n", __func__);
 spi_geni_probe_unmap:
 	devm_iounmap(&pdev->dev, geni_mas->base);
 spi_geni_probe_err:
@@ -2225,6 +2265,7 @@ static int spi_geni_suspend(struct device *dev)
 	int ret = 0;
 
 	if (!pm_runtime_status_suspended(dev)) {
+<<<<<<< HEAD
 		struct spi_master *spi = get_spi_master(dev);
 		struct spi_geni_master *geni_mas = spi_master_get_devdata(spi);
 
@@ -2244,6 +2285,14 @@ static int spi_geni_suspend(struct device *dev)
 			ret = -EBUSY;
 		}
 	}
+=======
+		GENI_SE_ERR(geni_mas->ipc, true, dev,
+			":%s: runtime PM is active\n", __func__);
+		ret = -EBUSY;
+		return ret;
+	}
+	GENI_SE_ERR(geni_mas->ipc, true, dev, ":%s: End\n", __func__);
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	return ret;
 }
 #else

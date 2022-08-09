@@ -5,9 +5,7 @@
 
 #include <linux/interconnect.h>
 #include <linux/of.h>
-#include <linux/devfreq.h>
 
-#include "../../devfreq/governor.h"
 #include "kgsl_bus.h"
 #include "kgsl_device.h"
 #include "kgsl_trace.h"
@@ -32,6 +30,7 @@ static u32 _ab_buslevel_update(struct kgsl_pwrctrl *pwr,
 	return (pwr->bus_percent_ab * pwr->bus_max) / 100;
 }
 
+<<<<<<< HEAD
 static void set_ddr_qos(struct kgsl_device *device, int buslevel)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
@@ -62,6 +61,8 @@ static void set_ddr_qos(struct kgsl_device *device, int buslevel)
 	if (!ret)
 		cur_min_freq = new_min_freq;
 }
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 int kgsl_bus_update(struct kgsl_device *device,
 			 enum kgsl_bus_vote vote_state)
@@ -69,7 +70,7 @@ int kgsl_bus_update(struct kgsl_device *device,
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	/* FIXME: this might be wrong? */
 	int cur = pwr->pwrlevels[pwr->active_pwrlevel].bus_freq;
-	int ret, buslevel = 0;
+	int buslevel = 0;
 	u32 ab;
 
 	/* the bus should be ON to update the active frequency */
@@ -100,13 +101,7 @@ int kgsl_bus_update(struct kgsl_device *device,
 	/* buslevel is the IB vote, update the AB */
 	ab = _ab_buslevel_update(pwr, pwr->ddr_table[buslevel]);
 
-	ret = device->ftbl->gpu_bus_set(device, buslevel, ab);
-	if (ret)
-		return ret;
-
-	set_ddr_qos(device, buslevel);
-
-	return 0;
+	return device->ftbl->gpu_bus_set(device, buslevel, ab);
 }
 
 static void validate_pwrlevels(struct kgsl_device *device, u32 *ibs,
@@ -196,7 +191,7 @@ done:
 
 	validate_pwrlevels(device, pwr->ddr_table, pwr->ddr_table_count);
 
-	pwr->icc_path = of_icc_get(&pdev->dev, "gpu_icc_path");
+	pwr->icc_path = of_icc_get(&pdev->dev, NULL);
 	if (IS_ERR(pwr->icc_path) && !gmu_core_scales_bandwidth(device)) {
 		WARN(1, "The CPU has no way to set the GPU bus levels\n");
 
@@ -213,6 +208,4 @@ void kgsl_bus_close(struct kgsl_device *device)
 	kfree(device->pwrctrl.ddr_table);
 	device->pwrctrl.ddr_table = NULL;
 	icc_put(device->pwrctrl.icc_path);
-	if (device->pwrctrl.ddr_qos_devfreq)
-		put_device(&device->pwrctrl.ddr_qos_devfreq->dev);
 }

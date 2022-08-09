@@ -88,10 +88,11 @@ config CNSS_QCA6490
 	  These changes are needed to support the new hardware architecture
 	  for CNSS QCA6490 chipset.
 
-config CNSS_WCN7850
-	bool "Enable CNSS WCN7850 chipset specific changes"
+config OPLUS_FEATURE_WIFI_BDF
+	bool "Modify for: multi projects using different bdf"
 	depends on CNSS2
 	help
+<<<<<<< HEAD
 	  This enables the changes from WLAN host driver that are specific to
 	  CNSS WCN7850 chipset.
 	  These changes are needed to support the new hardware architecture
@@ -101,4 +102,6 @@ config OPLUS_FEATURE_WIFI_BDF
 	bool "Modify for: multi projects using different bdf"
 	depends on CNSS2
 	help
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	  Modify for: multi projects using different bdf.

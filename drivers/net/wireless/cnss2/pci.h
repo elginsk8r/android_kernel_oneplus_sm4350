@@ -80,7 +80,6 @@ struct cnss_pci_data {
 	const struct pci_device_id *pci_device_id;
 	u32 device_id;
 	u16 revision_id;
-	u64 dma_bit_mask;
 	struct cnss_wlan_driver *driver_ops;
 	u8 pci_link_state;
 	u8 pci_link_down_ind;
@@ -94,7 +93,10 @@ struct cnss_pci_data {
 	u32 qmi_send_usage_count;
 	u16 def_link_speed;
 	u16 def_link_width;
+<<<<<<< HEAD
 	u16 cur_link_speed;
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	struct completion wake_event;
 	u8 monitor_wake_intr;
 	struct iommu_domain *iommu_domain;

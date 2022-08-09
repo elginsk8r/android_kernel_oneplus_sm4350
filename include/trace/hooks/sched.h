@@ -10,7 +10,11 @@
  * Following tracepoints are not exported in tracefs and provide a
  * mechanism for vendor modules to hook and extend functionality
  */
+<<<<<<< HEAD
 #if defined(CONFIG_TRACEPOINTS) && defined(CONFIG_ANDROID_VENDOR_HOOKS)
+=======
+ #if defined(CONFIG_TRACEPOINTS) && defined(CONFIG_ANDROID_VENDOR_HOOKS)
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 struct task_struct;
 DECLARE_RESTRICTED_HOOK(android_rvh_select_task_rq_fair,
 	TP_PROTO(struct task_struct *p, int prev_cpu, int sd_flag, int wake_flags, int *new_cpu),
@@ -97,11 +101,18 @@ DECLARE_RESTRICTED_HOOK(android_rvh_find_busiest_group,
 #define trace_android_rvh_rtmutex_prepare_setprio(p, pi_task)
 #define trace_android_rvh_set_user_nice(p, nice)
 #define trace_android_rvh_setscheduler(p)
+<<<<<<< HEAD
 #define trace_android_rvh_find_busiest_group(busiest, dst_rq, out_balance)
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #define trace_android_rvh_check_preempt_wakeup(p, ignore)
 #define trace_android_rvh_check_preempt_tick(p, ideal_runtime)
 #define trace_android_rvh_find_best_target(p, cpu, ignore)
 #define trace_android_rvh_cpupri_find_fitness(p, lowest_mask)
+<<<<<<< HEAD
+=======
+#define trace_android_rvh_find_busiest_group(busiest, dst_rq, out_balance)
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #endif
 
 DECLARE_HOOK(android_vh_map_util_freq,

@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
+<<<<<<< HEAD
  * Copyright (c) 2014-2021, The Linux Foundation. All rights reserved.
+=======
+ * Copyright (c) 2014-2020, The Linux Foundation. All rights reserved.
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
  * Copyright (C) 2020 Oplus. All rights reserved.
  */
-
-#define pr_fmt(fmt) "subsys-pil-tz: %s(): " fmt, __func__
 
 #include <linux/kernel.h>
 #include <linux/err.h>

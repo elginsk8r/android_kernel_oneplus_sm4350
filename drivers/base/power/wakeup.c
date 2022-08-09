@@ -551,8 +551,13 @@ static void wakeup_source_activate(struct wakeup_source *ws)
 	if (WARN_ONCE(wakeup_source_not_registered(ws),
 			"unregistered wakeup source\n"))
 		return;
+<<<<<<< HEAD
 
 	#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
+=======
+	#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
+	//wakeup_get_start_hold_time();
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	wakeup_get_start_time();
 	#endif
 	ws->active = true;
@@ -696,6 +701,7 @@ static void wakeup_source_deactivate(struct wakeup_source *ws)
 	trace_wakeup_source_deactivate(ws->name, cec);
 
 	split_counters(&cnt, &inpr);
+<<<<<<< HEAD
 	#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
 	if (!inpr && waitqueue_active(&wakeup_count_wait_queue)) {
 		wakeup_get_end_hold_time();
@@ -705,6 +711,14 @@ static void wakeup_source_deactivate(struct wakeup_source *ws)
 	if (!inpr && waitqueue_active(&wakeup_count_wait_queue))
 		wake_up(&wakeup_count_wait_queue);
 	#endif
+=======
+	if (!inpr && waitqueue_active(&wakeup_count_wait_queue)) {
+		#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
+		wakeup_get_end_hold_time();
+		#endif
+		wake_up(&wakeup_count_wait_queue);
+	}
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 }
 
 /**
@@ -913,7 +927,11 @@ void pm_print_active_wakeup_sources(void)
 		}
 	}
 
+<<<<<<< HEAD
 	if (!active && last_activity_ws)
+=======
+	if (!active && last_activity_ws) {
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		#if defined(OPLUS_FEATURE_POWERINFO_STANDBY_DEBUG) && defined(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
 		pr_info("last active wakeup source: %s, %ld, %ld\n",
 			last_activity_ws->name, last_activity_ws->active_count, ktime_to_ms(last_activity_ws->total_time));
@@ -921,6 +939,10 @@ void pm_print_active_wakeup_sources(void)
 		pm_pr_dbg("last active wakeup source: %s\n",
 			last_activity_ws->name);
 		#endif
+<<<<<<< HEAD
+=======
+	}
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	srcu_read_unlock(&wakeup_srcu, srcuidx);
 }
 EXPORT_SYMBOL_GPL(pm_print_active_wakeup_sources);
@@ -978,7 +1000,11 @@ bool pm_wakeup_pending(void)
 
 	if (ret) {
 		#if !defined(OPLUS_FEATURE_POWERINFO_STANDBY_DEBUG) || !defined(CONFIG_OPLUS_POWERINFO_STANDBY_DEBUG)
+<<<<<<< HEAD
 		pm_pr_dbg("Wakeup pending, aborting suspend\n");
+=======
+		pr_debug("PM: Wakeup pending, aborting suspend\n");
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 		#else
 		pr_info("PM: Wakeup pending, aborting suspend\n");
 		wakeup_reasons_statics(IRQ_NAME_ABORT, WS_CNT_ABORT);
@@ -1028,7 +1054,10 @@ void pm_system_irq_wakeup(unsigned int irq_number)
 			log_irq_wakeup_reason(irq_number);
 			pr_warn("%s: %d triggered %s\n", __func__,
 					irq_number, name);
+<<<<<<< HEAD
 
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
 			pr_info("%s: resume caused by irq=%d, name=%s\n", __func__, irq_number, name);
 			wakeup_reasons_statics(name, WS_CNT_POWERKEY|WS_CNT_RTCALARM);

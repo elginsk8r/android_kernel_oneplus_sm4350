@@ -911,7 +911,14 @@ static int hid_scan_report(struct hid_device *hid)
 				hid->group = HID_GROUP_RMI;
 		break;
 	}
+#if IS_ENABLED(CONFIG_OPLUS_BT_BUG_STABILITY)
+//add for BLE-M1 uhid group change HID_GROUP_GENERIC
+	if (0x248a == hid->vendor && 2 == hid->group) {
+		hid_warn(hid, "scan_report change to GENERIC %u\n", hid->group);
+		hid->group = HID_GROUP_GENERIC;
+	}
 
+<<<<<<< HEAD
 #if IS_ENABLED(CONFIG_OPLUS_BT_BUG_STABILITY)
 	//add for BLE-M1 uhid group change HID_GROUP_GENERIC
 	if (0x248a == hid->vendor && 2 == hid->group) {
@@ -921,6 +928,11 @@ static int hid_scan_report(struct hid_device *hid)
 	hid_warn(hid, "report vendor %u,group %u\n", hid->vendor, hid->group);
 #endif /* CONFIG_OPLUS_BT_BUG_STABILITY */
 
+=======
+	/* fall back to generic driver in case specific driver doesn't exist */
+	hid_warn(hid, "report vendor %u,group %u\n", hid->vendor, hid->group);
+#endif /* CONFIG_OPLUS_BT_BUG_STABILITY */
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	kfree(parser->collection_stack);
 	vfree(parser);
 	return 0;
@@ -2004,6 +2016,12 @@ int hid_connect(struct hid_device *hdev, unsigned int connect_mask)
 	case BUS_I2C:
 		bus = "I2C";
 		break;
+<<<<<<< HEAD
+=======
+	case BUS_VIRTUAL:
+		bus = "VIRTUAL";
+		break;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	default:
 		bus = "<UNKNOWN>";
 	}

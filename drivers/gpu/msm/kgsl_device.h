@@ -288,8 +288,7 @@ struct kgsl_device {
 	/* Number of active contexts seen globally for this device */
 	int active_context_count;
 	struct kobject gpu_sysfs_kobj;
-	/** @icc_path: Interconnect path for scaling l3 frequency */
-	struct icc_path *l3_icc;
+	struct clk *l3_clk;
 	unsigned int l3_freq[MAX_L3_LEVELS];
 	unsigned int num_l3_pwrlevels;
 	/* store current L3 vote to determine if we should change our vote */
@@ -310,8 +309,15 @@ struct kgsl_device {
 	u32 speed_bin;
 	/** @gmu_fault: Set when a gmu or rgmu fault is encountered */
 	bool gmu_fault;
+<<<<<<< HEAD
 	/** @timelines: xarray for the timelines */
 	struct xarray timelines;
+=======
+	/** @timelines: Iterator for assigning IDs to timelines */
+	struct idr timelines;
+	/** @timelines_lock: Spinlock to protect the timelines idr */
+	spinlock_t timelines_lock;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	#if IS_ENABLED(CONFIG_DRM_MSM)
 	bool snapshot_control;
 	int snapshotfault;
@@ -513,6 +519,10 @@ struct kgsl_snapshot {
 	bool first_read;
 	bool recovered;
 	struct kgsl_device *device;
+<<<<<<< HEAD
+=======
+
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	#if IS_ENABLED(CONFIG_DRM_MSM)
 	char snapshot_hashid[96];
 	#endif

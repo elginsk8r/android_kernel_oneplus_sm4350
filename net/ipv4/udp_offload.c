@@ -463,7 +463,11 @@ struct sk_buff *udp_gro_receive(struct list_head *head, struct sk_buff *skb,
 	}
 
 	if (!sk || NAPI_GRO_CB(skb)->encap_mark ||
+<<<<<<< HEAD
 	    (skb->ip_summed != CHECKSUM_PARTIAL &&
+=======
+	    (uh->check && skb->ip_summed != CHECKSUM_PARTIAL &&
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	     NAPI_GRO_CB(skb)->csum_cnt == 0 &&
 	     !NAPI_GRO_CB(skb)->csum_valid) ||
 	    !udp_sk(sk)->gro_receive)

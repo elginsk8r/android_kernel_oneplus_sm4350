@@ -14,7 +14,7 @@
 #include <linux/sys_soc.h>
 #include <linux/types.h>
 #include <soc/qcom/socinfo.h>
-
+#include <soc/oplus/system/oplus_project.h>
 /*
  * SoC version type with major number in the upper 16 bits and minor
  * number in the lower 16 bits.
@@ -612,6 +612,9 @@ struct soc_id {
 	const char *name;
 };
 
+static char *fake_soc_id_name = "SM8150";
+static char *real_soc_id_name = "SM4350";
+
 static const struct soc_id soc_id[] = {
 	{ 87, "MSM8960" },
 	{ 109, "APQ8064" },
@@ -659,7 +662,10 @@ static const struct soc_id soc_id[] = {
 	{ 502, "SM8325P" },
 	{ 450, "SHIMA" },
 	{ 454, "HOLI" },
+<<<<<<< HEAD
 	{ 486, "MONACO" },
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	{ 458, "SDXLEMUR" },
 	{ 475, "YUPIK" },
 	{ 484, "SDXNIGHTJAR" },
@@ -1181,10 +1187,15 @@ static const char *socinfo_machine(unsigned int id)
 	int idx;
 
 	for (idx = 0; idx < ARRAY_SIZE(soc_id); idx++) {
-		if (soc_id[idx].id == id)
-			return soc_id[idx].name;
-	}
 
+        if (soc_id[idx].id == id) {
+            if (is_confidential()) {
+                return fake_soc_id_name;
+            } else {
+                return real_soc_id_name;
+            }
+	}
+        }
 	return NULL;
 }
 

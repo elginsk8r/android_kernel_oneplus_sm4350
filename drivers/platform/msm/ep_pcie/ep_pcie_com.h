@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
-/* Copyright (c) 2015-2021, The Linux Foundation. All rights reserved.*/
+/* Copyright (c) 2015-2020, The Linux Foundation. All rights reserved.*/
 
 #ifndef __EP_PCIE_COM_H
 #define __EP_PCIE_COM_H
@@ -177,7 +177,11 @@
 
 #define EP_PCIE_LOG_PAGES 50
 #define EP_PCIE_MAX_VREG 3
+<<<<<<< HEAD
 #define EP_PCIE_MAX_CLK 10
+=======
+#define EP_PCIE_MAX_CLK 9
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 #define EP_PCIE_MAX_PIPE_CLK 1
 #define EP_PCIE_MAX_RESET 2
 
@@ -315,6 +319,7 @@ struct ep_pcie_phy_info_t {
 	u32	offset;
 	u32	val;
 	u32	delay;
+	u32	direction;
 };
 
 /* pcie endpoint device structure */

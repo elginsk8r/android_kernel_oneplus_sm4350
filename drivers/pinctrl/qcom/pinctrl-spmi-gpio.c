@@ -1162,7 +1162,10 @@ static const struct of_device_id pmic_gpio_of_match[] = {
 	{ .compatible = "qcom,pmd9650-gpio", .data = (void *) 12 },
 	{ .compatible = "qcom,pm7325-gpio", .data = (void *) 10 },
 	{ .compatible = "qcom,pm7325b-gpio", .data = (void *) 8 },
+<<<<<<< HEAD
 	{ .compatible = "qcom,pm2250-gpio", .data = (void *) 10 },
+=======
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	{ },
 };
 

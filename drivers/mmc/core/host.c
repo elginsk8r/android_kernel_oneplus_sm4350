@@ -538,9 +538,14 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	timer_setup(&host->retune_timer, mmc_retune_timer, 0);
 
 #ifdef CONFIG_EMMC_SDCARD_OPTIMIZE
+<<<<<<< HEAD
 	host->detect_change_retry = 5;
 #endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
 
+=======
+    host->detect_change_retry = 5;
+#endif /* CONFIG_EMMC_SDCARD_OPTIMIZE */
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	/*
 	 * By default, hosts do not support SGIO or large requests.
 	 * They have to set these according to their abilities.

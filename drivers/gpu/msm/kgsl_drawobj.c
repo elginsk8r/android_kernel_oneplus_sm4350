@@ -684,6 +684,10 @@ static void add_profiling_buffer(struct kgsl_device *device,
 {
 	struct kgsl_mem_entry *entry;
 	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
+<<<<<<< HEAD
+=======
+        u64 start;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 
 	if (!(drawobj->flags & KGSL_DRAWOBJ_PROFILING))
 		return;
@@ -700,7 +704,18 @@ static void add_profiling_buffer(struct kgsl_device *device,
 			gpuaddr);
 
 	if (entry != NULL) {
+<<<<<<< HEAD
 		if (!kgsl_gpuaddr_in_memdesc(&entry->memdesc, gpuaddr, size)) {
+=======
+                start = id ? (entry->memdesc.gpuaddr + offset) : gpuaddr;
+                /*
+                 * Make sure there is enough room in the object to store the
+                 * entire profiling buffer object
+                 */
+                if (!kgsl_gpuaddr_in_memdesc(&entry->memdesc, gpuaddr, size) ||
+                     !kgsl_gpuaddr_in_memdesc(&entry->memdesc, start,
+                     sizeof(struct kgsl_drawobj_profiling_buffer))) {
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 			kgsl_mem_entry_put(entry);
 			entry = NULL;
 		}
@@ -713,6 +728,7 @@ static void add_profiling_buffer(struct kgsl_device *device,
 		return;
 	}
 
+<<<<<<< HEAD
 
 	if (!id) {
 		cmdobj->profiling_buffer_gpuaddr = gpuaddr;
@@ -735,6 +751,9 @@ static void add_profiling_buffer(struct kgsl_device *device,
 			entry->memdesc.gpuaddr + offset;
 	}
 
+=======
+        cmdobj->profiling_buffer_gpuaddr = start;
+>>>>>>> a8500c0bcb4d3 (Synchronize codes for OnePlus Nord N200 5G DE2117_11_C.15 and DE2118_11_C.15)
 	cmdobj->profiling_buf_entry = entry;
 }
 
