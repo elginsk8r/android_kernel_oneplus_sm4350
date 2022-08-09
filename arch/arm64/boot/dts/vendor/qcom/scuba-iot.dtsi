@@ -446,8 +446,6 @@
 		qcom,guard-memory;
 	};
 
-	thermal_zones: thermal-zones { };
-
 	qfprom: qfprom@1b40000 {
 		compatible = "qcom,qfprom";
 		reg = <0x1b40000 0x7000>;

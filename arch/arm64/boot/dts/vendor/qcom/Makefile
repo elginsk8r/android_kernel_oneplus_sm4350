@@ -7,7 +7,6 @@ dtbo-$(CONFIG_ARCH_LAHAINA) += lahaina-rumi-overlay.dtbo \
 	lahaina-qrd-overlay.dtbo \
 	lahaina-atp-overlay.dtbo \
 	lahaina-hdk-overlay.dtbo \
-	lahaina-hhg-overlay.dtbo \
 	lahaina-qrd-hsp-overlay.dtbo \
 	lahaina-qrd-module-overlay.dtbo \
 	lahainap-mtp-overlay.dtbo \
@@ -16,10 +15,7 @@ dtbo-$(CONFIG_ARCH_LAHAINA) += lahaina-rumi-overlay.dtbo \
 	lahainap-qrd-overlay.dtbo \
 	lahaina-cdp-v2.2-overlay.dtbo \
 	lahaina-mtp-v2-overlay.dtbo \
-	lahaina-mtp-v2.1-overlay.dtbo \
-	lahaina-mtp-hsp-pro-overlay.dtbo \
-	lahaina-cdp-hsp-pro-overlay.dtbo \
-	lahaina-qrd-hsp-pro-overlay.dtbo
+	lahaina-mtp-v2.1-overlay.dtbo
 
 lahaina-rumi-overlay.dtbo-base := lahaina.dtb
 lahaina-mtp-hsp-overlay.dtbo-base := lahaina.dtb
@@ -27,7 +23,6 @@ lahaina-mtp-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
 lahaina-cdp-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
 lahaina-atp-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
 lahaina-hdk-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
-lahaina-hhg-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
 lahaina-qrd-hsp-overlay.dtbo-base := lahaina.dtb
 lahaina-qrd-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
 lahaina-qrd-module-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb lahaina-v2.1.dtb
@@ -40,12 +35,6 @@ lahaina-cdp-v2.2-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb \
 lahaina-mtp-v2-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb \
 					lahaina-v2.1.dtb
 lahaina-mtp-v2.1-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb \
-					lahaina-v2.1.dtb
-lahaina-mtp-hsp-pro-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb \
-					lahaina-v2.1.dtb
-lahaina-cdp-hsp-pro-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb \
-					lahaina-v2.1.dtb
-lahaina-qrd-hsp-pro-overlay.dtbo-base := lahaina.dtb lahaina-v2.dtb \
 					lahaina-v2.1.dtb
 else
 dtb-$(CONFIG_ARCH_LAHAINA) += lahaina-rumi.dtb \
@@ -76,7 +65,6 @@ dtb-$(CONFIG_ARCH_LAHAINA) += lahaina-rumi.dtb \
 	lahaina-v2.1-cdp.dtb \
 	lahaina-v2.1-atp.dtb \
 	lahaina-v2.1-hdk.dtb \
-	lahaina-v2.1-hhg.dtb \
 	lahaina-v2.1-qrd.dtb \
 	lahaina-v2.1-qrd-module.dtb \
 	lahainap-v2.1-mtp.dtb \
@@ -84,10 +72,7 @@ dtb-$(CONFIG_ARCH_LAHAINA) += lahaina-rumi.dtb \
 	lahainap-v2.1-atp.dtb \
 	lahainap-v2.1-qrd.dtb \
 	lahaina-mtp-v2.dtb \
-	lahaina-mtp-v2.1.dtb \
-	lahaina-v2.1-mtp-hsp-pro.dts \
-	lahaina-v2.1-cdp-hsp-pro.dts \
-	lahaina-v2.1-qrd-hsp-pro.dts
+	lahaina-mtp-v2.1.dtb
 endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
@@ -276,16 +261,7 @@ dtb-$(CONFIG_ARCH_SDXLEMUR) += sdxlemur-rumi.dtb \
 	sdxlemur-mtp-mbb-pcie-rc-ep.dtb \
 	sdxlemur-mtp-mbb.dtb \
 	sdxlemur-rcm-pcie-ep.dtb \
-	sdxlemur-rcm-rc.dtb \
-	sdxlemur-v2-cdp.dtb \
-	sdxlemur-v2-mtp-mbb.dtb \
-	sdxlemur-v2-mtp-cpe.dtb \
-	sdxlemur-v2-mtp-mbb-emmc.dtb \
-	sdxlemur-v2-mtp-mbb-ntn3-pcie.dtb \
-	sdxlemur-v2-mtp-mbb-pcie-ep.dtb \
-	sdxlemur-v2-mtp-mbb-pcie-rc-ep.dtb \
-	sdxlemur-v2-rcm-pcie-ep.dtb \
-	sdxlemur-v2-rcm-rc.dtb
+	sdxlemur-rcm-rc.dtb
 
 
 ifeq ($(CONFIG_ARCH_SHIMA), y)
@@ -299,8 +275,7 @@ endif
 
 dtb-$(CONFIG_ARCH_SDXNIGHTJAR) += sdxnightjar-mtp.dtb \
 	sdxnightjar-cdp.dtb \
-	sdxnightjar-qrd.dtb \
-	sdxnightjar-dualwifi-mtp.dtb
+	sdxnightjar-qrd.dtb
 
 ifeq ($(CONFIG_ARCH_YUPIK), y)
 ifeq ($(CONFIG_ARCH_QTI_VM), y)

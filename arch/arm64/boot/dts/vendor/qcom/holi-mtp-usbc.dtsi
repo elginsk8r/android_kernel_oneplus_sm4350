@@ -120,7 +120,6 @@
 
 		pinctrl-names = "default";
 		pinctrl-0 = <&key_vol_up_default>;
-
 		vol_up {
 			label = "volume_up";
 			gpios = <&pm6350_gpios 2 GPIO_ACTIVE_LOW>;
