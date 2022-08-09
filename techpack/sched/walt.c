@@ -12,6 +12,10 @@
 
 #include <trace/events/sched.h>
 
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
+#include <linux/sched_assist/sched_assist_slide.h>
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
+
 const char *task_event_names[] = {"PUT_PREV_TASK", "PICK_NEXT_TASK",
 				  "TASK_WAKE", "TASK_MIGRATE", "TASK_UPDATE",
 				"IRQ_UPDATE"};
@@ -592,6 +596,10 @@ static inline u64 freq_policy_load(struct rq *rq)
 			load = div64_u64(load * sysctl_sched_user_hint,
 					 (u64)100);
 	}
+
+#if defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST)
+	slide_set_boost_load(&load, cpu_of(rq));
+#endif /* defined(OPLUS_FEATURE_SCHED_ASSIST) && defined(CONFIG_OPLUS_FEATURE_SCHED_ASSIST) */
 
 done:
 	trace_sched_load_to_gov(rq, aggr_grp_load, tt_load, sched_freq_aggr_en,
@@ -1834,6 +1842,27 @@ account_busy_for_task_demand(struct rq *rq, struct task_struct *p, int event)
 
 unsigned int sysctl_sched_task_unfilter_period = 100000000;
 
+#if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(OPLUS_FEATURE_POWER_CPUFREQ)
+unsigned int uclamp_window_policy(struct task_struct *p)
+{
+	struct cgroup_subsys_state *css;
+	struct task_group *tg;
+	unsigned int window_policy;
+
+	rcu_read_lock();
+	css = task_css(p, cpu_cgrp_id);
+	if (!css) {
+		rcu_read_unlock();
+		return WINDOW_STATS_MAX_RECENT_AVG;
+	}
+	tg = container_of(css, struct task_group, css);
+	window_policy = tg->wtg.window_policy;
+	rcu_read_unlock();
+
+	return window_policy;
+}
+#endif
+
 /*
  * Called when new window is starting for a task, to record cpu usage over
  * recently concluded window(s). Normally 'samples' should be 1. It can be > 1
@@ -1871,6 +1900,10 @@ static void update_history(struct rq *rq, struct task_struct *p,
 	}
 
 	p->wts.sum = 0;
+
+#if defined(CONFIG_UCLAMP_TASK_GROUP) && defined(OPLUS_FEATURE_POWER_CPUFREQ)
+	sysctl_sched_window_stats_policy = uclamp_window_policy(p);
+#endif
 
 	if (sysctl_sched_window_stats_policy == WINDOW_STATS_RECENT) {
 		demand = runtime;
