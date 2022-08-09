@@ -27,6 +27,9 @@
 #include <linux/uaccess.h>
 
 #include "internal.h"
+#if defined(OPLUS_FEATURE_VIRTUAL_RESERVE_MEMORY) && defined(CONFIG_VIRTUAL_RESERVE_MEMORY)
+#include "arch_mmap.h"
+#endif
 
 /**
  * kfree_const - conditionally free memory

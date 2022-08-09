@@ -817,7 +817,11 @@ static int smblite_batt_get_prop(struct power_supply *psy,
 		val->intval = POWER_SUPPLY_TECHNOLOGY_LION;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_DONE:
+#ifdef OPLUS_FEATURE_CHG_BASIC
+		val->intval = (g_oplus_chip->prop_status == POWER_SUPPLY_STATUS_FULL && abs(g_oplus_chip->icharging) < 10);
+#else
 		rc = smblite_lib_get_prop_batt_charge_done(chg, val);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_SET_SHIP_MODE:
 		/* Not in ship mode as long as device is active */

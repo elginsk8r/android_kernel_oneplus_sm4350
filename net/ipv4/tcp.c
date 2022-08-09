@@ -293,6 +293,11 @@ DEFINE_STATIC_KEY_FALSE(tcp_have_smc);
 EXPORT_SYMBOL(tcp_have_smc);
 #endif
 
+#if IS_ENABLED(CONFIG_OPLUS_BUG_STABILITY)
+int sysctl_tcp_ts_control[2] __read_mostly = {0,0};
+EXPORT_SYMBOL(sysctl_tcp_ts_control);
+#endif /* CONFIG_OPLUS_BUG_STABILITY */
+
 /*
  * Current number of TCP sockets.
  */

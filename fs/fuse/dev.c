@@ -22,6 +22,7 @@
 #include <linux/swap.h>
 #include <linux/splice.h>
 #include <linux/sched.h>
+#include <../../kernel/sched/sched.h>
 
 MODULE_ALIAS_MISCDEV(FUSE_MINOR);
 MODULE_ALIAS("devname:fuse");
@@ -212,10 +213,29 @@ __releases(fiq->lock)
 	spin_unlock(&fiq->lock);
 }
 
+#ifdef OPLUS_FEATURE_PERFORMANCE
+static void fuse_dev_wake_sync_and_unlock(struct fuse_iqueue *fiq, struct fuse_req *req)
+__releases(fiq->lock)
+{
+	int cpu = task_cpu(current);
+	struct rq *rq = cpu_rq(cpu);
+  
+	if (test_bit(FR_BACKGROUND, &req->flags) || rq->nr_running > 1)
+		wake_up(&fiq->waitq);
+	else
+		wake_up_sync(&fiq->waitq);
+	kill_fasync(&fiq->fasync, SIGIO, POLL_IN);
+	spin_unlock(&fiq->lock);
+}
+#endif
+
 const struct fuse_iqueue_ops fuse_dev_fiq_ops = {
 	.wake_forget_and_unlock		= fuse_dev_wake_and_unlock,
 	.wake_interrupt_and_unlock	= fuse_dev_wake_and_unlock,
 	.wake_pending_and_unlock	= fuse_dev_wake_and_unlock,
+#ifdef OPLUS_FEATURE_PERFORMANCE
+	.wake_sync_and_unlock		= fuse_dev_wake_sync_and_unlock,
+#endif
 };
 EXPORT_SYMBOL_GPL(fuse_dev_fiq_ops);
 
@@ -227,7 +247,11 @@ __releases(fiq->lock)
 		fuse_len_args(req->args->in_numargs,
 			      (struct fuse_arg *) req->args->in_args);
 	list_add_tail(&req->list, &fiq->pending);
+#ifdef OPLUS_FEATURE_PERFORMANCE
+	fiq->ops->wake_sync_and_unlock(fiq, req);
+#else
 	fiq->ops->wake_pending_and_unlock(fiq);
+#endif
 }
 
 void fuse_queue_forget(struct fuse_conn *fc, struct fuse_forget_link *forget,
@@ -1225,6 +1249,10 @@ static ssize_t fuse_dev_do_read(struct fuse_dev *fud, struct file *file,
 		goto err_unlock;
 	}
 
+#ifdef CONFIG_OPLUS_STORAGE_STABILITY
+	smp_mb();
+#endif
+
 	if (!list_empty(&fiq->interrupts)) {
 		req = list_entry(fiq->interrupts.next, struct fuse_req,
 				 intr_entry);
@@ -1905,6 +1933,10 @@ static ssize_t fuse_dev_do_write(struct fuse_dev *fud,
 		path[req->args->out_args[0].size - 1] = 0;
 		req->out.h.error = kern_path(path, 0, req->args->canonical_path);
 	}
+#ifdef CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT
+	if (fuse_shortcircuit_setup(fc, req))
+		err = -EINVAL;
+#endif /* CONFIG_OPLUS_FEATURE_FUSE_FS_SHORTCIRCUIT */
 
 	spin_lock(&fpq->lock);
 	clear_bit(FR_LOCKED, &req->flags);
@@ -2225,37 +2257,50 @@ static int fuse_device_clone(struct fuse_conn *fc, struct file *new)
 static long fuse_dev_ioctl(struct file *file, unsigned int cmd,
 			   unsigned long arg)
 {
-	int err = -ENOTTY;
+	int res;
+	int oldfd;
+	struct fuse_dev *fud = NULL;
 
-	if (cmd == FUSE_DEV_IOC_CLONE) {
-		int oldfd;
-
-		err = -EFAULT;
-		if (!get_user(oldfd, (__u32 __user *) arg)) {
+	switch (cmd) {
+	case FUSE_DEV_IOC_CLONE:
+		res = -EFAULT;
+		if (!get_user(oldfd, (__u32 __user *)arg)) {
 			struct file *old = fget(oldfd);
 
-			err = -EINVAL;
+			res = -EINVAL;
 			if (old) {
-				struct fuse_dev *fud = NULL;
-
 				/*
 				 * Check against file->f_op because CUSE
 				 * uses the same ioctl handler.
 				 */
 				if (old->f_op == file->f_op &&
-				    old->f_cred->user_ns == file->f_cred->user_ns)
+				    old->f_cred->user_ns ==
+					    file->f_cred->user_ns)
 					fud = fuse_get_dev(old);
 
 				if (fud) {
 					mutex_lock(&fuse_mutex);
-					err = fuse_device_clone(fud->fc, file);
+					res = fuse_device_clone(fud->fc, file);
 					mutex_unlock(&fuse_mutex);
 				}
 				fput(old);
 			}
 		}
+		break;
+	case FUSE_DEV_IOC_PASSTHROUGH_OPEN:
+		res = -EFAULT;
+		if (!get_user(oldfd, (__u32 __user *)arg)) {
+			res = -EINVAL;
+			fud = fuse_get_dev(file);
+			if (fud)
+				res = fuse_passthrough_open(fud, oldfd);
+		}
+		break;
+	default:
+		res = -ENOTTY;
+		break;
 	}
-	return err;
+	return res;
 }
 
 const struct file_operations fuse_dev_operations = {

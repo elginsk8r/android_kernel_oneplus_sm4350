@@ -94,7 +94,9 @@ obj-y			+= tilcdc/
 obj-$(CONFIG_DRM_QXL) += qxl/
 obj-$(CONFIG_DRM_BOCHS) += bochs/
 obj-$(CONFIG_DRM_VIRTIO_GPU) += virtio/
+ifneq ($(CONFIG_OPLUS_BUG_STABILITY), y)
 obj-$(CONFIG_DRM_MSM) += msm/
+endif
 obj-$(CONFIG_DRM_TEGRA) += tegra/
 obj-$(CONFIG_DRM_STM) += stm/
 obj-$(CONFIG_DRM_STI) += sti/

@@ -66,6 +66,9 @@ struct ion_msm_page_pool {
 	struct mutex mutex;
 	gfp_t gfp_mask;
 	unsigned int order;
+#ifdef CONFIG_OPLUS_ION_BOOSTPOOL
+	bool boost_flag;
+#endif
 	struct plist_node list;
 	bool cached;
 	struct device *heap_dev;
