@@ -468,6 +468,10 @@
 		status = "ok";
 		compatible = "qcom,adsp-loader";
 		qcom,adsp-state = <0>;
+//ifdef OPLUS_FEATURE_SENSOR_DRIVER
+//tangweiqin@BSP,Sensor,20201216,modify for sensor 1.8v always on
+		vddio-supply = <&pm6150a_l8>;
+//endif
 	};
 
 	tdm_pri_rx: qcom,msm-dai-tdm-pri-rx {

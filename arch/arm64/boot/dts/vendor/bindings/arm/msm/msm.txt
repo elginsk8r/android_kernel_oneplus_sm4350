@@ -86,20 +86,11 @@ SoCs:
 - SDXLEMUR
   compatible = "qcom,sdxlemur"
 
-- SCUBA
-  compatible = "qcom,scuba-iot"
-
 - SDMMAGPIE
   compatible = "qcom,sdmmagpie"
 
 - HOLI
   compatible = "qcom,holi"
-
-- MONACO
-  compatible = "qcom,monaco"
-
-- SDXNIGHTJAR
-  compatible = "qcom,sdxnightjar"
 
 Generic board variants:
 
@@ -201,9 +192,6 @@ compatible = "qcom,sa8155p-adp-star"
 compatible = "qcom,sa8155-adp-air"
 compatible = "qcom,sa8155-v2-adp-air"
 compatible = "qcom,sa8155p-v2-adp-air"
-compatible = "qcom,sa8195p-adp-star"
-compatible = "qcom,sa8195p-v2-adp-air"
-compatible = "qcom,sa8195p"
 compatible = "qcom,adp-air"
 compatible = "qcom,kona-rumi"
 compatible = "qcom,kona-mtp"
@@ -262,7 +250,6 @@ compatible = "qcom,sdxprairie-cdp"
 compatible = "qcom,sdxlemur-rumi"
 compatible = "qcom,sdxlemur-mtp"
 compatible = "qcom,sdxlemur-cdp"
-compatible = "qcom,sdxlemur-rcm"
 compatible = "qcom,sdmmagpie-rumi"
 compatible = "qcom,sdmmagpie-idp"
 compatible = "qcom,sdmmagpie-qrd"
@@ -271,8 +258,3 @@ compatible = "qcom,holi-mtp"
 compatible = "qcom,holi-cdp"
 compatible = "qcom,holi-qrd"
 compatible = "qcom,holi-atp"
-compatible = "qcom,scuba-idp"
-compatible = "qcom,monaco-rumi"
-compatible = "qcom,sdxnightjar-mtp"
-compatible = "qcom,sdxnightjar-cdp"
-compatible = "qcom,sdxnightjar-qrd"

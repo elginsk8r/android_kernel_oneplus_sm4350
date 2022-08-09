@@ -3,6 +3,9 @@ Qualcomm Technologies, Inc. Graphics Clock & Reset Controller Binding
 
 Required properties :
 - compatible : shall contain "qcom,sdm845-gpucc" or "qcom,msm8998-gpucc",
+		"qcom,lahaina-gpucc",
+		"qcom,shima-gpucc",
+		"qcom,holi-gpucc".
 		"qcom,lahaina-gpucc"
 		"qcom,shima-gpucc"
 		"qcom,holi-gpucc"

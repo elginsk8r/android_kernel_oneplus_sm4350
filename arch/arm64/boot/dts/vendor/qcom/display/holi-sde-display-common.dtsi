@@ -145,8 +145,9 @@
 		qcom,dsi-ctrl = <&mdss_dsi0>;
 		qcom,dsi-phy = <&mdss_dsi_phy0>;
 
-		qcom,mdp = <&mdss_mdp>;
+		qcom,mdp = <&mdss_mdp>;		
 		qcom,dsi-default-panel = <&dsi_rm69299_visionox_amoled_video>;
+
 	};
 };
 
