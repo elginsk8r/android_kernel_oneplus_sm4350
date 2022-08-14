@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: GPL-2.0-only
+# This config refers to the generic oplus debug mode.
+
+config OPLUS_SYSTEM_KERNEL_QCOM
+	bool "config oplus system feature "
+	default y
+	help
+	  define this config to Distinguish between qcom and mtk platform
+
+config OPLUS_SYSTEM_KERNEL_MTK
+	bool "config oplus system feature "
+	default n
+	help
+	  define this config to Distinguish between qcom and mtk platform
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+config OPLUS_FEATURE_CHG_MISC
+	tristate "OPLUS CHARGER MISC"
+	default n
+	help
+	  Enables support for the oplus charging misc
+#endif
+
+config OPLUS_AGING_DEBUG
+	bool "oplus aging add config"
+	depends on QGKI
+	select IPC_LOGGING
+	select QCOM_RTB
+	select QCOM_RTB_SEPARATE_CPUS
+	select QCOM_RTB_QGKI
+	select DEBUG_LIST
+
+config OPLUS_KASAN_DEBUG
+	bool "oplus kasan debug"
+	depends on QGKI
+	select KASAN
+	select KASAN_GENERIC
+	#select KCOV
+	#select KCOV_ENABLE_COMPARISONS
+
+config OPLUS_KMEMLEAK_DEBUG
+	bool "oplus kmemleak debug"
+	depends on QGKI
+	select DEBUG_KMEMLEAK
+	select SLUB_DEBUG
+	#select SLABTRACE_DEBUG
+
+config OPLUS_SLUB_DEBUG
+	bool "oplus slub debug"
+	select SLUB_DEBUG
+	select SLUB_DEBUG_ON
+	select SLUB_DEBUG_PANIC_ON
+
+config OPLUS_PAGEOWNER_DEBUG
+	bool "oplus pageowner debug"
+	select PAGE_OWNER
+	select PAGE_OWNER_ENABLE_DEFAULT

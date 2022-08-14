@@ -5,6 +5,10 @@
 #
 mainmenu "Linux/$(ARCH) $(KERNELVERSION) Kernel Configuration"
 
+#ifdef CONFIG_OPLUS_SYSTEM_KERNEL
+source "Kconfig.debug"
+#endif	
+
 source "scripts/Kconfig.include"
 
 source "init/Kconfig"
