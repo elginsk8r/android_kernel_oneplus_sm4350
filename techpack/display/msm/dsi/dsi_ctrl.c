@@ -564,6 +564,10 @@ bool dsi_ctrl_validate_host_state(struct dsi_ctrl *dsi_ctrl)
 	return true;
 }
 
+#ifdef OPLUS_BUG_STABILITY
+EXPORT_SYMBOL(dsi_ctrl_validate_host_state);
+#endif
+
 static void dsi_ctrl_update_state(struct dsi_ctrl *dsi_ctrl,
 				  enum dsi_ctrl_driver_ops op,
 				  u32 op_state)
@@ -3487,6 +3491,10 @@ error:
 	mutex_unlock(&dsi_ctrl->ctrl_lock);
 	return rc;
 }
+
+#ifdef OPLUS_BUG_STABILITY
+EXPORT_SYMBOL(dsi_ctrl_cmd_transfer);
+#endif
 
 /**
  * dsi_ctrl_mask_overflow() -	API to mask/unmask overflow error.
