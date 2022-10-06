@@ -628,6 +628,7 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 
 		pr_warn("%s: irq:%d hwirq:%u triggered %s\n",
 			 __func__, irq, i, name);
+#ifdef OPLUS_FEATURE_POWERINFO_STANDBY
 		#if IS_ENABLED(CONFIG_OPLUS_FEATURE_NWPOWER)
 		if ((strncmp(name, "ipcc_0", strlen("ipcc_0")) == 0)|| 
 		(strncmp(name, "modem", strlen("modem")) == 0)||
@@ -646,11 +647,10 @@ static void gic_show_resume_irq(struct gic_chip_data *gic)
 		}
 		#endif /* CONFIG_OPLUS_FEATURE_NWPOWER */
 
-		#if defined(OPLUS_FEATURE_POWERINFO_STANDBY) && defined(CONFIG_OPLUS_WAKELOCK_PROFILER)
 		do {
 			wakeup_reasons_statics(name, WS_CNT_MODEM|WS_CNT_WLAN|WS_CNT_ADSP|WS_CNT_CDSP|WS_CNT_SLPI);
 		} while(0);
-		#endif
+#endif /* OPLUS_FEATURE_POWERINFO_STANDBY */
 	}
 }
 
