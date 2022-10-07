@@ -1365,7 +1365,7 @@ struct task_struct {
 	int				latency_record_count;
 	struct latency_record		latency_record[LT_SAVECOUNT];
 #endif
-#if defined(OPLUS_FEATURE_MEMLEAK_DETECT) && defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
+#if defined(CONFIG_ION) && defined(CONFIG_DUMP_TASKS_MEM)
 	atomic64_t ions;
 #endif
 	/*
