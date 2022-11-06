@@ -10,6 +10,9 @@
 #include <linux/of_gpio.h>
 #include <linux/pwm.h>
 #include <video/mipi_display.h>
+#ifdef OPLUS_FEATURE_TP_BASIC
+#include <linux/msm_drm_notify.h>
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 #include "dsi_panel.h"
 #include "dsi_ctrl_hw.h"
@@ -55,6 +58,19 @@
 #define DEFAULT_PANEL_PREFILL_LINES	25
 #define HIGH_REFRESH_RATE_THRESHOLD_TIME_US	500
 #define MIN_PREFILL_LINES      40
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+extern int msm_drm_notifier_call_chain(unsigned long val, void *v);
+extern int (*tp_gesture_enable_notifier)(unsigned int tp_index);
+extern void (*tp_ftm_extra_notifier)(unsigned int tp_index);
+extern int (*tp_reset_gpio_notifier)(bool enable, unsigned int tp_index);
+extern int shutdown_flag;
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef OPLUS_BUG_STABILITY
+static int first_bl_on = 1;
+bool is_pd_with_guesture = false;
+#endif /* OPLUS_BUG_STABILITY */
 
 static void dsi_dce_prepare_pps_header(char *buf, u32 pps_delay_ms)
 {
@@ -433,6 +449,11 @@ static int dsi_panel_set_pinctrl_state(struct dsi_panel *panel, bool enable)
 static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
+#ifdef OPLUS_FEATURE_TP_BASIC
+	int mode = 0;
+	int blank;
+	struct msm_drm_notifier notifier_data;
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 #ifdef OPLUS_BUG_STABILITY
     pr_err("debug for dsi_panel_power_on\n");
@@ -450,6 +471,11 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	}
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+	if (strcmp(panel->name,"nt36672c tm fhd plus video mode dsi panel")
+		&& strcmp(panel->name,"nt36672c dsjm fhd plus video mode dsi panel")
+		&& strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel"))
+#endif /*OPLUS_BUG_STABILITY*/
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
 		DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
@@ -481,10 +507,27 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 #endif
 
 	rc = dsi_panel_reset(panel);
+#ifdef OPLUS_FEATURE_TP_BASIC
+		blank = 0x19;
+		notifier_data.data = &blank;
+		notifier_data.id = 0;
+		msm_drm_notifier_call_chain(MSM_DRM_EVENT_FOR_TOUCH, &notifier_data);
+#endif /* OPLUS_FEATURE_TP_BASIC */
 	if (rc) {
 		DSI_ERR("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
 		goto error_disable_gpio;
 	}
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+	mode = get_boot_mode();
+	pr_err("[TP] in dsi_panel_power_on, mode=%d\n",mode);
+	if((mode != MSM_BOOT_MODE__FACTORY) && (mode != MSM_BOOT_MODE__RF) && (mode != MSM_BOOT_MODE__WLAN)) {
+		blank = 0x10;
+		notifier_data.data = &blank;
+		notifier_data.id = 0;
+		msm_drm_notifier_call_chain(MSM_DRM_EVENT_FOR_TOUCH, &notifier_data);
+	}
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 	goto exit;
 
@@ -507,6 +550,11 @@ exit:
 static int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
+#ifdef OPLUS_FEATURE_TP_BASIC
+	int mode = 0;
+	int blank;
+	struct msm_drm_notifier notifier_data;
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 	if (panel->is_twm_en || panel->skip_panel_off) {
 		DSI_DEBUG("TWM Enabled, skip panel power off\n");
@@ -517,12 +565,49 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	pr_err("debug for dsi_panel_power_off\n");
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+	if (!strcmp(panel->oplus_priv.vendor_name,"NT36672C-90HZ")
+		|| !strcmp(panel->oplus_priv.vendor_name,"ILI7807S-90HZ")) {
+			first_bl_on = 1;
+	}
+#endif /*OPLUS_BUG_STABILITY*/
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+	mode = get_boot_mode();
+	pr_err("[TP] in dsi_panel_power_off, mode=%d\n",mode);
+	if((mode != MSM_BOOT_MODE__FACTORY) && (mode != MSM_BOOT_MODE__RF) && (mode != MSM_BOOT_MODE__WLAN)) {
+		if(tp_gesture_enable_notifier && tp_gesture_enable_notifier(0)) {
+			is_pd_with_guesture = true;
+			pr_err("[TP] shutdown_flag status is %d\n", shutdown_flag);
+			if (shutdown_flag == 0) {
+				pr_err("[TP] tp gesture is enable, Display not to power off\n");
+				return rc;
+			}
+		}
+		is_pd_with_guesture = false;
+		blank = 0x1A;
+		notifier_data.data = &blank;
+		notifier_data.id = 0;
+		msm_drm_notifier_call_chain(MSM_DRM_EVENT_FOR_TOUCH, &notifier_data);
+	}
+	pr_err("[TP] tp gesture is disenable, Display goto power off\n");
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
 	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
 		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
 	if (gpio_is_valid(panel->reset_config.reset_gpio) &&
 					!panel->reset_gpio_always_on)
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+	if((mode == MSM_BOOT_MODE__FACTORY) || (mode == MSM_BOOT_MODE__RF) || (mode == MSM_BOOT_MODE__WLAN)) {
+		if(!strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel") && tp_reset_gpio_notifier) {
+			tp_reset_gpio_notifier(0, 0);
+			pr_err("[TP] ilitek tp ftm mode set TP RST low\n");
+		}
+	}
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
@@ -1110,7 +1195,9 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 
 	if ((!strcmp(panel->oplus_priv.vendor_name, "AMB655X")) ||
 		(!strcmp(panel->oplus_priv.vendor_name, "AMB670YF01")) ||
+		(!strcmp(panel->oplus_priv.vendor_name, "ILI7807S-90HZ")) ||
 		(!strcmp(panel->oplus_priv.vendor_name, "S6E3HC3")) ||
+		(!strcmp(panel->oplus_priv.vendor_name, "NT36672C-90HZ")) ||
 		(!strcmp(panel->oplus_priv.vendor_name, "NT37701")) ||
 		(!strcmp(panel->oplus_priv.vendor_name, "AMS662ZS01")) ||
 		(!strcmp(panel->oplus_priv.vendor_name, "AMS643YE01"))) {
@@ -1118,6 +1205,18 @@ int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 	} else {
 		DSI_DEBUG("backlight type:%d lvl:%d\n", bl->type, bl_lvl);
 	}
+
+#ifdef OPLUS_BUG_STABILITY
+	if(bl->type == DSI_BACKLIGHT_WLED) {
+		if (!strcmp(panel->oplus_priv.vendor_name,"NT36672C-90HZ")
+			|| !strcmp(panel->oplus_priv.vendor_name,"ILI7807S-90HZ")) {
+			if (bl_lvl > 0 && first_bl_on) {
+				usleep_range(18000, 18000);
+				first_bl_on = 0;
+			}
+		}
+	}
+#endif /*OPLUS_BUG_STABILITY*/
 
 	switch (bl->type) {
 	case DSI_BACKLIGHT_WLED:
@@ -5028,6 +5127,42 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 	iris_power_on(panel);
 #endif
 
+#ifdef OPLUS_BUG_STABILITY
+	if (!strcmp(panel->name,"nt36672c tm fhd plus video mode dsi panel") \
+		|| !strcmp(panel->name,"nt36672c dsjm fhd plus video mode dsi panel") \
+		|| !strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel")) {
+		if (gpio_is_valid(panel->reset_config.reset_gpio) \
+			&& (true == is_pd_with_guesture)) {
+			rc = gpio_direction_output(panel->reset_config.reset_gpio, 0);
+			if (rc) {
+				DSI_ERR("unable to set dir for  reset gpio rc=%d", rc);
+			}
+			gpio_set_value(panel->reset_config.reset_gpio, 0);
+			usleep_range(9000, 10000);
+			pr_err("%s: reset gpio 0", __func__);
+		}
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+		if (true != is_pd_with_guesture) {
+			pr_err("[TP]:power_on-is_pd_with_guesture = false\n");
+			rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+		}
+		if (rc) {
+			DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+					panel->name, rc);
+			goto error;
+		}
+#else
+		rc = dsi_pwr_enable_regulator(&panel->power_info, true);
+		if (rc) {
+			DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+					panel->name, rc);
+			goto error;
+		}
+#endif /* OPLUS_FEATURE_TP_BASIC */
+	}
+#endif
+
 	/* If LP11_INIT is set, panel will be powered up during prepare() */
 	if (panel->lp11_init)
 		goto error;
@@ -5781,6 +5916,20 @@ int dsi_panel_disable(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+	if(!strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel")) {
+		if((get_boot_mode() == MSM_BOOT_MODE__FACTORY) ||
+			(get_boot_mode() == MSM_BOOT_MODE__RF) ||
+			(get_boot_mode() == MSM_BOOT_MODE__WLAN)) {
+			if(tp_ftm_extra_notifier) {
+				tp_ftm_extra_notifier(0);
+				pr_err("[TP] ilitek tp ftm mode goto sleep\n");
+			}
+		}
+		usleep_range(10000, 10000);
+	}
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
 		/*
@@ -5823,6 +5972,9 @@ int dsi_panel_disable(struct dsi_panel *panel)
 int dsi_panel_unprepare(struct dsi_panel *panel)
 {
 	int rc = 0;
+#ifdef OPLUS_FEATURE_TP_BASIC
+	int mode = 0;
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
@@ -5842,6 +5994,28 @@ int dsi_panel_unprepare(struct dsi_panel *panel)
 		       panel->name, rc);
 		goto error;
 	}
+
+#ifdef OPLUS_BUG_STABILITY
+	if (!strcmp(panel->name,"nt36672c tm fhd plus video mode dsi panel") \
+		|| !strcmp(panel->name,"nt36672c dsjm fhd plus video mode dsi panel") \
+		|| !strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel")) {
+#ifdef OPLUS_FEATURE_TP_BASIC
+		mode = get_boot_mode();
+		pr_err("[TP] in dsi_panel_unprepare, mode=%d\n",mode);
+		if((mode != MSM_BOOT_MODE__FACTORY) && (mode != MSM_BOOT_MODE__RF) && (mode != MSM_BOOT_MODE__WLAN)) {
+			if ((1 != tp_gesture_enable_notifier(0)) || (shutdown_flag == 1)) {
+				pr_info("%s:%d tp gesture is off set reset 0", __func__, __LINE__);
+				if (gpio_is_valid(panel->reset_config.reset_gpio))
+					gpio_set_value(panel->reset_config.reset_gpio, 0);
+				usleep_range(5000, 6000);
+				if(!strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel") && tp_reset_gpio_notifier) {
+					tp_reset_gpio_notifier(0, 0);
+				}
+			}
+		}
+#endif /* OPLUS_FEATURE_TP_BASIC */
+	}
+#endif /*OPLUS_BUG_STABILITY*/
 
 error:
 	mutex_unlock(&panel->panel_lock);

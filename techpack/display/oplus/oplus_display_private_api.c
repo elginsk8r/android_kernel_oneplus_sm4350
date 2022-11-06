@@ -86,6 +86,10 @@ u32 oplus_backlight_delta = 0;
 
 int oplus_dimlayer_hbm = 0;
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+int shutdown_flag = 0;
+#endif /*OPLUS_FEATURE_TP_BASIC*/
+
 /*#ifdef OPLUS_BUG_STABILITY*/
 int dsi_cmd_log_enable = 0;
 int dsi_cmd_panel_debug = 0;
@@ -2895,6 +2899,28 @@ static ssize_t oplus_display_get_fp_state(struct kobject *obj,
 	return sprintf(buf, "%d,%d,%d\n", fp_state.x, fp_state.y, fp_state.touch_state);
 }
 
+#ifdef OPLUS_FEATURE_TP_BASIC
+static ssize_t oplus_get_shutdownflag(struct kobject *obj,
+		struct kobj_attribute *attr, char *buf)
+{
+	printk(KERN_INFO "get shutdown_flag = %d\n",shutdown_flag);
+	return sprintf(buf, "%d\n", shutdown_flag);
+}
+
+static ssize_t oplus_set_shutdownflag(struct kobject *obj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int flag = 0;
+	sscanf(buf, "%du", &flag);
+	if (1 == flag) {
+		shutdown_flag = 1;
+	}
+	pr_err("shutdown_flag = %d\n",shutdown_flag);
+	return count;
+}
+#endif /*OPLUS_FEATURE_TP_BASIC*/
+
 static struct kobject *oplus_display_kobj;
 
 static OPLUS_ATTR(hbm, S_IRUGO | S_IWUSR, oplus_display_get_hbm,
@@ -2963,6 +2989,10 @@ static OPLUS_ATTR(dsi_cmd_log_switch, S_IRUGO | S_IWUSR, oplus_display_get_dsi_c
                         oplus_display_set_dsi_cmd_log_switch);
 /*#endif*/
 static OPLUS_ATTR(fp_state, S_IRUGO, oplus_display_get_fp_state, NULL);
+#ifdef OPLUS_FEATURE_TP_BASIC
+static OPLUS_ATTR(shutdownflag, S_IRUGO | S_IWUSR, oplus_get_shutdownflag,
+		   oplus_set_shutdownflag);
+#endif /*OPLUS_FEATURE_TP_BASIC*/
 
 #ifdef OPLUS_BUG_STABILITY
 static DEVICE_ATTR(adfr_debug, S_IRUGO|S_IWUSR, oplus_adfr_get_debug, oplus_adfr_set_debug);
@@ -3017,6 +3047,9 @@ static struct attribute *oplus_display_attrs[] = {
         &oplus_attr_dsi_cmd_log_switch.attr,
 /*#endif*/
 	&oplus_attr_fp_state.attr,
+#ifdef OPLUS_FEATURE_TP_BASIC
+	&oplus_attr_shutdownflag.attr,
+#endif /*OPLUS_FEATURE_TP_BASIC*/
 	NULL,	/* need to NULL terminate the list of attributes */
 };
 
