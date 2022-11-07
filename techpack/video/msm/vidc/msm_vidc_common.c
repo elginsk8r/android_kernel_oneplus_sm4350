@@ -3444,6 +3444,7 @@ static void msm_vidc_print_running_insts(struct msm_vidc_core *core)
 	mutex_unlock(&core->lock);
 }
 
+
 static int msm_vidc_load_resources(int flipped_state,
 	struct msm_vidc_inst *inst)
 {
@@ -3479,10 +3480,13 @@ static int msm_vidc_load_resources(int flipped_state,
 	video_load += msm_comm_get_device_load(core,
 					MSM_VIDC_ENCODER, MSM_VIDC_VIDEO,
 					quirks);
-
 	max_video_load = inst->core->resources.max_load +
 				inst->capability.cap[CAP_MBS_PER_FRAME].max;
 	max_image_load = inst->core->resources.max_image_load;
+
+#ifdef OPLUS_ARCH_EXTENDS
+	max_video_load += NUM_MBS_PER_SEC(1920, 1088,40);
+#endif
 
 	if (video_load > max_video_load) {
 		s_vpr_e(inst->sid,
@@ -5928,7 +5932,9 @@ static int msm_vidc_check_mbps_supported(struct msm_vidc_inst *inst)
 
 		max_video_load = inst->core->resources.max_load;
 		max_image_load = inst->core->resources.max_image_load;
-
+#ifdef OPLUS_ARCH_EXTENDS
+		max_video_load += NUM_MBS_PER_SEC(1920, 1088,40);
+#endif
 		if (video_load > max_video_load) {
 			s_vpr_e(inst->sid,
 				"H/W is overloaded. needed: %d max: %d\n",
@@ -7769,8 +7775,16 @@ u32 msm_comm_calc_framerate(struct msm_vidc_inst *inst,
 {
 	u32 framerate = inst->clk_data.frame_rate;
 	u32 interval;
+
+#ifndef OPLUS_ARCH_EXTENDS
 	struct msm_vidc_capability *capability;
 	capability = &inst->capability;
+#else /* OPLUS_ARCH_EXTENDS */
+	struct v4l2_format *f;
+	u32 output_height, output_width;
+	u32 fpsLimit;
+	int max_video_load = 0;
+#endif  /* OPLUS_ARCH_EXTENDS */
 
 	if (timestamp_us <= prev_ts) {
 		s_vpr_e(inst->sid, "%s: invalid ts %lld, prev ts %lld\n",
@@ -7778,12 +7792,33 @@ u32 msm_comm_calc_framerate(struct msm_vidc_inst *inst,
 		return framerate;
 	}
 	interval = (u32)(timestamp_us - prev_ts);
+
+
+#ifndef OPLUS_ARCH_EXTENDS
 	framerate = (1000000 + interval / 2) / interval;
 	if (framerate > capability->cap[CAP_FRAMERATE].max)
 		framerate = capability->cap[CAP_FRAMERATE].max;
 	if (framerate < 1)
 		framerate = 1;
 	return framerate << 16;
+#else /* OPLUS_ARCH_EXTENDS */
+	framerate = ((1000000 + interval / 2) / interval) << 16;
+	f = &inst->fmts[OUTPUT_PORT].v4l2_fmt;
+	output_height = ALIGN(f->fmt.pix_mp.height, 16);
+	output_width = ALIGN(f->fmt.pix_mp.width, 16);
+	max_video_load = inst->core->resources.max_load;
+
+	fpsLimit = (u32)(max_video_load * 16 * 16 / (output_height * output_width) );
+
+
+	if((framerate >> 16) > fpsLimit) {
+        s_vpr_h(inst->sid, "%s:force from %d to fps:%d\n",
+			__func__, framerate >> 16,inst->clk_data.frame_rate >> 16);
+		framerate = inst->clk_data.frame_rate;
+	}
+	return framerate;
+#endif  /* OPLUS_ARCH_EXTENDS */
+
 }
 
 u32 msm_comm_get_max_framerate(struct msm_vidc_inst *inst)
@@ -7802,9 +7837,14 @@ u32 msm_comm_get_max_framerate(struct msm_vidc_inst *inst)
 		count++;
 		avg_framerate += node->framerate;
 	}
+#ifndef OPLUS_ARCH_EXTENDS
 	avg_framerate = count ? (avg_framerate / count) : (1 << 16);
-
 	s_vpr_l(inst->sid, "%s: fps %u, list size %d\n", __func__, avg_framerate, count);
+#else /* OPLUS_ARCH_EXTENDS */
+	avg_framerate = count > 12 ? (avg_framerate / count) : (15 << 16);
+	s_vpr_h(inst->sid, "%s: session type is %d,average fps %lld, list size %d\n",
+	    __func__, inst->session_type, avg_framerate >> 16, count);
+#endif /* OPLUS_ARCH_EXTENDS */
 	mutex_unlock(&inst->timestamps.lock);
 	return (u32)avg_framerate;
 }
