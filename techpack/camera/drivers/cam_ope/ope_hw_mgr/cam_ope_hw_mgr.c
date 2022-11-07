@@ -41,6 +41,7 @@
 #include "cam_cdm.h"
 #include "ope_dev_intf.h"
 
+
 static struct cam_ope_hw_mgr *ope_hw_mgr;
 
 static int cam_ope_req_timer_reset(struct cam_ope_ctx *ctx_data);
