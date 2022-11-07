@@ -28,6 +28,9 @@ void walt_init_sched_boost(struct task_group *tg)
 	tg->wtg.sched_boost_enabled = true;
 	tg->wtg.colocate = false;
 	tg->wtg.colocate_update_disabled = false;
+#ifdef OPLUS_FEATURE_POWER_CPUFREQ
+	tg->wtg.window_policy = 3;
+#endif
 }
 
 static void update_cgroup_boost_settings(void)
