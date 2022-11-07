@@ -22,6 +22,7 @@ WLAN_COMMON_INC ?= $(WLAN_ROOT)/$(WLAN_COMMON_ROOT)
 WLAN_FW_API ?= $(WLAN_ROOT)/../fw-api/
 WLAN_PROFILE ?= default
 CONFIG_QCA_CLD_WLAN_PROFILE ?= $(WLAN_PROFILE)
+DEVNAME ?= wlan
 
 ifeq ($(KERNEL_BUILD), n)
 ifneq ($(ANDROID_BUILD_TOP),)
@@ -84,6 +85,17 @@ HDD_OBJS := 	$(HDD_SRC_DIR)/wlan_hdd_assoc.o \
 		$(HDD_SRC_DIR)/wlan_hdd_tx_rx.o \
 		$(HDD_SRC_DIR)/wlan_hdd_wmm.o \
 		$(HDD_SRC_DIR)/wlan_hdd_wowl.o
+
+ifeq ($(CONFIG_OPLUS_FEATURE_WIFI_OPLUSWFD), y)
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_WIFI_OPLUSWFD
+HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_oplus_wfd.o
+endif
+
+ifeq ($(CONFIG_OPLUS_FEATURE_WIFI_OPLUSWFD), m)
+KBUILD_CPPFLAGS += -DOPLUS_FEATURE_WIFI_OPLUSWFD
+HDD_OBJS +=	$(HDD_SRC_DIR)/wlan_oplus_wfd.o
+endif
+### End
 
 ifeq ($(CONFIG_WLAN_FEATURE_PERIODIC_STA_STATS), y)
 HDD_OBJS += $(HDD_SRC_DIR)/wlan_hdd_periodic_sta_stats.o
@@ -3229,8 +3241,6 @@ cppflags-y += -DENABLE_HAL_SOC_STATS
 cppflags-y += -DENABLE_HAL_REG_WR_HISTORY
 cppflags-y += -DDP_RX_DESC_COOKIE_INVALIDATE
 cppflags-y += -DMON_ENABLE_DROP_FOR_MAC
-cppflags-y += -DPCI_LINK_STATUS_SANITY
-cppflags-y += -DDP_MON_RSSI_IN_DBM
 endif
 
 # Enable Low latency optimisation mode

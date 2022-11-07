@@ -60,6 +60,11 @@ static uint8_t re_init_fail_cnt, probe_fail_cnt;
 /* An atomic flag to check if SSR cleanup has been done or not */
 static qdf_atomic_t is_recovery_cleanup_done;
 
+#ifdef OPLUS_FEATURE_WIFI_OPLUSWFD
+extern void oplus_wfd_set_hdd_ctx(struct hdd_context *hdd_ctx);
+extern void oplus_register_oplus_wfd_wlan_ops_qcom(void);
+#endif
+
 /*
  * In BMI Phase we are only sending small chunk (256 bytes) of the FW image at
  * a time, and wait for the completion interrupt to start the next transfer.
@@ -525,26 +530,6 @@ static void hdd_soc_load_unlock(struct device *dev)
 	hdd_allow_suspend(WIFI_POWER_EVENT_WAKELOCK_DRIVER_INIT);
 }
 
-#ifdef DP_MEM_PRE_ALLOC
-/**
- * hdd_init_dma_mask() - Set the DMA mask for dma memory pre-allocation
- * @dev: device handle
- * @bus_type: Bus type for which init is being done
- *
- * Return: 0 - success, non-zero on failure
- */
-static int hdd_init_dma_mask(struct device *dev, enum qdf_bus_type bus_type)
-{
-	return hif_init_dma_mask(dev, bus_type);
-}
-#else
-static inline int
-hdd_init_dma_mask(struct device *dev, enum qdf_bus_type bus_type)
-{
-	return QDF_STATUS_SUCCESS;
-}
-#endif
-
 static int __hdd_soc_probe(struct device *dev,
 			   void *bdev,
 			   const struct hif_bus_id *bid,
@@ -562,10 +547,6 @@ static int __hdd_soc_probe(struct device *dev,
 	cds_set_recovery_in_progress(false);
 
 	errno = hdd_init_qdf_ctx(dev, bdev, bus_type, bid);
-	if (errno)
-		goto unlock;
-
-	errno = hdd_init_dma_mask(dev, bus_type);
 	if (errno)
 		goto unlock;
 
@@ -597,7 +578,10 @@ static int __hdd_soc_probe(struct device *dev,
 	cds_set_load_in_progress(false);
 	hdd_start_complete(0);
 	hdd_thermal_mitigation_register(hdd_ctx, dev);
-
+#ifdef OPLUS_FEATURE_WIFI_OPLUSWFD
+	oplus_wfd_set_hdd_ctx(hdd_ctx);
+	oplus_register_oplus_wfd_wlan_ops_qcom();
+#endif
 	hdd_soc_load_unlock(dev);
 
 	return 0;
@@ -774,6 +758,10 @@ static void __hdd_soc_remove(struct device *dev)
 
 	pr_info("%s: Removing driver v%s\n", WLAN_MODULE_NAME,
 		QWLAN_VERSIONSTR);
+
+#ifdef OPLUS_FEATURE_WIFI_OPLUSWFD
+	oplus_wfd_set_hdd_ctx(NULL);
+#endif
 
 	hif_ctx = cds_get_context(QDF_MODULE_ID_HIF);
 	if (hif_ctx) {

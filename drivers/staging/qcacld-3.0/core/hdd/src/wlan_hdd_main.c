@@ -2984,11 +2984,6 @@ wlan_hdd_update_dbs_scan_and_fw_mode_config(void)
 	if (!policy_mgr_find_if_fw_supports_dbs(hdd_ctx->psoc))
 		return QDF_STATUS_SUCCESS;
 
-	if (hdd_ctx->is_dual_mac_cfg_updated) {
-		hdd_debug("dual mac config has already been updated, skip");
-		return QDF_STATUS_SUCCESS;
-	}
-
 	cfg.scan_config = 0;
 	cfg.fw_mode_config = 0;
 	cfg.set_dual_mac_cb = policy_mgr_soc_set_dual_mac_cfg_cb;
@@ -3035,8 +3030,6 @@ wlan_hdd_update_dbs_scan_and_fw_mode_config(void)
 		/* wait for sme_soc_set_dual_mac_config to complete */
 		status =
 		    policy_mgr_wait_for_dual_mac_configuration(hdd_ctx->psoc);
-		if (QDF_IS_STATUS_SUCCESS(status))
-			hdd_ctx->is_dual_mac_cfg_updated = true;
 	} else {
 		hdd_err("sme_soc_set_dual_mac_config failed %d", status);
 		return status;
@@ -13161,6 +13154,16 @@ static int hdd_initialize_mac_address(struct hdd_context *hdd_ctx)
 
 	/* Use fw provided MAC */
 	if (!qdf_is_macaddr_zero(&hdd_ctx->hw_macaddr)) {
+		#ifdef OPLUS_FEATURE_WIFI_MAC
+		if (hdd_ctx->hw_macaddr.bytes[0] & 0x01) {
+			uint8_t opbytes[QDF_MAC_ADDR_SIZE];
+			int8_t ii;
+			for (ii = 0; ii < QDF_MAC_ADDR_SIZE; ++ii) {
+				opbytes[ii] = hdd_ctx->hw_macaddr.bytes[QDF_MAC_ADDR_SIZE - 1 - ii];
+			}
+			qdf_mem_copy(hdd_ctx->hw_macaddr.bytes, opbytes, QDF_MAC_ADDR_SIZE);
+		}
+		#endif /* OPLUS_FEATURE_WIFI_MAC */
 		hdd_update_macaddr(hdd_ctx, hdd_ctx->hw_macaddr, false);
 		update_mac_addr_to_fw = false;
 		return 0;
@@ -14323,7 +14326,6 @@ int hdd_wlan_stop_modules(struct hdd_context *hdd_ctx, bool ftm_mode)
 
 	/* Once the firmware sequence is completed reset this flag */
 	hdd_ctx->imps_enabled = false;
-	hdd_ctx->is_dual_mac_cfg_updated = false;
 	hdd_ctx->driver_status = DRIVER_MODULES_CLOSED;
 	hdd_debug("Wlan transitioned (now CLOSED)");
 
@@ -16019,7 +16021,7 @@ static ssize_t wlan_hdd_state_ctrl_param_write(struct file *filp,
 	static const char wlan_on_str[] = "ON";
 	int ret;
 	unsigned long rc;
-	struct hdd_context *hdd_ctx;
+	struct hdd_context *hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
 
 	if (copy_from_user(buf, user_buf, 3)) {
 		pr_err("Failed to read buffer\n");
@@ -16054,7 +16056,6 @@ static ssize_t wlan_hdd_state_ctrl_param_write(struct file *filp,
 	 * Flush idle shutdown work for cases to synchronize the wifi on
 	 * during the idle shutdown.
 	 */
-	hdd_ctx = cds_get_context(QDF_MODULE_ID_HDD);
 	if (hdd_ctx)
 		hdd_psoc_idle_timer_stop(hdd_ctx);
 

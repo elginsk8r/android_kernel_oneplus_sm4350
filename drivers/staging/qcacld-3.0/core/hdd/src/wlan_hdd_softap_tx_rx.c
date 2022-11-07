@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020 The Linux Foundation. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1117,8 +1117,6 @@ QDF_STATUS hdd_softap_rx_packet_cbk(void *adapter_context, qdf_nbuf_t rx_buf)
 		cpu_index = wlan_hdd_get_cpu();
 		++adapter->hdd_stats.tx_rx_stats.rx_packets[cpu_index];
 		++adapter->stats.rx_packets;
-		/* count aggregated RX frame into stats */
-		adapter->stats.rx_packets += qdf_nbuf_get_gso_segs(skb);
 		adapter->stats.rx_bytes += skb->len;
 
 		/* Send DHCP Indication to FW */
@@ -1137,6 +1135,15 @@ QDF_STATUS hdd_softap_rx_packet_cbk(void *adapter_context, qdf_nbuf_t rx_buf)
 			hdd_put_sta_info_ref(&adapter->sta_info_list, &sta_info,
 					     true,
 					     STA_INFO_SOFTAP_RX_PACKET_CBK);
+		}
+
+		if (qdf_unlikely(qdf_nbuf_is_ipv4_eapol_pkt(skb) &&
+				 qdf_mem_cmp(qdf_nbuf_data(skb) +
+					     QDF_NBUF_DEST_MAC_OFFSET,
+					     adapter->mac_addr.bytes,
+					     QDF_MAC_ADDR_SIZE))) {
+			qdf_nbuf_free(skb);
+			continue;
 		}
 
 		hdd_event_eapol_log(skb, QDF_RX);

@@ -554,7 +554,6 @@ static QDF_STATUS tdls_reset_all_peers(
 
 	if (!delete_all_peers_ind || !delete_all_peers_ind->vdev) {
 		tdls_err("invalid param");
-		qdf_mem_free(delete_all_peers_ind);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -1244,14 +1243,8 @@ QDF_STATUS tdls_notify_sta_connect(struct tdls_sta_notify_params *notify)
 {
 	QDF_STATUS status;
 
-	if (!notify) {
+	if (!notify || !notify->vdev) {
 		tdls_err("invalid param");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (!notify->vdev) {
-		tdls_err("invalid param");
-		qdf_mem_free(notify);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -1340,14 +1333,8 @@ QDF_STATUS tdls_notify_sta_disconnect(struct tdls_sta_notify_params *notify)
 {
 	QDF_STATUS status;
 
-	if (!notify) {
+	if (!notify || !notify->vdev) {
 		tdls_err("invalid param");
-		return QDF_STATUS_E_INVAL;
-	}
-
-	if (!notify->vdev) {
-		tdls_err("invalid param");
-		qdf_mem_free(notify);
 		return QDF_STATUS_E_INVAL;
 	}
 
@@ -1633,13 +1620,8 @@ QDF_STATUS tdls_set_operation_mode(struct tdls_set_mode_params *tdls_set_mode)
 	struct tdls_vdev_priv_obj *tdls_vdev;
 	QDF_STATUS status;
 
-	if (!tdls_set_mode)
+	if (!tdls_set_mode || !tdls_set_mode->vdev)
 		return QDF_STATUS_E_INVAL;
-
-	if (!tdls_set_mode->vdev) {
-		qdf_mem_free(tdls_set_mode);
-		return QDF_STATUS_E_INVAL;
-	}
 
 	status = tdls_get_vdev_objects(tdls_set_mode->vdev,
 				       &tdls_vdev, &tdls_soc);
