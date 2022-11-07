@@ -26,6 +26,11 @@
 #if !defined(__I_QDF_TRACE_H)
 #define __I_QDF_TRACE_H
 
+#ifdef OPLUS_BUG_STABILITY
+//modify for: close bug in user build
+#include <soc/oplus/system/oplus_project.h>
+#endif /* OPLUS_BUG_STABILITY */
+
 /* older kernels have a bug in kallsyms, so ensure module.h is included */
 #include <linux/module.h>
 #include <linux/kallsyms.h>
@@ -376,7 +381,16 @@ void __qdf_bug(void);
 #else /* CONFIG_SLUB_DEBUG */
 static inline void __qdf_bug(void)
 {
+#ifndef OPLUS_BUG_STABILITY
+//modify for: close bug in user build
 	BUG();
+#else /* OPLUS_BUG_STABILITY */
+	if (AGING == get_eng_version()) {
+		BUG();
+	} else {
+		WARN_ON(1);
+	}
+#endif /* OPLUS_BUG_STABILITY */
 }
 #endif /* CONFIG_SLUB_DEBUG */
 
@@ -414,13 +428,6 @@ static inline void __qdf_bug(void)
 		} \
 	} while (0)
 
-#define QDF_BUG_ON_ASSERT(_condition) \
-	do { \
-		if (!(_condition)) { \
-			__qdf_bug(); \
-		} \
-	} while (0)
-
 #else /* PANIC_ON_BUG */
 
 #define QDF_DEBUG_PANIC(reason...) \
@@ -434,13 +441,6 @@ static inline void __qdf_bug(void)
 	} while (false)
 
 #define QDF_BUG(_condition) \
-	do { \
-		if (!(_condition)) { \
-			/* no-op */ \
-		} \
-	} while (0)
-
-#define QDF_BUG_ON_ASSERT(_condition) \
 	do { \
 		if (!(_condition)) { \
 			/* no-op */ \
