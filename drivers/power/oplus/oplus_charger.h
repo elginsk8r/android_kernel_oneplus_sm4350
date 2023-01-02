@@ -14,10 +14,6 @@
 #ifndef _OPLUS_CHARGER_H_
 #define _OPLUS_CHARGER_H_
 
-#ifndef CONFIG_FB
-#define CONFIG_FB
-#endif
-
 #include <linux/power_supply.h>
 #include <linux/workqueue.h>
 #include <linux/version.h>
@@ -26,12 +22,11 @@
 #endif
 #ifdef CONFIG_HAS_EARLYSUSPEND
 #include <linux/earlysuspend.h>
-#elif defined CONFIG_FB
+#elif IS_ENABLED(CONFIG_QCOM_KGSL)
+#include <linux/msm_drm_notify.h>
+#elif IS_ENABLED(CONFIG_FB)
 #include <linux/notifier.h>
 #include <linux/fb.h>
-#ifdef CONFIG_DRM_MSM
-#include <linux/msm_drm_notify.h>
-#endif
 #endif
 
 #ifdef CONFIG_OPLUS_CHARGER_MTK
@@ -696,7 +691,7 @@ struct oplus_chg_chip {
 	bool fg_bcl_poll;
 	bool chg_powersave;
 	bool healthd_ready;
-#ifdef CONFIG_FB
+#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_QCOM_KGSL)
 	struct notifier_block chg_fb_notify;
 #endif
 	struct normalchg_gpio_pinctrl normalchg_gpio;

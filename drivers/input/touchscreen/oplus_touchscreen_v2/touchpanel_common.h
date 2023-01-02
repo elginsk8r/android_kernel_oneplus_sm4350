@@ -804,7 +804,7 @@ struct touchpanel_data {
 	struct work_struct     speed_up_work;               /*using for speedup resume*/
 	/*using for touchpanel speedup resume wq*/
 	struct workqueue_struct *speedup_resume_wq;
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY) || IS_ENABLED(CONFIG_FB)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 	struct notifier_block fb_notif;	/*register to control suspend/resume*/
 #endif
 

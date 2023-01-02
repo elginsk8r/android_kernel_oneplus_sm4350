@@ -38,12 +38,7 @@
 #endif
 #endif
 
-#if IS_ENABLED(CONFIG_FB)
-#include <linux/fb.h>
-#include <linux/notifier.h>
-#endif
-
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 #include <linux/msm_drm_notify.h>
 #endif
 
@@ -72,7 +67,7 @@ static void speedup_resume(struct work_struct *work);
 static void lcd_trigger_load_tp_fw(struct work_struct *work);
 void esd_handle_switch(struct esd_information *esd_info, bool flag);
 
-#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 static int fb_notifier_callback(struct notifier_block *self,
 				unsigned long event, void *data);
 #endif
@@ -2613,7 +2608,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 	}
 
 	/*step15 : suspend && resume fuction register*/
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 	ts->fb_notif.notifier_call = fb_notifier_callback;
 	ret = msm_drm_register_client(&ts->fb_notif);
 
@@ -2621,17 +2616,7 @@ int register_common_touch_device(struct touchpanel_data *pdata)
 		TP_INFO(ts->tp_index, "Unable to register fb_notifier: %d\n", ret);
 		goto err_check_functionality_failed;
 	}
-
-#elif IS_ENABLED(CONFIG_FB)
-	ts->fb_notif.notifier_call = fb_notifier_callback;
-	ret = fb_register_client(&ts->fb_notif);
-
-	if (ret) {
-		TP_INFO(ts->tp_index, "Unable to register fb_notifier: %d\n", ret);
-		goto err_check_functionality_failed;
-	}
-
-#endif/*CONFIG_FB*/
+#endif/*CONFIG_QCOM_KGSL*/
 
 	if (ts->headset_pump_support) {
 		snprintf(name, TP_NAME_SIZE_MAX, "headset_pump%d", ts->tp_index);
@@ -2822,10 +2807,8 @@ error_headset_pump:
 	}
 
 error_fb_notif:
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 	msm_drm_unregister_client(&ts->fb_notif);
-#elif IS_ENABLED(CONFIG_FB)
-	fb_unregister_client(&ts->fb_notif);
 #endif
 
 err_check_functionality_failed:
@@ -2843,7 +2826,7 @@ EXPORT_SYMBOL(register_common_touch_device);
 void unregister_common_touch_device(struct touchpanel_data *pdata)
 {
 	struct touchpanel_data *ts = pdata;
-#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 	int ret;
 #endif
 
@@ -2903,7 +2886,7 @@ void unregister_common_touch_device(struct touchpanel_data *pdata)
 	}
 
 	/*step7 : suspend && resume fuction register*/
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 
 	if (ts->fb_notif.notifier_call) {
 		ret = msm_drm_unregister_client(&ts->fb_notif);
@@ -2912,18 +2895,7 @@ void unregister_common_touch_device(struct touchpanel_data *pdata)
 			TP_INFO(ts->tp_index, "Unable to register fb_notifier: %d\n", ret);
 		}
 	}
-
-#elif IS_ENABLED(CONFIG_FB)
-
-	if (ts->fb_notif.notifier_call) {
-		ret = fb_unregister_client(&ts->fb_notif);
-
-		if (ret) {
-			TP_INFO(ts->tp_index, "Unable to unregister fb_notifier: %d\n", ret);
-		}
-	}
-
-#endif/*CONFIG_FB*/
+#endif/*CONFIG_QCOM_KGSL*/
 
 	/*free regulator*/
 	if (!IS_ERR_OR_NULL(ts->hw_res.avdd)) {
@@ -3212,7 +3184,7 @@ EXIT:
 	mutex_unlock(&ts->mutex);
 }
 
-#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 static void lcd_off_early_event(struct touchpanel_data *ts)
 {
 	ts->suspend_state = TP_SUSPEND_EARLY_EVENT;      /*set suspend_resume_state*/
@@ -3291,7 +3263,7 @@ static void lcd_other_event(int *blank, struct touchpanel_data *ts)
 static int fb_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
 	int *blank;
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 	struct msm_drm_notifier *evdata = data;
 #else
 	struct fb_event *evdata = data;
@@ -3301,7 +3273,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 				     fb_notif);
 
 	/*to aviod some kernel bug (at fbmem.c some local veriable are not initialized)*/
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 	if (event != MSM_DRM_EARLY_EVENT_BLANK && event != MSM_DRM_EVENT_BLANK
 	    && event != MSM_DRM_EVENT_FOR_TOUCH)
 #else
@@ -3313,7 +3285,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 	if (evdata && evdata->data && ts && ts->chip_data) {
 		blank = evdata->data;
 		TP_INFO(ts->tp_index, "%s: event = %ld, blank = %d\n", __func__, event, *blank);
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 
 		if (*blank == MSM_DRM_BLANK_POWERDOWN) { /*suspend*/
 			if (event == MSM_DRM_EARLY_EVENT_BLANK) {    /*early event*/
@@ -3326,7 +3298,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 				}
 
 				lcd_off_early_event(ts);
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 
 			} else if (event == MSM_DRM_EVENT_BLANK) {   /*event*/
 #else
@@ -3335,7 +3307,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 				lcd_off_event(ts);
 			}
 
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 
 		} else if (*blank == MSM_DRM_BLANK_UNBLANK) { /*resume*/
 			if (event == MSM_DRM_EARLY_EVENT_BLANK) {    /*early event*/
@@ -3345,7 +3317,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 #endif
 				lcd_on_early_event(ts);
 
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 
 			} else if (event == MSM_DRM_EVENT_BLANK) {   /*event*/
 #else
@@ -3353,7 +3325,7 @@ static int fb_notifier_callback(struct notifier_block *self, unsigned long event
 #endif
 				lcd_on_event(ts);
 			}
-#if IS_ENABLED(CONFIG_DRM_MSM) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY)
 		} else if (event == MSM_DRM_EVENT_FOR_TOUCH) {   //event
 #else
 		} else if (event == FB_EVENT_BLANK_FOR_TOUCH) {   //event
