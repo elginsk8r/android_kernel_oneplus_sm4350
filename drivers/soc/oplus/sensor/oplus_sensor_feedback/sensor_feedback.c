@@ -775,8 +775,7 @@ static struct file_operations sensor_list_fops = {
 };
 #endif
 
-//#ifdef CONFIG_FB
-#if defined(CONFIG_DRM_MSM)
+#if defined(CONFIG_QCOM_KGSL)
 static int sensor_fb_notifier(struct notifier_block *nb,
 	unsigned long event, void *data)
 {
@@ -816,33 +815,7 @@ static int sensor_fb_notifier(struct notifier_block *nb,
 	}
 	return 0;
 }
-#elif defined(CONFIG_FB)
-static int sensor_fb_notifier(struct notifier_block *nb,
-	unsigned long event, void *data)
-{
-	int blank;
-	struct fb_event *evdata = data;
-	struct sensor_fb_cxt *sns_cxt = container_of(nb, struct sensor_fb_cxt, fb_notif);
-	struct timespec now_time;
-
-	if (evdata && evdata->data) {
-		//if(event == FB_EARLY_EVENT_BLANK || event == FB_EVENT_BLANK)
-		if (event == FB_EVENT_BLANK) {
-			blank = *(int *)evdata->data;
-
-			if (blank == FB_BLANK_UNBLANK) { //resume
-				pr_info("%s: sensor_fb_notifier resume \n", __func__);
-			} else if (blank == FB_BLANK_POWERDOWN) { //suspend
-				pr_info("%s: sensor_fb_notifier suspend \n", __func__);
-			} else {
-				pr_info("%s: receives wrong data EARLY_BLANK:%d\n", __func__, blank);
-			}
-		}
-	}
-	return 0;
-}
-#endif /* CONFIG_DRM_MSM */
-//#endif /* CONFIG_FB */
+#endif /* CONFIG_QCOM_KGSL */
 
 
 static int create_sensor_node(struct sensor_fb_cxt *sensor_fb_cxt) {
@@ -885,19 +858,13 @@ static int sensor_sleep_ratio_init(struct sensor_fb_cxt *sensor_fb_cxt) {
 
 	pr_err("sensor_sleep_ratio_init,err=%d\n", err);
 	subsystem_desc_init(sensor_fb_cxt->subsystem_desc);
-#if defined(CONFIG_DRM_MSM)
+#if defined(CONFIG_QCOM_KGSL)
 	sensor_fb_cxt->fb_notif.notifier_call = sensor_fb_notifier;
 	err = msm_drm_register_client(&sensor_fb_cxt->fb_notif);
 	if (err) {
 		pr_err("Unable to register fb_notifier: %d\n", err);
 	}
-#elif defined(CONFIG_FB)
-	sensor_fb_cxt->fb_notif.notifier_call = sensor_fb_notifier;
-	err = fb_register_client(&sensor_fb_cxt->fb_notif);
-	if (err) {
-		pr_err("Unable to register fb_notifier: %d\n", err);
-	}
-#endif/*CONFIG_FB*/
+#endif/*CONFIG_QCOM_KGSL*/
 	return ret;
 }
 
