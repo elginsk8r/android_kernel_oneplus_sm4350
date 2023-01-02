@@ -125,7 +125,7 @@ static void oplus_chg_pdqc_to_normal(struct oplus_chg_chip *chip);
 static void oplus_get_smooth_soc_switch(struct oplus_chg_chip *chip);
 static void oplus_chg_pd_config(struct oplus_chg_chip *chip);
 static void oplus_chg_qc_config(struct oplus_chg_chip *chip);
-#ifdef  CONFIG_FB
+#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_QCOM_KGSL)
 static int fb_notifier_callback(struct notifier_block *nb, unsigned long event, void *data);
 #endif
 void oplus_chg_ui_soc_decimal_init(void);
@@ -1883,17 +1883,17 @@ int oplus_chg_init(struct oplus_chg_chip *chip)
 		goto power_psy_reg_failed;
 	}
 
-#ifdef CONFIG_FB
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_FB)
 	chip->chg_fb_notify.notifier_call = fb_notifier_callback;
-#ifdef CONFIG_DRM_MSM
+#if IS_ENABLED(CONFIG_QCOM_KGSL)
 	rc = msm_drm_register_client(&chip->chg_fb_notify);
-#else
+#elif IS_ENABLED(CONFIG_FB)
 	rc = fb_register_client(&chip->chg_fb_notify);
-#endif /*CONFIG_DRM_MSM*/
+#endif
 	if (rc) {
 		pr_err("Unable to register chg_fb_notify: %d\n", rc);
 	}
-#endif
+#endif /* CONFIG_FB */
 
 	oplus_chg_debug_info_init();
 	init_proc_chg_log();
@@ -4315,8 +4315,7 @@ static bool oplus_chg_check_time_is_good(struct oplus_chg_chip *chip)
 	}
 }
 
-#ifdef CONFIG_FB
-#ifdef CONFIG_DRM_MSM
+#if IS_ENABLED(CONFIG_QCOM_KGSL)
 static int fb_notifier_callback(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -4344,7 +4343,7 @@ static int fb_notifier_callback(struct notifier_block *nb,
 	}
 	return 0;
 }
-#else
+#elif IS_ENABLED(CONFIG_FB)
 static int fb_notifier_callback(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -4368,7 +4367,7 @@ static int fb_notifier_callback(struct notifier_block *nb,
 	}
 	return 0;
 }
-#endif /* CONFIG_DRM_MSM */
+#endif /* CONFIG_FB */
 
 void oplus_chg_set_allow_switch_to_fastchg(bool allow)
 {
@@ -4380,6 +4379,7 @@ void oplus_chg_set_allow_switch_to_fastchg(bool allow)
 	}
 }
 
+#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_FB)
 void oplus_chg_set_led_status(bool val)
 {
 	/*Do nothing*/
