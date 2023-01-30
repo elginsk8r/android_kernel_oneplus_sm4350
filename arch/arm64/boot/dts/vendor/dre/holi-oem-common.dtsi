@@ -1,0 +1,49 @@
+/* DTB: Platform related generic modifications */
+#include "../qcom/holi.dtsi"
+
+&wdog {
+		qcom,bark-time = <22000>;
+};
+
+&spmi_bus {
+	qcom,pm6350@0 {
+		qcom,power-on@800 {
+			qcom,pmicwd;
+		};
+	};
+};
+
+//#ifdef OPLUS_BUG_STABILITY
+&icnss {
+	use-nv-mac;
+	//Delete L11E for dre
+	/delete-property/vdd-3.3-ch1-supply;
+	/delete-property/qcom,vdd-3.3-ch1-config;
+};
+//#endif /* OPLUS_BUG_STABILITY */
+
+//#ifdef OPLUS_FEATURE_THERMAL_HORAE
+/ {
+        shell_front {
+                compatible = "oplus,shell-temp";
+        };
+
+        shell_frame {
+                compatible = "oplus,shell-temp";
+        };
+
+        shell_back {
+                compatible = "oplus,shell-temp";
+        };
+};
+//#endif
+
+&L11E {
+	regulator-min-microvolt = <2700000>;
+	regulator-max-microvolt = <2700000>;
+	qcom,init-voltage = <2700000>;
+	status = "okay";
+};
+
+
+
