@@ -287,35 +287,6 @@ static void dp_parser_bl_config(struct dp_parser *parser)
 		parser->brightness_max_level = val;
 	}
 
-#ifdef OPLUS_BUG_STABILITY
-	rc = of_property_read_u32(of_node, "qcom,edp-bl-normal-max-level",
-				&val);
-	if (rc) {
-		DSI_DEBUG("[%s] bl-normal-max-level unspecified, defaulting to bl-max-level\n");
-		parser->bl_normal_max_level = parser->bl_max_level;
-	} else {
-		parser->bl_normal_max_level = val;
-	}
-
-	rc = of_property_read_u32(of_node, "qcom,edp-brightness-normal-max-level",
-				&val);
-	if (rc) {
-		DP_DEBUG("brigheness-normal-max-level unspecified, defaulting to brigheness-max-level\n");
-		parser->brightness_normal_max_level = parser->brightness_max_level;
-	} else {
-		parser->brightness_normal_max_level = val;
-	}
-
-	rc = of_property_read_u32(of_node, "qcom,edp-brightness-default-level",
-				&val);
-	if (rc) {
-		DP_DEBUG("brightness-default-level unspecified, defaulting to brigheness-max-level\n");
-		parser->brightness_default_level = parser->brightness_max_level;
-	} else {
-		parser->brightness_default_level = val;
-	}
-#endif
-
 	rc = of_property_read_u32(of_node, "qcom,bl-pmic-pwm-period-usecs",
 				&val);
 	if (rc) {
