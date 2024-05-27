@@ -1478,12 +1478,11 @@ static void _sde_cp_crtc_enable_hist_irq(struct sde_crtc *sde_crtc)
 
 	spin_lock_irqsave(&sde_crtc->spin_lock, flags);
 	node = _sde_cp_get_intr_node(DRM_EVENT_HISTOGRAM, sde_crtc);
-
+#ifdef OPLUS_BUG_STABILITY
 	if (!node) {
 		spin_unlock_irqrestore(&sde_crtc->spin_lock, flags);
 		return;
 	}
-
 	spin_lock_irqsave(&node->state_lock, state_flags);
 	if (node->state == IRQ_DISABLED) {
 		ret = sde_core_irq_enable(kms, &irq_idx, 1);
@@ -1494,6 +1493,7 @@ static void _sde_cp_crtc_enable_hist_irq(struct sde_crtc *sde_crtc)
 	}
 	spin_unlock_irqrestore(&node->state_lock, state_flags);
 	spin_unlock_irqrestore(&sde_crtc->spin_lock, flags);
+#endif/* OPLUS_BUG_STABILITY */
 }
 
 static int sde_cp_crtc_checkfeature(struct sde_cp_node *prop_node,
@@ -2395,6 +2395,9 @@ void sde_cp_crtc_destroy_properties(struct drm_crtc *crtc)
 	}
 	sde_crtc->ltm_buffer_cnt = 0;
 	sde_crtc->ltm_hist_en = false;
+#ifdef OPLUS_BUG_STABILITY
+	sde_crtc->hist_irq_idx = -1;
+#endif/* OPLUS_BUG_STABILITY */
 	sde_crtc->ltm_merge_clear_pending = false;
 	SDE_EVT32(DRMID(crtc), sde_crtc->ltm_merge_clear_pending);
 	sde_crtc->hist_irq_idx = -1;
@@ -2493,6 +2496,9 @@ void sde_cp_crtc_clear(struct drm_crtc *crtc)
 	}
 	sde_crtc->ltm_buffer_cnt = 0;
 	sde_crtc->ltm_hist_en = false;
+#ifdef OPLUS_BUG_STABILITY
+	sde_crtc->hist_irq_idx = -1;
+#endif/* OPLUS_BUG_STABILITY */
 	sde_crtc->ltm_merge_clear_pending = false;
 	sde_crtc->hist_irq_idx = -1;
 	INIT_LIST_HEAD(&sde_crtc->ltm_buf_free);
@@ -3328,6 +3334,7 @@ static void sde_cp_hist_interrupt_cb(void *arg, int irq_idx)
 	u32 lock_hist = 1;
 	u32 i;
 
+#ifdef OPLUS_BUG_STABILITY
 	/* lock histogram buffer */
 	for (i = 0; i < crtc->num_mixers; i++) {
 		hw_dspp = crtc->mixers[i].hw_dspp;
@@ -3339,6 +3346,7 @@ static void sde_cp_hist_interrupt_cb(void *arg, int irq_idx)
 	/* notify histogram event */
 	sde_crtc_event_queue(crtc_drm, sde_cp_notify_hist_event,
 						&crtc->hist_irq_idx, true);
+#endif/* OPLUS_BUG_STABILITY */
 }
 
 static void sde_cp_notify_hist_event(struct drm_crtc *crtc_drm, void *arg)
@@ -3353,6 +3361,7 @@ static void sde_cp_notify_hist_event(struct drm_crtc *crtc_drm, void *arg)
 	int ret, irq_idx;
 	u32 i, lock_hist = 0;
 
+#ifdef OPLUS_BUG_STABILITY
 	if (!crtc_drm || !arg) {
 		DRM_ERROR("invalid drm crtc %pK or arg %pK\n", crtc_drm, arg);
 		return;
@@ -3369,8 +3378,7 @@ static void sde_cp_notify_hist_event(struct drm_crtc *crtc_drm, void *arg)
 		SDE_ERROR("invalid arg(s)\n");
 		return;
 	}
-
-	/* disable histogram irq */
+/* disable histogram irq */
 	spin_lock_irqsave(&crtc->spin_lock, flags);
 	node = _sde_cp_get_intr_node(DRM_EVENT_HISTOGRAM, crtc);
 
@@ -3427,7 +3435,7 @@ static void sde_cp_notify_hist_event(struct drm_crtc *crtc_drm, void *arg)
 
 	if (!crtc->hist_blob)
 		return;
-
+#endif/* OPLUS_BUG_STABILITY */
 	ret = pm_runtime_get_sync(kms->dev->dev);
 	if (ret < 0) {
 		SDE_ERROR("failed to enable power resource %d\n", ret);

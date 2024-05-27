@@ -153,7 +153,8 @@ msm_drm-$(CONFIG_DRM_OPLUS) += ../oplus/oplus_dsi_support.o \
 	../oplus/oplus_display_panel_seed.o \
 	../oplus/oplus_display_panel_cabc.o \
 	../oplus/oplus_display_panel_common.o \
-	../oplus/oplus_display_panel_hbm.o
+	../oplus/oplus_display_panel_hbm.o \
+	../oplus/leds-sm5109c.o
 #endif /*OPLUS_BUG_STABILITY*/
 
 msm_drm-$(CONFIG_HDCP_QSEECOM) += ../hdcp/msm_hdcp.o \

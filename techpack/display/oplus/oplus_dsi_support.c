@@ -1,12 +1,18 @@
 /***************************************************************
 ** Copyright (C),  2020,  OPLUS Mobile Comm Corp.,  Ltd
+** VENDOR_EDIT
 ** File : oplus_dsi_support.c
 ** Description : display driver private management
 ** Version : 1.1
+** Date : 2020/09/06
+**
+** ------------------------------- Revision History: -----------
+**  <author>        <data>        <version >        <desc>
+**   LiPing-M         2020/09/06        1.1           Build this moudle
 ******************************************************************/
 #include "oplus_dsi_support.h"
 #include <soc/oplus/boot_mode.h>
-#include <soc/oplus/oplus_project.h>
+#include <soc/oplus/system/oplus_project.h>
 #include <soc/oplus/device_info.h>
 #include <linux/notifier.h>
 #include <linux/module.h>
