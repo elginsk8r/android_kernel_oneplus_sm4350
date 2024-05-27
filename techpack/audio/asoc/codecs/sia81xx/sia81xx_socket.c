@@ -12,7 +12,7 @@
  */
 
 
-#define DEBUG
+/*#define DEBUG*/
 #define LOG_FLAG	"sia81xx_sock"
 
 #include <linux/slab.h>
@@ -26,13 +26,13 @@
 #include "sia81xx_tuning_if.h"
 #include "sia81xx_socket.h"
 
-#define SOCK_PORT_NUM		(5678)
-#define RECV_WATI_TIME_MS	(10)
-#define MAX_CAL_MAP_NUM		(16)
-
 #ifndef SO_RCVTIMEO
 #define SO_RCVTIMEO SO_RCVTIMEO_NEW
 #endif
+
+#define SOCK_PORT_NUM		(5678)
+#define RECV_WATI_TIME_MS	(10)
+#define MAX_CAL_MAP_NUM		(16)
 
 typedef enum task_state_e {
 	TASK_STATE_INIT = 0,

@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
+/*#define DEBUG*/
 #define LOG_FLAG	"sia8108_regs"
 
  
@@ -128,6 +128,41 @@ static const char sia8108_receiver_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
 	}
 };
 
+static const char sia8108_factory_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
+	[SIA81XX_CHANNEL_L] = {
+				0x07,		//SIA8108_REG_SYSCTRL
+				0xFF,		//SIA8108_REG_AGCCTRL
+				0xCE,		//SIA8108_REG_BOOST_CFG
+				0x0D,		//SIA8108_REG_CLSD_CFG1
+				0x26,		//SIA8108_REG_CLSD_CFG2
+				0x0A,		//SIA8108_REG_BSG_CFG
+				0x02,		//SIA8108_REG_SML_CFG1
+				0x28,		//SIA8108_REG_SML_CFG2
+				0x03,		//SIA8108_REG_SML_CFG3
+				0x50,		//SIA8108_REG_SML_CFG4
+				0x00,		//SIA8108_REG_Excur_CTRL_1
+				0x00,		//SIA8108_REG_Excur_CTRL_2
+				0x00,		//SIA8108_REG_Excur_CTRL_3
+				0x00		//SIA8108_REG_Excur_CTRL_4
+	},
+	[SIA81XX_CHANNEL_R] = {
+				0x07,		//SIA8108_REG_SYSCTRL
+				0xFF,		//SIA8108_REG_AGCCTRL
+				0xCE,		//SIA8108_REG_BOOST_CFG
+				0x0D,		//SIA8108_REG_CLSD_CFG1
+				0x26,		//SIA8108_REG_CLSD_CFG2
+				0x0A,		//SIA8108_REG_BSG_CFG
+				0x02,		//SIA8108_REG_SML_CFG1
+				0x28,		//SIA8108_REG_SML_CFG2
+				0x03,		//SIA8108_REG_SML_CFG3
+				0x50,		//SIA8108_REG_SML_CFG4
+				0x00,		//SIA8108_REG_Excur_CTRL_1
+				0x00,		//SIA8108_REG_Excur_CTRL_2
+				0x00,		//SIA8108_REG_Excur_CTRL_3
+				0x00		//SIA8108_REG_Excur_CTRL_4
+	}
+};
+
 const struct sia81xx_reg_default_val sia8108_reg_default_val = {
 	.chip_type = CHIP_TYPE_SIA8108, 
 	.offset = SIA8108_REG_SYSCTRL,
@@ -142,6 +177,10 @@ const struct sia81xx_reg_default_val sia8108_reg_default_val = {
 	.reg_defaults[AUDIO_SCENE_RECEIVER] = {
 		.vals = (char *)sia8108_receiver_defaults,
 		.num = ARRAY_SIZE(sia8108_receiver_defaults[0])
+	},
+	.reg_defaults[AUDIO_SCENE_FACTORY] = {
+		.vals = (char *)sia8108_factory_defaults,
+		.num = ARRAY_SIZE(sia8108_factory_defaults[0])
 	}
 };
 
@@ -227,6 +266,11 @@ static void sia8108_set_xfilter(
 const struct sia81xx_opt_if sia8108_opt_if = {
 	.check_chip_id = sia8108_check_chip_id,
 	.set_xfilter = sia8108_set_xfilter,
+	.chip_on = NULL,
+	.chip_off = NULL,
+	.get_chip_en = NULL,
+	.set_pvdd_limit = NULL,
+	.check_trimming = NULL,
 };
 
 
