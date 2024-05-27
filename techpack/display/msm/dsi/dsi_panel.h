@@ -132,6 +132,7 @@ struct dsi_backlight_config {
 	u32 bl_normal_max_level;
 	u32 brightness_normal_max_level;
 	u32 brightness_default_level;
+	u32 bl_hbm_min_level;
 #endif /* OPLUS_BUG_STABILITY */
 
 	u32 bl_level;
@@ -169,6 +170,7 @@ struct dsi_panel_reset_config {
 #ifdef OPLUS_BUG_STABILITY
 	int panel_vout_gpio;
 	int panel_vddr_aod_en_gpio;
+	int panel_tp_reset_gpio;
 #endif
 };
 
@@ -199,9 +201,42 @@ struct dsi_panel_oplus_privite {
 	const char *vendor_name;
 	const char *manufacture_name;
 	bool skip_mipi_last_cmd;
-	bool is_pxlw_iris5;
 	bool dfps_idle_off;
+	bool is_osc_support;
+	u32 osc_clk_mode0_rate;
+	u32 osc_clk_mode1_rate;
+	bool lp_config_flag;
+
+	struct oplus_brightness_alpha *bl_remap;
+	int bl_remap_count;
+/* #ifdef OPLUS_BUG_COMPATIBILITY */
 	bool cabc_enabled;
+	u32 cabc_status;
+/* #endif */
+
+	bool is_aod_ramless;
+
+	bool gamma_switch_enable;
+/********************************************
+	fp_type usage:
+	bit(0):lcd capacitive fingerprint(aod/fod are not supported)
+	bit(1):oled capacitive fingerprint(only support aod)
+	bit(2):optical fingerprint old solution(dim layer and pressed icon are controlled by kernel)
+	bit(3):optical fingerprint new solution(dim layer and pressed icon are not controlled by kernel)
+	bit(4):local hbm
+	bit(5):pressed icon brightness adaptive
+	bit(6):ultrasonic fingerprint
+	bit(7):ultra low power aod
+********************************************/
+	u32 fp_type;
+	bool disable_53h_control;
+	bool dimming_control;
+};
+
+struct dsi_panel_oplus_serial_number {
+	bool is_switch_page;
+	u32 *serial_number_multi_regs;
+	int serial_number_index;
 };
 #endif /* OPLUS_BUG_STABILITY */
 
@@ -291,6 +326,7 @@ struct dsi_panel {
 	struct oplus_brightness_alpha *ba_seq;
 	int ba_count;
 	struct dsi_panel_oplus_privite oplus_priv;
+	struct dsi_panel_oplus_serial_number oplus_ser;
 #endif
 	u32 dsc_count;
 	u32 lm_count;

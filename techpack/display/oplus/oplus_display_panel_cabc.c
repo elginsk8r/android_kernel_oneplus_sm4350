@@ -1,12 +1,19 @@
 /***************************************************************
 ** Copyright (C),  2020,  OPLUS Mobile Comm Corp.,  Ltd
+** VENDOR_EDIT
 ** File : oplus_display_panel_cabc.c
 ** Description : oplus display panel cabc feature
 ** Version : 1.0
+** Date : 2020/06/13
+**
+** ------------------------------- Revision History: -----------
+**  <author>        <data>        <version >        <desc>
+**  Li.Sheng       2020/06/13        1.0           Build this moudle
 ******************************************************************/
 #include "oplus_display_panel_cabc.h"
 #include "oplus_dsi_support.h"
 
+extern u32 oplus_last_backlight;
 int cabc_mode = 1;
 int cabc_mode_backup = 1;
 int cabc_lock_flag = 0;
@@ -71,37 +78,37 @@ int dsi_panel_cabc_mode_unlock(struct dsi_panel *panel, int mode)
 		break;
 
 	case 1:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_UI);
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_MODE1);
 
 		if (rc) {
-			pr_err("[%s] failed to send DSI_CMD_CABC_UI cmds, rc=%d\n",
+			pr_err("[%s] failed to send DSI_CMD_CABC_MODE1 cmds, rc=%d\n",
 				   panel->name, rc);
 		}
 
 		break;
 
 	case 2:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_IMAGE);
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_MODE2);
 
 		if (rc) {
-			pr_err("[%s] failed to send DSI_CMD_CABC_IMAGE cmds, rc=%d\n",
+			pr_err("[%s] failed to send DSI_CMD_CABC_MODE2 cmds, rc=%d\n",
 				   panel->name, rc);
 		}
 
 		break;
 
 	case 3:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_VIDEO);
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_MODE3);
 
 		if (rc) {
-			pr_err("[%s] failed to send DSI_CMD_CABC_VIDEO cmds, rc=%d\n",
+			pr_err("[%s] failed to send DSI_CMD_CABC_MODE3 cmds, rc=%d\n",
 				   panel->name, rc);
 		}
 
 		break;
 
 	default:
-		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_UI);
+		rc = dsi_panel_tx_cmd_set(panel, DSI_CMD_CABC_MODE1);
 
 		if (rc) {
 			pr_err("[%s] failed to send DSI_CMD_CABC_OFF cmds, rc=%d\n",
@@ -209,7 +216,12 @@ int oplus_display_panel_set_cabc(void *data)
 			return -EINVAL;
 		}
 
-		dsi_display_cabc_mode(get_main_display(), cabc_mode);
+		if (0 != oplus_last_backlight) {
+			dsi_display_cabc_mode(get_main_display(), cabc_mode);
+		} else {
+			printk(KERN_INFO "backlight is 0, not send cabc cmd\n");
+			return -EINVAL;
+		}
 
 	} else {
 		printk(KERN_ERR

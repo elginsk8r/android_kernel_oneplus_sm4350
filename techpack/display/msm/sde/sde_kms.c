@@ -65,6 +65,7 @@
 #ifdef OPLUS_BUG_STABILITY
 #include "oplus_display_private_api.h"
 #include "oplus_onscreenfingerprint.h"
+#include "oplus_dc_diming.h"
 #endif
 
 /* defines for secure channel call */
@@ -993,9 +994,11 @@ static void _sde_kms_drm_check_dpms(struct drm_atomic_state *old_state,
 			notifier_data.refresh_rate = new_fps;
 			notifier_data.id = connector->base.id;
 
+#ifndef OPLUS_BUG_STABILITY
 			if (connector->panel)
 				drm_panel_notifier_call_chain(connector->panel,
 							event, &notifier_data);
+#endif
 		}
 	}
 
@@ -1538,6 +1541,10 @@ static void sde_kms_complete_commit(struct msm_kms *kms,
 		_sde_kms_release_splash_resource(sde_kms, crtc);
 
 	SDE_EVT32_VERBOSE(SDE_EVTLOG_FUNC_EXIT);
+
+#ifdef OPLUS_BUG_STABILITY
+	oplus_notify_hbm_off();
+#endif
 	SDE_ATRACE_END("sde_kms_complete_commit");
 }
 
