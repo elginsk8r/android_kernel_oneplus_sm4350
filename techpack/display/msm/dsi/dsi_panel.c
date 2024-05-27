@@ -27,6 +27,8 @@
 #include "oplus_dc_diming.h"
 #include "oplus_onscreenfingerprint.h"
 #include "oplus_aod.h"
+#include "oplus_display_panel_common.h"
+extern int oplus_display_mode;
 #endif
 
 /**
@@ -55,8 +57,17 @@ extern void (*tp_ftm_extra_notifier)(unsigned int tp_index);
 extern int (*tp_reset_gpio_notifier)(bool enable, unsigned int tp_index);
 extern int shutdown_flag;
 bool is_pd_with_guesture = false;
+static int panel_esd_check_failed = 0;
 static int first_bl_on = 1;
 #endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef OPLUS_FEATURE_AOD_RAMLESS
+extern int oplus_display_update_aod_area_unlock(void);
+#endif /* OPLUS_FEATURE_AOD_RAMLESS */
+
+#ifdef OPLUS_BUG_STABILITY
+bool oplus_first_vid = false;
+#endif /* OPLUS_BUG_STABILITY */
 
 static void dsi_dce_prepare_pps_header(char *buf, u32 pps_delay_ms)
 {
@@ -193,6 +204,14 @@ static int dsi_panel_gpio_request(struct dsi_panel *panel)
 				gpio_free(r_config->panel_vddr_aod_en_gpio);
 		}
 	}
+	if (gpio_is_valid(r_config->panel_tp_reset_gpio)) {
+		rc = gpio_request(r_config->panel_tp_reset_gpio, "panel_tp_reset_gpio");
+		if (rc) {
+			DSI_ERR("request for panel_tp_reset_gpio failed, rc=%d\n", rc);
+			if (gpio_is_valid(r_config->panel_tp_reset_gpio))
+				gpio_free(r_config->panel_tp_reset_gpio);
+		}
+	}
 #endif
 
 	goto error;
@@ -234,6 +253,8 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 		gpio_free(r_config->panel_vout_gpio);
 	if (gpio_is_valid(r_config->panel_vddr_aod_en_gpio))
 		gpio_free(r_config->panel_vddr_aod_en_gpio);
+	if (gpio_is_valid(r_config->panel_tp_reset_gpio))
+		gpio_free(r_config->panel_tp_reset_gpio);
 #endif
 	return rc;
 }
@@ -426,6 +447,10 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 	}
 #endif
 
+	if (panel->oplus_priv.cabc_enabled) {
+		panel->oplus_priv.cabc_status = OPLUS_DISPLAY_CABC_UI;
+	}
+
 	rc = dsi_panel_reset(panel);
 #ifdef OPLUS_FEATURE_TP_BASIC
 		blank = 0x19;
@@ -474,11 +499,17 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 	int mode = 0;
 	int blank;
 	struct msm_drm_notifier notifier_data;
+
+	panel_esd_check_failed = atomic_read(&(panel->esd_recovery_pending));
 #endif /* OPLUS_FEATURE_TP_BASIC */
 
 #ifdef OPLUS_BUG_STABILITY
 	pr_err("debug for dsi_panel_power_off\n");
 #endif
+
+	if (panel->oplus_priv.cabc_enabled) {
+		panel->oplus_priv.cabc_status = OPLUS_DISPLAY_CABC_OFF;
+	}
 
 #ifdef OPLUS_BUG_STABILITY
 	if (!strcmp(panel->oplus_priv.vendor_name,"NT36672C-90HZ")
@@ -496,14 +527,17 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 			pr_err("[TP] shutdown_flag status is %d\n", shutdown_flag);
 			if (shutdown_flag == 0) {
 				pr_err("[TP] tp gesture is enable, Display not to power off\n");
-				return rc;
 			}
+		} else {
+			is_pd_with_guesture = false;
+			DSI_INFO("[%s][TP] set is_pd_with_guesture to false\n", __func__);
 		}
-		is_pd_with_guesture = false;
-		blank = 0x1A;
-		notifier_data.data = &blank;
-		notifier_data.id = 0;
-		msm_drm_notifier_call_chain(MSM_DRM_EVENT_FOR_TOUCH, &notifier_data);
+		if (true != is_pd_with_guesture || (1 == shutdown_flag) || panel_esd_check_failed) {
+			blank = 0x1A;//LCD_CTL_CS_OFF
+			notifier_data.data = &blank;
+			notifier_data.id = 0;
+			msm_drm_notifier_call_chain(MSM_DRM_EVENT_FOR_TOUCH, &notifier_data);
+		}
 	}
 	pr_err("[TP] tp gesture is disenable, Display goto power off\n");
 #endif /* OPLUS_FEATURE_TP_BASIC */
@@ -551,6 +585,22 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 		DSI_ERR("[%s] failed set pinctrl state, rc=%d\n", panel->name,
 		       rc);
 	}
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+	if (!strcmp(panel->name,"nt36672c tm fhd plus video mode dsi panel")
+		|| !strcmp(panel->name,"nt36672c dsjm fhd plus video mode dsi panel")
+		|| !strcmp(panel->name,"ili7807s tm fhd plus video mode dsi panel")) {
+		if(true != is_pd_with_guesture || (1 == shutdown_flag) || panel_esd_check_failed) {
+			rc = dsi_pwr_enable_regulator(&panel->power_info, false);
+			if (rc)
+				DSI_ERR("[%s] failed to enable vregs, rc=%d\n",
+						panel->name, rc);
+
+		}
+		usleep_range(70*1000, (70*1000)+100);
+		return rc;
+	}
+#endif
 
 	rc = dsi_pwr_enable_regulator(&panel->power_info, false);
 	if (rc)
@@ -601,9 +651,22 @@ int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 	SDE_EVT32(type, state, count);
 
 #ifdef OPLUS_BUG_STABILITY
+	if (is_nonsupport_ramless(panel->oplus_priv.vendor_name)) {
+		rc = dsi_panel_tx_cmd_hbm_pre_check(panel, type, cmd_set_prop_map);
+		if (rc == 1) {
+			return 0;
+		}
+	}
+
 	if (type != DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_ON
 		&& type != DSI_CMD_READ_SAMSUNG_PANEL_REGISTER_OFF) {
 		pr_err("dsi_cmd %s\n", cmd_set_prop_map[type]);
+	}
+	if ((DSI_CMD_AOD_HBM_ON == type) \
+		&& (panel->oplus_priv.is_aod_ramless \
+		&& !oplus_display_mode)) {
+		pr_err("skip dsi_cmd %s\n", cmd_set_prop_map[type]);
+		return rc;
 	}
 
 	if (oplus_seed_backlight) {
@@ -629,6 +692,11 @@ int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 		if (cmds->last_command)
 			cmds->msg.flags |= MIPI_DSI_MSG_LASTCOMMAND;
 
+#ifdef OPLUS_BUG_STABILITY
+		if (panel->oplus_priv.skip_mipi_last_cmd)
+			cmds->msg.flags &= ~MIPI_DSI_MSG_LASTCOMMAND;
+#endif /* OPLUS_BUG_STABILITY */
+
 		if (type == DSI_CMD_SET_VID_TO_CMD_SWITCH)
 			cmds->msg.flags |= MIPI_DSI_MSG_ASYNC_OVERRIDE;
 
@@ -643,6 +711,13 @@ int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 					((cmds->post_wait_ms*1000)+10));
 		cmds++;
 	}
+
+#ifdef OPLUS_BUG_STABILITY
+	if (is_nonsupport_ramless(panel->oplus_priv.vendor_name)) {
+		dsi_panel_tx_cmd_hbm_post_check(panel, type);
+	}
+#endif /*OPLUS_BUG_STABILITY*/
+
 error:
 	return rc;
 }
@@ -722,6 +797,10 @@ static int dsi_panel_wled_register(struct dsi_panel *panel,
 	bl->raw_bd = bd;
 	return 0;
 }
+#ifdef OPLUS_BUG_STABILITY
+extern int oplus_display_mode;
+bool oplus_aod_mode = false;
+#endif /* OPLUS_BUG_STABILITY */
 
 static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	u32 bl_lvl)
@@ -729,6 +808,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	int rc = 0;
 	unsigned long mode_flags = 0;
 	struct mipi_dsi_device *dsi = NULL;
+	struct dsi_display *display = get_main_display();
 
 	if (!panel || (bl_lvl > 0xffff)) {
 		DSI_ERR("invalid params\n");
@@ -746,12 +826,27 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 
 #ifdef OPLUS_BUG_STABILITY
 	if ((get_oplus_display_scene() == OPLUS_DISPLAY_AOD_SCENE) && ( bl_lvl == 1)) {
+		if (display->panel->oplus_priv.is_aod_ramless)
+			oplus_aod_mode = true;
 		pr_err("dsi_cmd AOD mode return bl_lvl:%d\n",bl_lvl);
+		return 0;
+	} else {
+		if (display->panel->oplus_priv.is_aod_ramless)
+			oplus_aod_mode = false;
+	}
+
+	if (panel->is_hbm_enabled  && (bl_lvl != 0)) {
+		pr_err("backlight smooth check racing issue is_hbm_enabled\n");
 		return 0;
 	}
 
-	if (panel->is_hbm_enabled)
+	if (panel->oplus_priv.is_aod_ramless && !oplus_display_mode)
 		return 0;
+
+	if((bl_lvl == 0) && oplus_display_get_hbm_mode()) {
+		pr_err("set backlight 0 and recovery hbm to 0\n");
+		__oplus_display_set_hbm(0);
+	}
 
 	if (oplus_display_get_hbm_mode()) {
 		return rc;
@@ -773,6 +868,9 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 		}
 	}
 
+	if (display->panel->oplus_priv.is_aod_ramless)
+		oplus_aod_mode = false;
+
 	bl_lvl = oplus_panel_process_dimming_v2(panel, bl_lvl, false);
 	bl_lvl = oplus_panel_process_dimming_v3(panel, bl_lvl);
 
@@ -784,7 +882,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 			bl_lvl = oplus_dimlayer_bl_alpha;
 	}
 
-	{
+	if (!panel->oplus_priv.disable_53h_control) {
 		const struct mipi_dsi_host_ops *ops = dsi->host->ops;
 		char payload[] = {MIPI_DCS_WRITE_CONTROL_DISPLAY, 0xE0};
 		struct mipi_dsi_msg msg;
@@ -806,13 +904,38 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 			pr_err("failed to backlight bl_lvl %d - ret=%d\n", bl_lvl, rc);
 	}
 
-	if (!strcmp(panel->oplus_priv.vendor_name,"NT37800")) {
-		if (bl_lvl < 400 && bl_lvl != 0) {
-			bl_lvl = 400;
+	if (panel->oplus_priv.dimming_control) {
+		const struct mipi_dsi_host_ops *ops = dsi->host->ops;
+		char payload[] = {0x68, 0x02, 0x00};
+		struct mipi_dsi_msg msg;
+		memset(&msg, 0, sizeof(msg));
+		msg.channel = dsi->channel;
+		msg.tx_buf = payload;
+		msg.tx_len = sizeof(payload);
+		msg.type = MIPI_DSI_DCS_LONG_WRITE;
+
+		if (bl_lvl < 60 && bl_lvl > 1) {
+			payload[1] = 0x06;
+			rc = ops->transfer(dsi->host, &msg);
+		} else if (bl_lvl < 150 && bl_lvl > 59) {
+			payload[1] = 0x05;
+			rc = ops->transfer(dsi->host, &msg);
+		} else if (bl_lvl < 256 && bl_lvl > 149) {
+			payload[1] = 0x04;
+			rc = ops->transfer(dsi->host, &msg);
+		} else if (bl_lvl < 2000 && bl_lvl > 255) {
+			payload[1] = 0x03;
+			rc = ops->transfer(dsi->host, &msg);
+		} else {
+			payload[1] = 0x02;
+			rc = ops->transfer(dsi->host, &msg);
 		}
 	}
-#endif /* OPLUS_BUG_STABILITY */
+
+	rc = oplus_mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+#else
 	rc = mipi_dsi_dcs_set_display_brightness(dsi, bl_lvl);
+#endif /* OPLUS_BUG_STABILITY */
 	if (rc < 0)
 		DSI_ERR("failed to update dcs backlight:%d\n", bl_lvl);
 
@@ -2043,6 +2166,7 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-aod-off-command",
 	"qcom,mdss-dsi-hbm-on-command",
 	"qcom,mdss-dsi-hbm-off-command",
+	"qcom,mdss-dsi-hbm-off-highlight-command",
 	"qcom,mdss-dsi-aod-hbm-on-command",
 	"qcom,mdss-dsi-aod-hbm-off-command",
 	"qcom,mdss-dsi-seed-0-command",
@@ -2065,14 +2189,24 @@ const char *cmd_set_prop_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-panel-read-register-open-command",
 	"qcom,mdss-dsi-panel-read-register-close-command",
 	"qcom,mdss-dsi-cabc-off-command",
-	"qcom,mdss-dsi-cabc-ui-command",
-	"qcom,mdss-dsi-cabc-still-image-command",
-	"qcom,mdss-dsi-cabc-video-command",
+	"qcom,mdss-dsi-cabc-1-command",
+	"qcom,mdss-dsi-cabc-2-command",
+	"qcom,mdss-dsi-cabc-3-command",
 	"qcom,mdss-dsi-loading-effect-1-command",
 	"qcom,mdss-dsi-loading-effect-2-command",
 	"qcom,mdss-dsi-loading-effect-off-command",
 	"qcom,mdss-dsi-ili-read-on-command",
 	"qcom,mdss-dsi-ili-read-off-command",
+	"qcom,mdss-dsi-cabc-ui-command",
+	"qcom,mdss-dsi-cabc-still-image-command",
+	"qcom,mdss-dsi-cabc-video-command",
+	"qcom,oplus-mdss-dsi-on-command",
+	"qcom,mdss-dsi-backlight-gamma-enter-command",
+	"qcom,mdss-dsi-backlight-gamma-exit-command",
+	"qcom,mdss-dsi-failsafe-on-command",
+	"qcom,mdss-dsi-failsafe-off-command",
+	"qcom,mdss-dsi-panel-info-switch-page-command",
+	"qcom,mdss-dsi-default-switch-page-command",
 #endif /*OPLUS_BUG_STABILITY*/
 };
 
@@ -2106,6 +2240,7 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-aod-off-command-state",
 	"qcom,mdss-dsi-hbm-on-command-state",
 	"qcom,mdss-dsi-hbm-off-command-state",
+	"qcom,mdss-dsi-hbm-off-highlight-command-state",
 	"qcom,mdss-dsi-aod-hbm-on-command-state",
 	"qcom,mdss-dsi-aod-hbm-off-command-state",
 	"qcom,mdss-dsi-seed-0-command-state",
@@ -2128,14 +2263,24 @@ const char *cmd_set_state_map[DSI_CMD_SET_MAX] = {
 	"qcom,mdss-dsi-panel-read-register-open-state",
 	"qcom,mdss-dsi-panel-read-register-close-state",
 	"qcom,mdss-dsi-cabc-off-command-state",
-	"qcom,mdss-dsi-cabc-ui-command-state",
-	"qcom,mdss-dsi-cabc-still-image-command-state",
-	"qcom,mdss-dsi-cabc-video-command-state",
+	"qcom,mdss-dsi-cabc-1-command-state",
+	"qcom,mdss-dsi-cabc-2-command-state",
+	"qcom,mdss-dsi-cabc-3-command-state",
 	"qcom,mdss-dsi-loading-effect-1-command-state",
 	"qcom,mdss-dsi-loading-effect-2-command-state",
 	"qcom,mdss-dsi-loading-effect-off-command-state",
 	"qcom,mdss-dsi-ili-read-on-command-state",
 	"qcom,mdss-dsi-ili-read-off-command-state",
+	"qcom,mdss-dsi-cabc-ui-command-state",
+	"qcom,mdss-dsi-cabc-still-image-command-state",
+	"qcom,mdss-dsi-cabc-video-command-state",
+	"qcom,oplus-mdss-dsi-on-command-state",
+	"qcom,mdss-dsi-backlight-gamma-enter-command-state",
+	"qcom,mdss-dsi-backlight-gamma-exit-command-state",
+	"qcom,mdss-dsi-failsafe-on-command-state",
+	"qcom,mdss-dsi-failsafe-off-command-state",
+	"qcom,mdss-dsi-panel-info-switch-page-command-state",
+	"qcom,mdss-dsi-default-switch-page-command-state",
 #endif /*OPLUS_BUG_STABILITY*/
 };
 
@@ -2620,6 +2765,12 @@ static int dsi_panel_parse_gpios(struct dsi_panel *panel)
 	if (!gpio_is_valid(panel->reset_config.panel_vddr_aod_en_gpio)) {
 		DSI_DEBUG("[%s] failed get panel_vddr_aod_en_gpio, rc=%d\n", panel->name, rc);
 	}
+
+	panel->reset_config.panel_tp_reset_gpio = utils->get_named_gpio(utils->data,
+					      "qcom,platform-tp-reset-gpio", 0);
+	if (!gpio_is_valid(panel->reset_config.panel_tp_reset_gpio)) {
+		DSI_DEBUG("[%s] failed get panel_tp_reset_gpio, rc=%d\n", panel->name, rc);
+	}
 #endif
 
 	panel->reset_config.disp_en_gpio = utils->get_named_gpio(utils->data,
@@ -2855,6 +3006,15 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.brightness_default_level = panel->bl_config.brightness_max_level;
 	} else {
 		panel->bl_config.brightness_default_level = val;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-hbm-min-level", &val);
+	if (rc) {
+		DSI_DEBUG("[%s] bl-hbm-min-level unspecified, defaulting to normal max level + 1\n",
+					 panel->name);
+		panel->bl_config.bl_hbm_min_level = panel->bl_config.bl_normal_max_level + 1;
+	} else {
+		panel->bl_config.bl_hbm_min_level = val;
 	}
 #endif
 
@@ -3810,6 +3970,9 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 		} else if (!strcmp(string, "reg_read")) {
 			esd_config->status_mode = ESD_MODE_REG_READ;
 		} else if (!strcmp(string, "te_signal_check")) {
+#ifdef OPLUS_BUG_STABILITY
+			esd_config->status_mode = ESD_MODE_PANEL_TE;
+#else
 			if (panel->panel_mode == DSI_OP_CMD_MODE) {
 				esd_config->status_mode = ESD_MODE_PANEL_TE;
 			} else {
@@ -3817,6 +3980,7 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 				rc = -EINVAL;
 				goto error;
 			}
+#endif /*OPLUS_BUG_STABILITY*/
 		} else {
 			DSI_ERR("No valid panel-status-check-mode string\n");
 			rc = -EINVAL;
@@ -3991,6 +4155,12 @@ struct dsi_panel *dsi_panel_get(struct device *parent,
 	rc = panel->panel_ops.parse_power_cfg(panel);
 	if (rc)
 		DSI_ERR("failed to parse power config, rc=%d\n", rc);
+
+#ifdef OPLUS_BUG_STABILITY
+	rc = dsi_panel_parse_panel_power_cfg(panel);
+	if (rc)
+		DSI_DEBUG("failed to parse panel_power config, rc=%d\n", rc);
+#endif /* OPLUS_BUG_STABILITY */
 
 	rc = dsi_panel_parse_bl_config(panel);
 	if (rc) {
@@ -4654,8 +4824,7 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 			pr_err("%s: reset gpio 0", __func__);
 		}
 
-#ifdef OPLUS_FEATURE_TP_BASIC
-		if (true != is_pd_with_guesture) {
+		if (true != is_pd_with_guesture || panel_esd_check_failed) {
 			pr_err("[TP]:power_on-is_pd_with_guesture = false\n");
 			rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 		}
@@ -4673,7 +4842,6 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel)
 		}
 #endif /* OPLUS_FEATURE_TP_BASIC */
 	}
-#endif
 
 	/* If LP11_INIT is set, panel will be powered up during prepare() */
 	if (panel->lp11_init)
@@ -4770,8 +4938,11 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_LP1 cmd, rc=%d\n",
 		       panel->name, rc);
 #ifdef OPLUS_BUG_STABILITY
+	mutex_unlock(&panel->panel_lock);
 	oplus_update_aod_light_mode_unlock(panel);
 	panel->need_power_on_backlight = true;
+	/* Update aod light mode and fix 3658965*/
+	mutex_lock(&panel->panel_lock);
 	set_oplus_display_power_status(OPLUS_DISPLAY_POWER_DOZE);
 #endif
 exit:
@@ -5110,6 +5281,14 @@ int dsi_panel_mode_switch_to_cmd(struct dsi_panel *panel)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_CMD_TO_VID_SWITCH cmds, rc=%d\n",
 		       panel->name, rc);
 
+#ifdef OPLUS_BUG_STABILITY
+	oplus_first_vid = false;
+#endif /* OPLUS_BUG_STABILITY */
+
+#ifdef OPLUS_FEATURE_AOD_RAMLESS
+	oplus_display_update_aod_area_unlock();
+#endif /* OPLUS_FEATURE_AOD_RAMLESS */
+
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
@@ -5129,6 +5308,10 @@ int dsi_panel_mode_switch_to_vid(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_CMD_TO_VID_SWITCH cmds, rc=%d\n",
 		       panel->name, rc);
+
+#ifdef OPLUS_BUG_STABILITY
+	oplus_first_vid = true;
+#endif /*OPLUS_BUG_STABILITY*/
 
 	mutex_unlock(&panel->panel_lock);
 	return rc;
@@ -5265,11 +5448,22 @@ error:
 int dsi_panel_pre_disable(struct dsi_panel *panel)
 {
 	int rc = 0;
+#ifdef OPLUS_FEATURE_TP_BASIC
+	int blank;
+	struct msm_drm_notifier notifier_data;
+#endif
 
 	if (!panel) {
 		DSI_ERR("invalid params\n");
 		return -EINVAL;
 	}
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+	blank = 0x1B;
+	notifier_data.data = &blank;
+	notifier_data.id = 0;
+	msm_drm_notifier_call_chain(MSM_DRM_EVENT_FOR_TOUCH, &notifier_data);
+#endif /* OPLUS_FEATURE_TP_BASIC */
 
 	mutex_lock(&panel->panel_lock);
 
@@ -5352,6 +5546,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	panel->panel_initialized = false;
 #ifdef OPLUS_BUG_STABILITY
 	panel->is_hbm_enabled = false;
+	oplus_first_vid = false;
 	set_oplus_display_power_status(OPLUS_DISPLAY_POWER_OFF);
 #endif
 	panel->power_mode = SDE_MODE_DPMS_OFF;
@@ -5390,7 +5585,7 @@ int dsi_panel_unprepare(struct dsi_panel *panel)
 		mode = get_boot_mode();
 		pr_err("[TP] in dsi_panel_unprepare, mode=%d\n",mode);
 		if((mode != MSM_BOOT_MODE__FACTORY) && (mode != MSM_BOOT_MODE__RF) && (mode != MSM_BOOT_MODE__WLAN)) {
-			if ((1 != tp_gesture_enable_notifier(0)) || (shutdown_flag == 1)) {
+			if ((tp_gesture_enable_notifier && (1 != tp_gesture_enable_notifier(0))) || (shutdown_flag == 1)) {
 				pr_info("%s:%d tp gesture is off set reset 0", __func__, __LINE__);
 				if (gpio_is_valid(panel->reset_config.reset_gpio))
 					gpio_set_value(panel->reset_config.reset_gpio, 0);
