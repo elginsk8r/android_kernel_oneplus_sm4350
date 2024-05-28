@@ -1,19 +1,7 @@
-/************************************************************************************
-** File:  oplus_p922x.h
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for wireless charge
-** 
-** Version: 1.0
-** Date created: 21:03:46,06/11/2018
-** Author: Lin Shangbo
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2018-11-06    Lin Shangbo   		Created for wireless charge
-************************************************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only  */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 #ifndef __OPLUS_P922X_H__
 #define __OPLUS_P922X_H__
 
@@ -43,7 +31,7 @@
 #define P922X_CC2CV_CHG_THD_HI                              4370
 
 /*The message to WPC DOCK */
-#define P9221_CMD_INDENTIFY_ADAPTER							0xA1 
+#define P9221_CMD_INDENTIFY_ADAPTER							0xA1
 #define P9221_CMD_INTO_FASTCHAGE							0xA2
 #define P9221_CMD_INTO_USB_CHARGE							0xA3
 #define P9221_CMD_INTO_NORMAL_CHARGE						0xA4
@@ -86,7 +74,7 @@
 #define P9237_RESPONE_NULL									0x00
 
 
-#define P922X_TASK_INTERVAL							round_jiffies_relative(msecs_to_jiffies(500))	
+#define P922X_TASK_INTERVAL							round_jiffies_relative(msecs_to_jiffies(500))
 #define P922X_CEP_INTERVAL							round_jiffies_relative(msecs_to_jiffies(200))
 #define P922X_UPDATE_INTERVAL							round_jiffies_relative(msecs_to_jiffies(3000))
 #define P922X_UPDATE_RETRY_INTERVAL						round_jiffies_relative(msecs_to_jiffies(500))
@@ -101,18 +89,24 @@ struct oplus_p922x_ic{
 	enum wireless_mode wireless_mode;
 	bool disable_charge;
 	int quiet_mode_need;
-
+	int pre_quiet_mode_need;
+	bool quiet_mode_ack;
+	bool cep_timeout_ack;
 
 	int				idt_en_gpio;		//for WPC
 	int				idt_con_gpio;	//for WPC
 	int				idt_con_irq;	//for WPC
 	int				idt_int_gpio;	//for WPC
 	int				idt_int_irq;	//for WPC
+	int vt_sleep_gpio;
 	int				vbat_en_gpio;	//for WPC
 	int				booster_en_gpio;	//for WPC
 	int             ext1_wired_otg_en_gpio;
 	int             ext2_wireless_otg_en_gpio;
 	int             cp_ldo_5v_gpio;
+	int wrx_en_gpio;
+	int wrx_otg_en_gpio;
+	int wls_pg_gpio;
     struct pinctrl                       *pinctrl;
 	struct pinctrl_state 		*idt_con_active;	//for WPC
 	struct pinctrl_state 		*idt_con_sleep;		//for WPC
@@ -120,6 +114,9 @@ struct oplus_p922x_ic{
 	struct pinctrl_state 		*idt_int_active;	//for WPC
 	struct pinctrl_state 		*idt_int_sleep;		//for WPC
 	struct pinctrl_state 		*idt_int_default;	//for WPC
+	struct pinctrl_state *vt_sleep_active;
+	struct pinctrl_state *vt_sleep_sleep;
+	struct pinctrl_state *vt_sleep_default;
 	struct pinctrl_state 		*vbat_en_active;	//for WPC
 	struct pinctrl_state 		*vbat_en_sleep;		//for WPC
 	struct pinctrl_state 		*vbat_en_default;	//for WPC
@@ -139,6 +136,14 @@ struct oplus_p922x_ic{
 	struct pinctrl_state 		*cp_ldo_5v_active;	//for WPC
 	struct pinctrl_state 		*cp_ldo_5v_sleep;		//for WPC
 	struct pinctrl_state 		*cp_ldo_5v_default;	//for WPC
+	struct pinctrl_state *wrx_en_active;
+	struct pinctrl_state *wrx_en_sleep;
+	struct pinctrl_state *wrx_en_default;
+	struct pinctrl_state *wrx_otg_en_active;
+	struct pinctrl_state *wrx_otg_en_sleep;
+	struct pinctrl_state *wrx_otg_en_default;
+	struct pinctrl_state *wls_pg_default;
+	struct pinctrl_state *wls_pg_active;
 
     struct delayed_work idt_con_work;   //for WPC
     struct delayed_work p922x_task_work;    //for WPC
@@ -153,6 +158,7 @@ struct oplus_p922x_ic{
     //int         batt_volt_2cell_max;    //for WPC
     //int         batt_volt_2cell_min;    //for WPC
     atomic_t                         suspended;
+    int wireless_not_support_cool_down;
 };
 
 
@@ -180,6 +186,9 @@ int p922x_wpc_get_adapter_type(void);
 bool p922x_check_chip_is_null(void);
 int p922x_set_tx_cep_timeout_1500ms(void);
 int p922x_get_CEP_flag(struct oplus_p922x_ic * chip);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+int p922x_driver_init(void);
+void p922x_driver_exit(void);
+#endif
 //int p922x_set_dock_fan_pwm_pulse(int pwm_pulse);
 #endif
-

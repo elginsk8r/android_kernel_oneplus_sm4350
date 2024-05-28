@@ -43,7 +43,7 @@ static ssize_t nvt_flash_read(struct file *filp, char __user *buff,
 
 	i2c_wr = str[0] >> 7;
 
-	if (i2c_wr == 0) {    /*I2C write*/
+	if (i2c_wr == 0 && count > 2) {    /*I2C write*/
 		while (retries < 20) {
 			addr_tmp = ts->client->addr;
 			ts->client->addr = str[0] & 0x7F;
@@ -67,7 +67,7 @@ static ssize_t nvt_flash_read(struct file *filp, char __user *buff,
 
 		return ret;
 
-	} else if (i2c_wr == 1) {    /*I2C read*/
+	} else if (i2c_wr == 1 && count > 3) {    /*I2C read*/
 		while (retries < 20) {
 			addr_tmp = ts->client->addr;
 			ts->client->addr = str[0] & 0x7F;
@@ -104,11 +104,18 @@ static ssize_t nvt_flash_read(struct file *filp, char __user *buff,
 	}
 }
 
+#if LINUX_VERSION_CODE>= KERNEL_VERSION(5, 10, 0)
+static const struct proc_ops nvt_flash_fops = {
+	.proc_open = simple_open,
+    .proc_read = nvt_flash_read,
+};
+#else
 static const struct file_operations nvt_flash_fops = {
 	.owner = THIS_MODULE,
-	.open = simple_open,
-	.read = nvt_flash_read,
+    .open = simple_open,
+    .read = nvt_flash_read,
 };
+#endif
 
 static ssize_t nvt_noflash_read(struct file *filp, char __user *buff,
 				size_t count, loff_t *offp)
@@ -231,11 +238,18 @@ out:
 	return ret;
 }
 
+#if LINUX_VERSION_CODE>= KERNEL_VERSION(5, 10, 0)
+static const struct proc_ops nvt_noflash_fops = {
+	.proc_open = simple_open,
+    .proc_read = nvt_noflash_read,
+};
+#else
 static const struct file_operations nvt_noflash_fops = {
 	.owner = THIS_MODULE,
-	.open = simple_open,
-	.read = nvt_noflash_read,
+    .open = simple_open,
+    .read = nvt_noflash_read,
 };
+#endif
 
 void nvt_flash_proc_init(struct touchpanel_data *ts, const char *name)
 {

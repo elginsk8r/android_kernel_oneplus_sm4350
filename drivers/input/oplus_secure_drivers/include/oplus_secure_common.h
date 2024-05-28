@@ -1,5 +1,5 @@
 /************************************************************************************
-** File: - MSM8953_LA_1_0\android\kernel\include\soc\oplus\oplus_secure_common.h
+** File: -oplus_secure_common.h
 ** VENDOR_EDIT
 ** Copyright (C), 2008-2016, OPLUS Mobile Comm Corp., Ltd
 **

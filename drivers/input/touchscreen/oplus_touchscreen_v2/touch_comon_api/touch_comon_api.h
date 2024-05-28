@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/device.h>
 #include <linux/uaccess.h>
+#include <linux/version.h>
 
 #include "../touchpanel_common.h"
 #include "../touchpanel_healthinfo/touchpanel_healthinfo.h"
@@ -26,7 +27,7 @@ extern unsigned int tp_debug;
 #endif
 
 #define TPD_INFO(a, arg...)  pr_err("[TP]"TPD_DEVICE ": " a, ##arg)
-#define TP_INFO(index, a, arg...)  pr_err("[TP]"TPD_DEVICE"%x" ": " a, index, ##arg)
+#define TP_INFO(index, a, arg...)  pr_err("[TP""%x""]"TPD_DEVICE": " a, index, ##arg)
 
 #define TPD_DEBUG(a, arg...)\
 	do{\
@@ -37,7 +38,7 @@ extern unsigned int tp_debug;
 #define TP_DEBUG(index, a, arg...)\
 			do{\
 				if (LEVEL_DEBUG == tp_debug)\
-					pr_err("[TP]"TPD_DEVICE"%x"": " a, index, ##arg);\
+					pr_err("[TP""%x""]"TPD_DEVICE": " a, index, ##arg);\
 			}while(0)
 
 #define TPD_DETAIL(a, arg...)\
@@ -49,7 +50,7 @@ extern unsigned int tp_debug;
 #define TP_DETAIL(index, a, arg...)\
 			do{\
 				if (LEVEL_BASIC != tp_debug)\
-					pr_err("[TP]"TPD_DEVICE"%x"": " a, index, ##arg);\
+					pr_err("[TP""%x""]"TPD_DEVICE": " a, index, ##arg);\
 			}while(0)
 
 #define TPD_SPECIFIC_PRINT(count, a, arg...)\
@@ -73,6 +74,26 @@ extern unsigned int tp_debug;
 				if (tp_debug)\
 					printk(a, ##arg);\
 			}while(0)
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+#define DECLARE_PROC_OPS(name, open_func, read_func, write_func, release_func) \
+					static const struct proc_ops name = { \
+						.proc_open	= open_func,	  \
+						.proc_write = write_func,	  \
+						.proc_read	= read_func,	  \
+						.proc_release = release_func, \
+						.proc_lseek	= default_llseek, \
+					}
+#else
+#define DECLARE_PROC_OPS(name, open_func, read_func, write_func, release_func) \
+					static const struct file_operations name = { \
+						.open  = open_func, 	 \
+						.write = write_func,	 \
+						.read  = read_func, 	 \
+						.release = release_func, \
+						.owner = THIS_MODULE,	 \
+					}
+#endif
 
 /*******Part1: common api Area********************************/
 
@@ -352,7 +373,7 @@ static inline unsigned long tp_copy_from_user(void *to, unsigned long dest_size,
 
 	if (src_size > dest_size) {
 		TPD_INFO("%s:dest_size = %lu, src_size = %lu\n",
-			 __func__, MaxCount, src_size);
+			 __func__, dest_size, src_size);
 		return src_size;
 	}
 

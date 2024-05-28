@@ -28,14 +28,35 @@ obj-$(CONFIG_PLAT_VERSATILE)	+= versatile/
 obj-y				+= xilinx/
 obj-$(CONFIG_ARCH_ZX)		+= zte/
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_SYSTEM_KERNEL
 obj-$(CONFIG_OPLUS_SYSTEM_KERNEL)	+= oplus/system/
-#endif /* VENDOR_EDIT */
+#endif /* OPLUS_SYSTEM_KERNEL */
 
 #ifdef OPLUS_FEATURE_TP_BASIC
-obj-y				+= oplus/device_info/
+obj-$(CONFIG_OPLUS_DEVICE_IFNO)  +=  oplus/device_info/
 #endif /*OPLUS_FEATURE_TP_BASIC*/
+
 
 #ifdef OPLUS_FEATURE_SENSOR_SMEM
 obj-$(CONFIG_OPLUS_FEATURE_SENSOR_CFG) += oplus/sensor/
 #endif
+
+#ifdef CONFIG_OPLUS_SENSOR_CONSUMER_IR
+# Add for consumer ir
+obj-$(CONFIG_OPLUS_SENSOR_CONSUMER_IR_CORE) += oplus/oplus_consumer_ir/
+#endif /* CONFIG_OPLUS_SENSOR_CONSUMER_IR */
+
+#ifdef OPLUS_FEATURE_ESIM
+obj-y += oplus/misc/
+#endif /* OPLUS_FEATURE_ESIM */
+
+#ifdef OPLUS_FEATURE_MIDAS
+obj-$(CONFIG_OPLUS_FEATURE_MIDAS)    += oplus/midas/
+#endif
+
+#Add for NandSwap
+obj-$(CONFIG_NANDSWAP)		+= oplus/oplus_nandswap/
+
+#ifdef OPLUS_FEATURE_ESIM
+obj-y += oplus/misc/
+#endif /* OPLUS_FEATURE_ESIM */

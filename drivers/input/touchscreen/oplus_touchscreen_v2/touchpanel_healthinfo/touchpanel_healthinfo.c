@@ -948,20 +948,6 @@ int tp_touch_healthinfo_handle(struct monitor_data *monitor_data,
 	return 0;
 }
 
-int tp_grip_up_healthinfo_handle(struct monitor_data *monitor_data, uint8_t up_id,
-				 int direction)
-{
-	int ret = 0;
-
-	if (!monitor_data) {
-		return 0;
-	}
-
-	point_state_up_handle(monitor_data, up_id, direction);
-
-	return ret;
-}
-
 int tp_gesture_healthinfo_handle(struct monitor_data *monitor_data,
 				 int gesture_type)
 {
@@ -1773,52 +1759,6 @@ int tp_healthinfo_clear(void *tp_monitor_data)
 	monitor_data->vddi = VOLTAGE_STATE_DEFAULT;*/
 
 	TPD_INFO("Clear health info Finish!\n");
-
-	return 0;
-}
-int init_grip_zone(struct device *dev, struct monitor_data *monitor_data)
-{
-	int ret = 0;
-	int dead_width[2] = {0}, cond_width[4] = {0}, eli_width[4] = {0};
-
-	if (!monitor_data) {
-		TPD_INFO("monitor_data is NULL.\n");
-		return -1;
-	}
-
-	monitor_data->elizone_point_tophalf_i = -1;
-	monitor_data->elizone_point_bothalf_i = -1;
-
-	ret = of_property_read_u32_array(dev->of_node, "prevention,dead_area_width",
-					 dead_width, 2);
-
-	if (ret) {
-		dead_width[0] = 10;
-		dead_width[1] = 10;
-		TPD_INFO("panel coords using default.\n");
-	}
-
-	ret = of_property_read_u32_array(dev->of_node,
-					 "prevention,condition_area_width", cond_width, 4);
-
-	if (ret) {
-		cond_width[0] = 30;
-		cond_width[1] = 30;
-		cond_width[2] = 100;
-		cond_width[3] = 80;
-		TPD_INFO("condition area width using default.\n");
-	}
-
-	ret = of_property_read_u32_array(dev->of_node, "prevention,eli_area_width",
-					 eli_width, 4);
-
-	if (ret) {
-		eli_width[0] = 80;
-		eli_width[1] = 500;
-		eli_width[2] = 600;
-		eli_width[3] = 120;
-		TPD_INFO("eli area width using default.\n");
-	}
 
 	return 0;
 }

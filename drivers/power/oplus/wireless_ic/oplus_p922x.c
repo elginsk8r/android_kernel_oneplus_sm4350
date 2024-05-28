@@ -1,19 +1,7 @@
-/************************************************************************************
-** File:  oplus_p922x.c
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for wireless charge
-** 
-** Version: 1.0
-** Date created: 21:03:46,06/11/2018
-** Author: Lin Shangbo, Li Jiada
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2018-11-06    Lin Shangbo,Li Jiada   		Created for wireless charge
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
@@ -41,8 +29,9 @@
 #include <linux/device.h>
 #include <linux/regmap.h>
 #include <linux/iio/consumer.h>
+#ifndef CONFIG_OPLUS_CHARGER_MTK
 #include <uapi/linux/qg.h>
-
+#endif
 #include <soc/oplus/device_info.h>
 #include <soc/oplus/system/oplus_project.h>
 
@@ -65,6 +54,12 @@
 static int stop_timer = 0;
 #endif
 
+#define SLEEP_MODE_UNKOWN	-1
+#define FASTCHG_MODE		0
+#define SILENT_MODE			1
+#define BATTERY_FULL_MODE	2
+#define CALL_MODE			598
+#define EXIT_CALL_MODE		599
 static unsigned long records_seconds = 0;
 static bool test_is_charging = false;
 
@@ -73,11 +68,11 @@ struct oplus_p922x_ic *p922x_chip = NULL;
 extern struct oplus_chg_chip *g_oplus_chip;
 extern void oplus_wireless_set_otg_en_val(int value);
 extern int oplus_wireless_get_otg_en_val(struct oplus_p922x_ic *chip);
-extern void oplus_set_wrx_en_value(int value);
-extern void oplus_set_wrx_otg_value(int value);
+static void oplus_set_wrx_en_value(int value);
+static void oplus_set_wrx_otg_en_value(int value);
 extern int oplus_get_idt_en_val(void);
-extern int oplus_get_wrx_otg_val(void);
-extern int oplus_get_wrx_en_val(void);
+static int oplus_get_wrx_otg_en_val(void);
+static int oplus_get_wrx_en_val(void);
 extern void oplus_chg_cancel_update_work_sync(void);
 extern void oplus_chg_restart_update_work(void);
 extern bool oplus_get_wired_otg_online(void);
@@ -87,6 +82,14 @@ int p922x_get_idt_con_val(void);
 int p922x_get_idt_int_val(void);
 int p922x_get_vbat_en_val(void);
 static void wlchg_reset_variables(struct oplus_p922x_ic *chip);
+
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+/* only for GKI compile */
+unsigned int __attribute__((weak)) get_PCB_Version(void)
+{
+    return EVT2 + 1;
+}
+#endif
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 void __attribute__((weak)) switch_wireless_charger_state(int wireless_state) {return;}
@@ -333,34 +336,66 @@ static void p922x_set_FOD_parameter(struct oplus_p922x_ic *chip, char parameter)
 
 	if (parameter == 17) {
 		chg_err("<~WPC~>set FOD parameter BPP17\n");
-		p922x_config_interface(chip, 0x0068, 0xBE, 0xFF);
-		p922x_config_interface(chip, 0x0069, 0x78, 0xFF);
-		p922x_config_interface(chip, 0x006A, 0x9C, 0xFF);
-		p922x_config_interface(chip, 0x006B, 0x78, 0xFF);
-		p922x_config_interface(chip, 0x006C, 0x96, 0xFF);
-		p922x_config_interface(chip, 0x006D, 0x2D, 0xFF);
-		p922x_config_interface(chip, 0x006E, 0x93, 0xFF);
-		p922x_config_interface(chip, 0x006F, 0x22, 0xFF);
-		p922x_config_interface(chip, 0x0070, 0x90, 0xFF);
-		p922x_config_interface(chip, 0x0071, 0x0E, 0xFF);
-		p922x_config_interface(chip, 0x0072, 0x98, 0xFF);
-		p922x_config_interface(chip, 0x0073, 0xE2, 0xFF);
+		if (chip->p922x_chg_status.dock_version == 0x02) {
+			p922x_config_interface(chip, 0x0068, 0x80, 0xFF);
+			p922x_config_interface(chip, 0x0069, 0x9A, 0xFF);
+			p922x_config_interface(chip, 0x006A, 0xC8, 0xFF);
+			p922x_config_interface(chip, 0x006B, 0x81, 0xFF);
+			p922x_config_interface(chip, 0x006C, 0x88, 0xFF);
+			p922x_config_interface(chip, 0x006D, 0x2D, 0xFF);
+			p922x_config_interface(chip, 0x006E, 0x7E, 0xFF);
+			p922x_config_interface(chip, 0x006F, 0x7F, 0xFF);
+			p922x_config_interface(chip, 0x0070, 0x90, 0xFF);
+			p922x_config_interface(chip, 0x0071, 0xF8, 0xFF);
+			p922x_config_interface(chip, 0x0072, 0x9F, 0xFF);
+			p922x_config_interface(chip, 0x0073, 0x81, 0xFF);
+		}
+		else {
+			p922x_config_interface(chip, 0x0068, 0xBE, 0xFF);
+			p922x_config_interface(chip, 0x0069, 0x78, 0xFF);
+			p922x_config_interface(chip, 0x006A, 0x9C, 0xFF);
+			p922x_config_interface(chip, 0x006B, 0x78, 0xFF);
+			p922x_config_interface(chip, 0x006C, 0x96, 0xFF);
+			p922x_config_interface(chip, 0x006D, 0x2D, 0xFF);
+			p922x_config_interface(chip, 0x006E, 0x93, 0xFF);
+			p922x_config_interface(chip, 0x006F, 0x22, 0xFF);
+			p922x_config_interface(chip, 0x0070, 0x90, 0xFF);
+			p922x_config_interface(chip, 0x0071, 0x0E, 0xFF);
+			p922x_config_interface(chip, 0x0072, 0x98, 0xFF);
+			p922x_config_interface(chip, 0x0073, 0xE2, 0xFF);
+		}
 
 		chip->p922x_chg_status.FOD_parameter = parameter;
 	} else if (parameter == 12) {
 		chg_err("<~WPC~>set FOD parameter BPP12\n");
-		p922x_config_interface(chip, 0x0068, 0xC8, 0xFF);
-		p922x_config_interface(chip, 0x0069, 0x6E, 0xFF);
-		p922x_config_interface(chip, 0x006A, 0xAA, 0xFF);
-		p922x_config_interface(chip, 0x006B, 0x64, 0xFF);
-		p922x_config_interface(chip, 0x006C, 0xA0, 0xFF);
-		p922x_config_interface(chip, 0x006D, 0x2D, 0xFF);
-		p922x_config_interface(chip, 0x006E, 0x93, 0xFF);
-		p922x_config_interface(chip, 0x006F, 0x0E, 0xFF);
-		p922x_config_interface(chip, 0x0070, 0x93, 0xFF);
-		p922x_config_interface(chip, 0x0071, 0x0E, 0xFF);
-		p922x_config_interface(chip, 0x0072, 0x93, 0xFF);
-		p922x_config_interface(chip, 0x0073, 0x17, 0xFF);
+		if (chip->p922x_chg_status.dock_version == 0x02) {
+			p922x_config_interface(chip, 0x0068, 0x3C, 0xFF);
+			p922x_config_interface(chip, 0x0069, 0x92, 0xFF);
+			p922x_config_interface(chip, 0x006A, 0x75, 0xFF);
+			p922x_config_interface(chip, 0x006B, 0x7F, 0xFF);
+			p922x_config_interface(chip, 0x006C, 0x96, 0xFF);
+			p922x_config_interface(chip, 0x006D, 0x2D, 0xFF);
+			p922x_config_interface(chip, 0x006E, 0x93, 0xFF);
+			p922x_config_interface(chip, 0x006F, 0xBA, 0xFF);
+			p922x_config_interface(chip, 0x0070, 0x82, 0xFF);
+			p922x_config_interface(chip, 0x0071, 0x4C, 0xFF);
+			p922x_config_interface(chip, 0x0072, 0x8A, 0xFF);
+			p922x_config_interface(chip, 0x0073, 0x7F, 0xFF);
+		}
+		else {
+			p922x_config_interface(chip, 0x0068, 0xC8, 0xFF);
+			p922x_config_interface(chip, 0x0069, 0x6E, 0xFF);
+			p922x_config_interface(chip, 0x006A, 0xAA, 0xFF);
+			p922x_config_interface(chip, 0x006B, 0x64, 0xFF);
+			p922x_config_interface(chip, 0x006C, 0xA0, 0xFF);
+			p922x_config_interface(chip, 0x006D, 0x2D, 0xFF);
+			p922x_config_interface(chip, 0x006E, 0x93, 0xFF);
+			p922x_config_interface(chip, 0x006F, 0x0E, 0xFF);
+			p922x_config_interface(chip, 0x0070, 0x93, 0xFF);
+			p922x_config_interface(chip, 0x0071, 0x0E, 0xFF);
+			p922x_config_interface(chip, 0x0072, 0x93, 0xFF);
+			p922x_config_interface(chip, 0x0073, 0x17, 0xFF);
+		}
 
 		chip->p922x_chg_status.FOD_parameter = parameter;
 	} else if (parameter == 10) {
@@ -416,17 +451,45 @@ static void p922x_set_FOD_parameter(struct oplus_p922x_ic *chip, char parameter)
 
 static int p922x_set_tx_Q_value(struct oplus_p922x_ic *chip)
 {
-	chg_err("<~WPC~>p922x_set_tx_Q_value----------->\n");
+	int q_value = 0x41;
 
+	switch (chip->p922x_chg_status.dock_version) {
+	case DOCK_OAWV00:
+	case DOCK_OAWV01:
+		q_value = 0x41;
+		break;
+	case DOCK_OAWV02:
+	case DOCK_OAWV03:
+	case DOCK_THIRD:
+		q_value = 0x56;
+		break;
+	case DOCK_OAWV04:
+	case DOCK_OAWV05:
+	case DOCK_OAWV06:
+	case DOCK_OAWV07:
+	case DOCK_OAWV08:
+	case DOCK_OAWV09:
+	case DOCK_OAWV10:
+	case DOCK_OAWV11:
+	case DOCK_OAWV16:
+	case DOCK_OAWV17:
+	case DOCK_OAWV18:
+	case DOCK_OAWV19:
+		q_value = 0x56;
+		break;
+	default:
+		q_value = 0x41;
+		break;
+	}
+
+	chg_err("<~WPC~>p922x_set_tx_Q_value[0x%x]----------->\n", q_value);
 	p922x_clear_irq(chip, 0x00, 0x00);
-
-	//send the Q value
+	/*send Q vvalue*/
 	p922x_config_interface(chip, 0x0050, 0x38, 0xFF);
 	p922x_config_interface(chip, 0x0051, 0x48, 0xFF);
 	p922x_config_interface(chip, 0x0052, 0x00, 0xFF);
-	p922x_config_interface(chip, 0x0053, 0x41, 0xFF);
-
-	p922x_config_interface(chip, 0x004E, 0x01, 0x01);//BIT0
+	p922x_config_interface(chip, 0x0053, q_value, 0xFF);
+	p922x_config_interface(chip, 0x004E, 0x01, 0x01);
 
 	return 0;
 }
@@ -461,6 +524,28 @@ static int p922x_set_tx_charger_fastcharge(struct oplus_p922x_ic *chip)
 	return 0;
 }
 
+static int p922x_config_fan_pwm_pulse_value(struct oplus_p922x_ic *chip)
+{
+	int dock_version = chip->p922x_chg_status.dock_version;
+
+	if (dock_version == DOCK_OAWV01) {
+		chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg = FAN_PWM_PULSE_IN_FASTCHG_MODE_V01;
+		chip->p922x_chg_status.dock_fan_pwm_pulse_silent = FAN_PWM_PULSE_IN_SILENT_MODE_V01;
+	} else if (dock_version == DOCK_OAWV02) {
+		chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg = FAN_PWM_PULSE_IN_FASTCHG_MODE_V02;
+		chip->p922x_chg_status.dock_fan_pwm_pulse_silent = FAN_PWM_PULSE_IN_SILENT_MODE_V02;
+	} else if (dock_version >= DOCK_OAWV03 && dock_version <= DOCK_OAWV07) {
+		chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg = FAN_PWM_PULSE_IN_FASTCHG_MODE_V03_07;
+		chip->p922x_chg_status.dock_fan_pwm_pulse_silent = FAN_PWM_PULSE_IN_SILENT_MODE_V03_07;
+	} else if (dock_version >= DOCK_OAWV08 && dock_version <= DOCK_OAWV15) {
+		chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg = FAN_PWM_PULSE_IN_FASTCHG_MODE_V08_15;
+		chip->p922x_chg_status.dock_fan_pwm_pulse_silent = FAN_PWM_PULSE_IN_SILENT_MODE_V08_15;
+	} else {
+		chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg = FAN_PWM_PULSE_IN_FASTCHG_MODE_DEFAULT;
+		chip->p922x_chg_status.dock_fan_pwm_pulse_silent = FAN_PWM_PULSE_IN_SILENT_MODE_DEFAULT;
+	}
+	return 0;
+}
 int p922x_set_tx_fan_pwm_pulse(struct oplus_p922x_ic *chip)
 {
 	int pwm_pulse;
@@ -689,8 +774,13 @@ static void p922x_reset_variables(struct oplus_p922x_ic *chip)
 	chip->p922x_chg_status.vout_debug_mode = false;
 	chip->p922x_chg_status.iout_debug_mode = false;
 #endif
-
+	chip->cep_timeout_ack = false;
+	chip->quiet_mode_ack = false;
+	chip->quiet_mode_need = SLEEP_MODE_UNKOWN;
+	chip->pre_quiet_mode_need = SLEEP_MODE_UNKOWN;
 	chip->p922x_chg_status.FOD_parameter = 0;
+	chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg = FAN_PWM_PULSE_IN_FASTCHG_MODE_DEFAULT;
+	chip->p922x_chg_status.dock_fan_pwm_pulse_silent = FAN_PWM_PULSE_IN_SILENT_MODE_DEFAULT;
 }
 
 static void p922x_init(struct oplus_p922x_ic *chip)
@@ -909,11 +999,11 @@ static void px922x_disable_tx_power(void)
 			chg_err("<~WPC~> wired_otg_online\n");
 			//mp2650_wireless_set_mps_otg_en_val(0);//in mp2650_otg_disable
 			mp2650_otg_disable();
-			oplus_set_wrx_otg_value(0);
+			oplus_set_wrx_otg_en_value(0);
 		} else {
 			mp2650_otg_disable();
 			//mp2650_wireless_set_mps_otg_en_val(0);//in mp2650_otg_disable
-			oplus_set_wrx_otg_value(0);
+			oplus_set_wrx_otg_en_value(0);
 			mp2650_enable_charging();
 			msleep(100);
 			oplus_set_wrx_en_value(0);
@@ -950,6 +1040,8 @@ void p922x_set_rtx_function(bool is_on)
 
 		cancel_delayed_work_sync(&p922x_chip->idt_dischg_work);
 
+		p922x_chip->wireless_mode = WIRELESS_MODE_TX;
+
 		if (oplus_get_wired_chg_present() == true) {
 			chg_err("<~WPC~> wired_chg_present\n");
 			p922x_set_booster_en_val(1);
@@ -961,7 +1053,7 @@ void p922x_set_rtx_function(bool is_on)
 			mp2650_set_mps_otg_voltage(true);
 			mp2650_set_mps_second_otg_voltage(false);
 			mp2650_set_mps_otg_current();
-			oplus_set_wrx_otg_value(1);
+			oplus_set_wrx_otg_en_value(1);
 			mp2650_set_voltage_slew_rate(1);
 			//mp2650_wireless_set_mps_otg_en_val(1);//in mp2650_otg_enable
 			mp2650_otg_enable();
@@ -971,13 +1063,12 @@ void p922x_set_rtx_function(bool is_on)
 			mp2650_set_mps_otg_voltage(true);
 			mp2650_set_mps_second_otg_voltage(false);
 			mp2650_set_mps_otg_current();
-			oplus_set_wrx_otg_value(1);
+			oplus_set_wrx_otg_en_value(1);
 			mp2650_set_voltage_slew_rate(1);
 			//mp2650_wireless_set_mps_otg_en_val(1);//in mp2650_otg_enable
 			mp2650_otg_enable();
 		}
 
-		p922x_chip->wireless_mode = WIRELESS_MODE_TX;
 
 		//msleep(200);
 		p922x_chip->p922x_chg_status.wpc_dischg_status = WPC_DISCHG_STATUS_ON;
@@ -1113,7 +1204,7 @@ booster_en[%d], chargepump_en[%d], wrx_en[%d], wrx_otg_en[%d], mps_otg_en[%d], \
 							p922x_get_booster_en_val(),
 							chargepump_get_chargepump_en_val(),
 							oplus_get_wrx_en_val(),
-							oplus_get_wrx_otg_val(),
+							oplus_get_wrx_otg_en_val(),
 							mp2650_wireless_get_mps_otg_en_val(),
 							p922x_get_cp_ldo_5v_val(),
 							p922x_get_ext2_wireless_otg_en_val(),
@@ -1379,7 +1470,7 @@ static int p922x_MTP(struct oplus_p922x_ic *chip, unsigned char *fw_buf, int fw_
 
 	mp2650_wireless_set_mps_otg_en_val(0);
 	oplus_set_wrx_en_value(0);
-	oplus_set_wrx_otg_value(0);
+	oplus_set_wrx_otg_en_value(0);
 	chg_err("<IDT UPDATE> Disable power P9415.\n");
 	msleep(2000);
 
@@ -1392,7 +1483,7 @@ static int p922x_MTP(struct oplus_p922x_ic *chip, unsigned char *fw_buf, int fw_
 
 	mp2650_wireless_set_mps_otg_en_val(1);
 	oplus_set_wrx_en_value(1);
-	oplus_set_wrx_otg_value(1);
+	oplus_set_wrx_otg_en_value(1);
 	oplus_wireless_set_otg_en_val(0);
 	//power P9415 again
 	msleep(1000);
@@ -1539,7 +1630,7 @@ static int p922x_check_idt_fw_update(struct oplus_p922x_ic *chip)
 
 	mp2650_wireless_set_mps_otg_en_val(1);
 	oplus_set_wrx_en_value(1);
-	oplus_set_wrx_otg_value(1);
+	oplus_set_wrx_otg_en_value(1);
 	oplus_wireless_set_otg_en_val(0);
 	msleep(1000);
 
@@ -1586,7 +1677,7 @@ static int p922x_check_idt_fw_update(struct oplus_p922x_ic *chip)
 
 	mp2650_wireless_set_mps_otg_en_val(0);
 	oplus_set_wrx_en_value(0);
-	oplus_set_wrx_otg_value(0);
+	oplus_set_wrx_otg_en_value(0);
 	chip->p922x_chg_status.idt_fw_updating = false;
 
 	return rc;
@@ -2462,6 +2553,20 @@ static int oplus_wpc_chg_parse_chg_dt(struct oplus_p922x_ic *chip)
 	}
 	chg_err("curr_cp_to_charger[%d]\n", chip->p922x_chg_status.wpc_chg_param.curr_cp_to_charger);
 
+	rc = of_property_read_u32(node, "qcom,wireless_power",
+			&chip->p922x_chg_status.wireless_power);
+	if (rc) {
+		chip->p922x_chg_status.wireless_power = 0;
+	}
+	chg_err("wireless_power[%d]\n", chip->p922x_chg_status.wireless_power);
+
+	rc = of_property_read_u32(node, "qcom,wireless_not_support_cool_down",
+			&chip->wireless_not_support_cool_down);
+	if (rc) {
+		chip->wireless_not_support_cool_down= 0;
+	}
+	chg_err("wireless_not_support_cool_down[%d]\n", chip->wireless_not_support_cool_down);
+
 	return 0;
 }
 
@@ -2763,9 +2868,17 @@ int p922x_charge_set_max_current_by_led(struct oplus_p922x_ic *chip)
 	return 0;
 }
 
+static const int cool_down_current_limit_wireless[6] = {600, 600, 600, 1000, 1250, 1250};
 int p922x_charge_set_max_current_by_cool_down(struct oplus_p922x_ic *chip)
 {
-	oplus_chg_get_cool_down_status();
+	int cool_down = oplus_chg_get_cool_down_status();
+	if (cool_down < 1 || cool_down > 6) {
+		chg_debug("don't need to handle cool down %d\n", cool_down);
+		return 0;
+	}
+	if (chip->p922x_chg_status.fastchg_current_limit > cool_down_current_limit_wireless[cool_down - 1]
+		&& chip->wireless_not_support_cool_down == 0)
+		chip->p922x_chg_status.fastchg_current_limit = cool_down_current_limit_wireless[cool_down - 1];
 
 	return 0;
 }
@@ -3084,24 +3197,24 @@ static int p922x_charge_status_process(struct oplus_p922x_ic *chip)
 					chg_err("<~WPC~> 40times: chargepump is fastcharging!\n");
 					chargepump_enable_watchdog();
 					chip->p922x_chg_status.charge_status = WPC_CHG_STATUS_CHAREPUMP_FASTCHG_INIT;
+					chip->cep_timeout_ack = true;
 					break;
 				}
 			}
 
 			if (i >= CHARGEPUMP_DETECT_CNT) {
 				chg_err("<~WPC~> i >= CHARGEPUMP_DETECT_CNT\n");
-				
+
 				chargepump_disable();
 				chip->p922x_chg_status.charge_status = WPC_CHG_STATUS_INCREASE_VOLTAGE_FOR_CHARGEPUMP;
 			}
 		}
 		break;
-		
+
 	case WPC_CHG_STATUS_CHAREPUMP_FASTCHG_INIT:
 		chg_err("<~WPC~> ..........WPC_CHG_STATUS_CHAREPUMP_FASTCHG_INIT..........\n");
 
 		p922x_set_rx_charge_current(chip, 300);
-		
 		p922x_set_FOD_parameter(chip, 17);
 
 		cep_zero_cnt = 0;
@@ -3637,7 +3750,7 @@ static void p922x_idt_dischg_status(struct oplus_p922x_ic *chip)
 			//g_oplus_chip->otg_switch = 0;
 			mp2650_otg_disable();
 			mp2650_otg_wait_vbus_decline();
-			oplus_set_wrx_otg_value(0);
+			oplus_set_wrx_otg_en_value(0);
 			oplus_set_wrx_en_value(0);
 		}
 #endif
@@ -3662,7 +3775,7 @@ static void p922x_idt_dischg_status(struct oplus_p922x_ic *chip)
 				//chip->p922x_chg_status.tx_online = false;
 				//mp2650_otg_disable();
 				//mp2650_otg_wait_vbus_decline();
-				//oplus_set_wrx_otg_value(0);
+				//oplus_set_wrx_otg_en_value(0);
 				//oplus_set_wrx_en_value(0);
 			} else {
 				chip->p922x_chg_status.wpc_dischg_status = WPC_DISCHG_IC_PING_DEVICE;
@@ -3689,7 +3802,7 @@ static void p922x_idt_dischg_work(struct work_struct *work)
 	if (chip->p922x_chg_status.wpc_dischg_status == WPC_DISCHG_STATUS_OFF) {
 		mp2650_otg_disable();
 		mp2650_otg_wait_vbus_decline();
-		oplus_set_wrx_otg_value(0);
+		oplus_set_wrx_otg_en_value(0);
 		oplus_set_wrx_en_value(0);
 	} else {
 		p922x_idt_dischg_status(chip);
@@ -3734,14 +3847,21 @@ static void p922x_commu_data_process(struct oplus_p922x_ic *chip)
 				switch (tx_command) {
 				case P9237_RESPONE_ADAPTER_TYPE:
 					if ((tx_command == tx_command_r) && (tx_data == tx_data_r)) {
-						p922x_set_FOD_parameter(chip, 1);
-						
 						chip->p922x_chg_status.adapter_type = (tx_data & 0x07);
 						chip->p922x_chg_status.dock_version = (tx_data & 0xF8) >> 3;
+
+						chg_err("<~WPC~> get adapter type = 0x%02X, get dock hw version = 0x%02X\n",
+							chip->p922x_chg_status.adapter_type, chip->p922x_chg_status.dock_version);
+						p922x_config_fan_pwm_pulse_value(chip);
+						if (chip->p922x_chg_status.adapter_type == ADAPTER_TYPE_PD_65W)
+							chip->p922x_chg_status.adapter_type = ADAPTER_TYPE_SVOOC;
+
+						oplus_wpc_get_fastchg_allow(chip);
+						p922x_set_tx_Q_value(chip);
+						p922x_set_FOD_parameter(chip, 1);
+
 						if (chip->p922x_chg_status.adapter_type == ADAPTER_TYPE_SVOOC)
 							wpc_battery_update();
-						chg_err("<~WPC~> get adapter type = 0x%02X\n", chip->p922x_chg_status.adapter_type);
-						chg_err("<~WPC~> get dock hw version = 0x%02X\n", chip->p922x_chg_status.dock_version);
 					}
 					break;
 
@@ -3767,6 +3887,7 @@ static void p922x_commu_data_process(struct oplus_p922x_ic *chip)
 				case P9237_RESPONE_CEP_TIMEOUT:
 					if ((tx_command == tx_command_r) && (tx_data == tx_data_r)) {
 						chg_err("<~WPC~> P9237_RESPONE_CEP_TIMEOUT\n");
+						chip->cep_timeout_ack = true;
 						if (chip->p922x_chg_status.send_message == P9221_CMD_SET_CEP_TIMEOUT) {
 							chip->p922x_chg_status.send_message = P9221_CMD_NULL;
 						}
@@ -3776,6 +3897,7 @@ static void p922x_commu_data_process(struct oplus_p922x_ic *chip)
 				case P9237_RESPONE_PWM_PULSE:
 					if ((tx_command == tx_command_r) && (tx_data == tx_data_r)) {
 						chg_err("<~WPC~> P9237_RESPONE_PWM_PULSE\n");
+						chip->quiet_mode_ack = true;
 						if (chip->p922x_chg_status.send_message == P9221_CMD_SET_PWM_PULSE) {
 							chip->p922x_chg_status.send_message = P9221_CMD_NULL;
 						}
@@ -3937,13 +4059,11 @@ static void p922x_idt_connect_int_func(struct work_struct *work)
 			chg_err("<~WPC~> ready for wireless charge\n");
 
 			p922x_get_running_mode(chip);
-			
+
 			oplus_set_wrx_en_value(1);
 
 			p922x_init(chip);
 
-			p922x_set_tx_Q_value(chip);
-			
 			p922x_charger_init(chip);
 
 			msleep(50);
@@ -4786,12 +4906,12 @@ static int p922x_set_silent_mode(bool is_silent)
 	}
 
 	if (is_silent) {
-		chg_err("<~WPC~> set fan pwm pulse: %d\n", FAN_PWM_PULSE_IN_SILENT_MODE);
-		p922x_set_dock_fan_pwm_pulse(FAN_PWM_PULSE_IN_SILENT_MODE);
+		chg_err("<~WPC~> set fan pwm pulse: %d\n", chip->p922x_chg_status.dock_fan_pwm_pulse_silent);
+		p922x_set_dock_fan_pwm_pulse(chip->p922x_chg_status.dock_fan_pwm_pulse_silent);
 		chip->p922x_chg_status.work_silent_mode = true;
 	} else {
-		chg_err("<~WPC~> set fan pwm pulse: %d\n", FAN_PWM_PULSE_IN_FASTCHG_MODE);
-		p922x_set_dock_fan_pwm_pulse(FAN_PWM_PULSE_IN_FASTCHG_MODE);
+		chg_err("<~WPC~> set fan pwm pulse: %d\n", chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg);
+		p922x_set_dock_fan_pwm_pulse(chip->p922x_chg_status.dock_fan_pwm_pulse_fastchg);
 		chip->p922x_chg_status.work_silent_mode = false;
 	}
 
@@ -4839,6 +4959,234 @@ static int p922x_cp_ldo_5v_gpio_init(struct oplus_p922x_ic *chip)
 
 	chg_err("gpio_val:%d\n", gpio_get_value(chip->cp_ldo_5v_gpio));
 
+	return 0;
+}
+
+static int oplus_wrx_en_gpio_init(struct oplus_p922x_ic *chip)
+{
+	if (!chip) {
+		printk(KERN_ERR "[OPLUS_CHG][%s]: oplus_p922x_ic not ready!\n", __func__);
+		return -EINVAL;
+	}
+
+	chip->pinctrl = devm_pinctrl_get(chip->dev);
+	if (IS_ERR_OR_NULL(chip->pinctrl)) {
+		chg_err("get wrx_en pinctrl fail\n");
+		return -EINVAL;
+	}
+
+	chip->wrx_en_active = pinctrl_lookup_state(chip->pinctrl, "wrx_en_active");
+	if (IS_ERR_OR_NULL(chip->wrx_en_active)) {
+		chg_err("get wrx_en_active fail\n");
+		return -EINVAL;
+	}
+	chip->wrx_en_sleep = pinctrl_lookup_state(chip->pinctrl, "wrx_en_sleep");
+	if (IS_ERR_OR_NULL(chip->wrx_en_sleep)) {
+		chg_err("get wrx_en_sleep fail\n");
+		return -EINVAL;
+	}
+	chip->wrx_en_default = pinctrl_lookup_state(chip->pinctrl, "wrx_en_default");
+	if (IS_ERR_OR_NULL(chip->wrx_en_default)) {
+		chg_err("get wrx_en_default fail\n");
+		return -EINVAL;
+	}
+
+	if (chip->wrx_en_gpio > 0) {
+		gpio_direction_output(chip->wrx_en_gpio, 0);
+	}
+	pinctrl_select_state(chip->pinctrl, chip->wrx_en_default);
+	printk(KERN_ERR "[OPLUS_CHG][%s]: gpio value[%d]!\n", __func__,
+		gpio_get_value(chip->wrx_en_gpio));
+
+	return 0;
+}
+
+void oplus_set_wrx_en_value(int value)
+{
+	struct oplus_p922x_ic *chip = p922x_chip;
+
+	if (!chip) {
+		printk(KERN_ERR "[OPLUS_CHG][%s]: oplus_p922x_ic not ready!\n", __func__);
+		return;
+	}
+
+	if (chip->wrx_en_gpio <= 0) {
+		chg_err("wrx_en_gpio not exist, return\n");
+		return;
+	}
+	if (IS_ERR_OR_NULL(chip->pinctrl)
+		|| IS_ERR_OR_NULL(chip->wrx_en_active)
+		|| IS_ERR_OR_NULL(chip->wrx_en_sleep)) {
+		chg_err("pinctrl null, return\n");
+		return;
+	}
+	if (value == 1) {
+		gpio_direction_output(chip->wrx_en_gpio, 1);
+		pinctrl_select_state(chip->pinctrl, chip->wrx_en_active);
+	} else {
+		gpio_direction_output(chip->wrx_en_gpio, 0);
+		pinctrl_select_state(chip->pinctrl, chip->wrx_en_sleep);
+	}
+	chg_err("set value:%d, gpio_val:%d\n",
+		value, gpio_get_value(chip->wrx_en_gpio));
+}
+
+int oplus_get_wrx_en_val(void)
+{
+	struct oplus_p922x_ic *chip = p922x_chip;
+
+	if (!chip) {
+		chg_err("oplus_wpc_chip not ready!\n");
+		return 0;
+	}
+	if (chip->wrx_en_gpio <= 0) {
+		chg_err("wrx_en_gpio not exist, return\n");
+		return 0;
+	}
+	if (IS_ERR_OR_NULL(chip->pinctrl)
+		|| IS_ERR_OR_NULL(chip->wrx_en_active)
+		|| IS_ERR_OR_NULL(chip->wrx_en_sleep)) {
+		chg_err("pinctrl null, return\n");
+		return 0;
+	}
+	return gpio_get_value(chip->wrx_en_gpio);
+}
+
+static int oplus_wrx_otg_en_gpio_init(struct oplus_p922x_ic *chip)
+{
+	if (!chip) {
+		printk(KERN_ERR "[OPLUS_CHG][%s]: oplus_wpc_chip not ready!\n", __func__);
+		return -EINVAL;
+	}
+
+	chip->pinctrl = devm_pinctrl_get(chip->dev);
+	if (IS_ERR_OR_NULL(chip->pinctrl)) {
+		chg_err("get wrx_otg_en pinctrl fail\n");
+		return -EINVAL;
+	}
+
+	chip->wrx_otg_en_active = pinctrl_lookup_state(chip->pinctrl, "wrx_otg_en_active");
+	if (IS_ERR_OR_NULL(chip->wrx_otg_en_active)) {
+		chg_err("get wrx_otg_en_active fail\n");
+		return -EINVAL;
+	}
+	chip->wrx_otg_en_sleep = pinctrl_lookup_state(chip->pinctrl, "wrx_otg_en_sleep");
+	if (IS_ERR_OR_NULL(chip->wrx_otg_en_sleep)) {
+		chg_err("get wrx_otg_en_sleep fail\n");
+		return -EINVAL;
+	}
+	chip->wrx_otg_en_default = pinctrl_lookup_state(chip->pinctrl, "wrx_otg_en_default");
+	if (IS_ERR_OR_NULL(chip->wrx_otg_en_default)) {
+		chg_err("get wrx_otg_en_default fail\n");
+		return -EINVAL;
+	}
+
+	if (chip->wrx_otg_en_gpio > 0) {
+		gpio_direction_output(chip->wrx_otg_en_gpio, 0);
+	}
+	pinctrl_select_state(chip->pinctrl, chip->wrx_otg_en_default);
+	printk(KERN_ERR "[OPLUS_CHG][%s]: gpio value[%d]!\n", __func__,
+		gpio_get_value(chip->wrx_otg_en_gpio));
+	return 0;
+}
+
+void oplus_set_wrx_otg_en_value(int value)
+{
+	struct oplus_p922x_ic *chip = p922x_chip;
+
+	if (!chip) {
+		printk(KERN_ERR "[OPLUS_CHG][%s]: oplus_wpc_chip not ready!\n", __func__);
+		return;
+	}
+	if (chip->wrx_otg_en_gpio <= 0) {
+		chg_err("wrx_otg_en_gpio not exist, return\n");
+		return;
+	}
+	if (IS_ERR_OR_NULL(chip->pinctrl)
+		|| IS_ERR_OR_NULL(chip->wrx_otg_en_active)
+		|| IS_ERR_OR_NULL(chip->wrx_otg_en_sleep)) {
+		chg_err("pinctrl null, return\n");
+		return;
+	}
+	if (value == 1) {
+		gpio_direction_output(chip->wrx_otg_en_gpio, 1);
+		pinctrl_select_state(chip->pinctrl,
+			chip->wrx_otg_en_active);
+	} else {
+		gpio_direction_output(chip->wrx_otg_en_gpio, 0);
+		pinctrl_select_state(chip->pinctrl,
+			chip->wrx_otg_en_sleep);
+	}
+	chg_err("set value:%d, gpio_val:%d\n",
+		value, gpio_get_value(chip->wrx_otg_en_gpio));
+}
+
+int oplus_get_wrx_otg_en_val(void)
+{
+	struct oplus_p922x_ic *chip = p922x_chip;
+
+	if (!chip) {
+		chg_err("oplus_wpc_chip not ready!\n");
+		return 0;
+	}
+	if (chip->wrx_otg_en_gpio <= 0) {
+		chg_err("wrx_otg_en_gpio not exist, return\n");
+		return 0;
+	}
+	if (IS_ERR_OR_NULL(chip->pinctrl)
+		|| IS_ERR_OR_NULL(chip->wrx_otg_en_active)
+		|| IS_ERR_OR_NULL(chip->wrx_otg_en_sleep)) {
+		chg_err("pinctrl null, return\n");
+		return 0;
+	}
+	return gpio_get_value(chip->wrx_otg_en_gpio);
+}
+
+static bool oplus_wls_pg_is_support(struct oplus_p922x_ic *chip)
+{
+	if (!chip) {
+		chg_err("chip is NULL!\n");
+		return false;
+	}
+	if (chip->wls_pg_gpio <= 0)
+		return false;
+
+	if (get_PCB_Version() >= PVT1)
+		return true;
+	return false;
+}
+
+static int oplus_wls_pg_gpio_init(struct oplus_p922x_ic *chip)
+{
+	if (!chip) {
+		printk(KERN_ERR "[OPLUS_CHG][%s]: oplus_wpc_chip not ready!\n", __func__);
+		return -EINVAL;
+	}
+
+	chip->pinctrl = devm_pinctrl_get(chip->dev);
+	if (IS_ERR_OR_NULL(chip->pinctrl)) {
+		chg_err("get wls_pg pinctrl fail\n");
+		return -EINVAL;
+	}
+
+	chip->wls_pg_active = pinctrl_lookup_state(chip->pinctrl, "wls_pg_active");
+	if (IS_ERR_OR_NULL(chip->wls_pg_active)) {
+		chg_err("get wls_pg_active fail\n");
+		return -EINVAL;
+	}
+
+	chip->wls_pg_default = pinctrl_lookup_state(chip->pinctrl, "wls_pg_default");
+	if (IS_ERR_OR_NULL(chip->wls_pg_default)) {
+		chg_err("get wls_pg_default fail\n");
+		return -EINVAL;
+	}
+
+	if (chip->wls_pg_gpio > 0) {
+		gpio_direction_output(chip->wrx_otg_en_gpio, 1);
+	}
+	pinctrl_select_state(chip->pinctrl, chip->wls_pg_default);
+	printk(KERN_ERR "[OPLUS_CHG][%s]: gpio value[%d]!\n", __func__,
+		gpio_get_value(chip->wls_pg_gpio));
 	return 0;
 }
 
@@ -4995,6 +5343,62 @@ static int p922x_idt_gpio_init(struct oplus_p922x_ic *chip)
 		pr_err("chip->cp_ldo_5v_gpio =%d\n",chip->cp_ldo_5v_gpio);
 	}
 
+	chip->wrx_en_gpio = of_get_named_gpio(node, "qcom,wrx_en-gpio", 0);
+	if (chip->wrx_en_gpio < 0) {
+		pr_err("chip->wrx_en_gpio not specified\n");
+	} else {
+		if (gpio_is_valid(chip->wrx_en_gpio)) {
+			rc = gpio_request(chip->wrx_en_gpio, "wrx-en-gpio");
+			if (rc) {
+				pr_err("unable to request gpio wrx_en_gpio[%d]\n", chip->wrx_en_gpio);
+			} else {
+				rc = oplus_wrx_en_gpio_init(chip);
+				if (rc) {
+					chg_err("unable to init wrx_en_gpio:%d\n", chip->wrx_en_gpio);
+				}
+			}
+		}
+		pr_err("chip->wrx_en_gpio =%d\n", chip->wrx_en_gpio);
+	}
+
+	chip->wrx_otg_en_gpio = of_get_named_gpio(node, "qcom,wrx_otg_en-gpio", 0);
+	if (chip->wrx_otg_en_gpio < 0) {
+		pr_err("chip->wrx_otg_en_gpio not specified\n");
+	} else {
+		if (gpio_is_valid(chip->wrx_otg_en_gpio)) {
+			rc = gpio_request(chip->wrx_otg_en_gpio, "wrx-otg-en-gpio");
+			if (rc) {
+				pr_err("unable to request gpio wrx_otg_en_gpio[%d]\n", chip->wrx_otg_en_gpio);
+			} else {
+				rc = oplus_wrx_otg_en_gpio_init(chip);
+				if (rc) {
+					chg_err("unable to init wrx_otg_en_gpio:%d\n", chip->wrx_otg_en_gpio);
+				}
+			}
+		}
+		pr_err("chip->wrx_otg_en_gpio =%d\n", chip->wrx_otg_en_gpio);
+	}
+
+	chip->wls_pg_gpio = of_get_named_gpio(node, "qcom,wls_pg-gpio", 0);
+	if (chip->wls_pg_gpio < 0) {
+		pr_err("chip->wls_pg_gpio not specified\n");
+	} else {
+		if (oplus_wls_pg_is_support(chip)) {
+			if (gpio_is_valid(chip->wls_pg_gpio)) {
+				rc = gpio_request(chip->wls_pg_gpio, "wls-pg-gpio");
+				if (rc) {
+					pr_err("unable to request gpio wls_pg_gpio[%d]\n", chip->wls_pg_gpio);
+				} else {
+					rc = oplus_wls_pg_gpio_init(chip);
+					if (rc) {
+						chg_err("unable to init wls_pg_gpio:%d\n", chip->wls_pg_gpio);
+					}
+				}
+			}
+		}
+		pr_err("chip->wls_pg_gpio =%d\n", chip->wls_pg_gpio);
+	}
+
 	return rc;
 }
 
@@ -5006,15 +5410,15 @@ static ssize_t p922x_reg_store(struct file *filp, const char __user *buff, size_
 	char val_buf;
 	int rc;
 
+	if (len >= ARRAY_SIZE(write_data) || len < 1) {
+		pr_err("data len error.\n");
+		return -EFAULT;
+	}
 	if (copy_from_user(&write_data, buff, len)) {
 		pr_err("p922x_reg_store error.\n");
 		return -EFAULT;
 	}
 
-	if (len >= ARRAY_SIZE(write_data)) {
-		pr_err("data len error.\n");
-		return -EFAULT;
-	}
 	write_data[len] = '\0';
 	if (write_data[len - 1] == '\n') {
 		write_data[len - 1] = '\0';
@@ -5061,10 +5465,18 @@ static ssize_t p922x_reg_show(struct file *filp, char __user *buff, size_t count
 	return (len < count ? len : count);
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations p922x_add_log_proc_fops = {
 	.write = p922x_reg_store,
 	.read = p922x_reg_show,
 };
+#else
+static const struct proc_ops p922x_add_log_proc_fops = {
+	.proc_write = p922x_reg_store,
+	.proc_read = p922x_reg_show,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static void init_p922x_add_log(void)
 {
@@ -5082,15 +5494,16 @@ static ssize_t p922x_data_log_write(struct file *filp, const char __user *buff, 
 	int critical_log = 0;
 	int rc;
 
+	if (len >= ARRAY_SIZE(write_data) || len < 1) {
+		pr_err("data len error.\n");
+		return -EFAULT;
+	}
+
 	if (copy_from_user(&write_data, buff, len)) {
 		pr_err("bat_log_write error.\n");
 		return -EFAULT;
 	}
 
-	if (len >= ARRAY_SIZE(write_data)) {
-		pr_err("data len error.\n");
-		return -EFAULT;
-	}
 	write_data[len] = '\0';
 	if (write_data[len - 1] == '\n') {
 		write_data[len - 1] = '\0';
@@ -5106,21 +5519,28 @@ static ssize_t p922x_data_log_write(struct file *filp, const char __user *buff, 
 	rc = p922x_config_interface(p922x_chip, p922x_add, critical_log, 0xFF);
 	if (rc) {
 		 chg_err("Couldn't write 0x%02x rc = %d\n", p922x_add, rc);
-	} 
+	}
 
 	return len;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations p922x_data_log_proc_fops = {
 	.write = p922x_data_log_write,
 };
+#else
+static const struct proc_ops p922x_data_log_proc_fops = {
+	.proc_write = p922x_data_log_write,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static void init_p922x_data_log(void)
 {
 	struct proc_dir_entry *p = NULL;
 
 	p = proc_create("p922x_data_log", 0664, NULL, &p922x_data_log_proc_fops);
-	if (!p) 
+	if (!p)
 		pr_err("proc_create init_p922x_data_log_proc_fops fail!\n");
 
 }
@@ -5338,6 +5758,7 @@ static ssize_t proc_wireless_voltage_rect_write(struct file *file, const char __
     return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_voltage_rect_ops =
 {
     .read = proc_wireless_voltage_rect_read,
@@ -5345,6 +5766,15 @@ static const struct file_operations proc_wireless_voltage_rect_ops =
     .open  = simple_open,
     .owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_voltage_rect_ops =
+{
+	.proc_read = proc_wireless_voltage_rect_read,
+	.proc_write  = proc_wireless_voltage_rect_write,
+	.proc_open  = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_current_out_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
@@ -5382,8 +5812,16 @@ static ssize_t proc_wireless_current_out_write(struct file *file, const char __u
 		return -ENODEV;
 	}
 
-	copy_from_user(cur_string, buf, len);
-	kstrtoint(cur_string, 0, &cur);
+	if (copy_from_user(cur_string, buf, len)) {
+		chg_err("copy from user error\n");
+		return -EFAULT;
+	}
+
+	if (kstrtoint(cur_string, 0, &cur) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("set current: cur_string = %s, cur = %d.", cur_string, cur);
 	p922x_chip->p922x_chg_status.iout_stated_current = cur;
 
@@ -5394,6 +5832,7 @@ static ssize_t proc_wireless_current_out_write(struct file *file, const char __u
     return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_current_out_ops =
 {
 	.read = proc_wireless_current_out_read,
@@ -5401,40 +5840,62 @@ static const struct file_operations proc_wireless_current_out_ops =
 	.open  = simple_open,
 	.owner = THIS_MODULE,
 };
-
+#else
+static const struct proc_ops proc_wireless_current_out_ops =
+{
+	.proc_read = proc_wireless_current_out_read,
+	.proc_write  = proc_wireless_current_out_write,
+	.proc_open  = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_ftm_mode_read(struct file *file, char __user *buf, size_t count, loff_t *ppos)
 {
-    return count;
+	uint8_t ret = 0;
+	char page[256];
+	struct oplus_p922x_ic *chip = p922x_chip;
+
+	if (chip == NULL) {
+		chg_err("p922x_chip driver is not ready\n");
+		return 0;
+	}
+
+	sprintf(page, "ftm_mode[%d]\n",
+		chip->p922x_chg_status.ftm_mode);
+	ret = simple_read_from_buffer(buf, count, ppos, page, strlen(page));
+
+	return ret;
 }
 
 static ssize_t proc_wireless_ftm_mode_write(struct file *file, const char __user *buf, size_t len, loff_t *lo)
 {
-    char buffer[2] = {0};
+	char buffer[2] = {0};
 
-    chg_err("%s: len[%d] start.\n", __func__, len);
-    if (len > 2) {
-        return -EFAULT;
-    }
+	chg_err("%s: len[%zu] start.\n", __func__, len);
+	if (len > 2) {
+		return -EFAULT;
+	}
 
-    if (copy_from_user(buffer, buf, 2)) {
-        chg_err("%s:  error.\n", __func__);
-        return -EFAULT;
-    }
+	if (copy_from_user(buffer, buf, 2)) {
+		chg_err("%s:  error.\n", __func__);
+		return -EFAULT;
+	}
 
-    chg_err("%s: buffer[%s] .\n", __func__, buffer);
-    if (buffer[0] == '0') {
-        chg_err("%s:ftm_mode write 0.\n", __func__);
-        p922x_enable_ftm(false);
-    } else {
-        chg_err("%s:ftm_mode write 1.\n", __func__);
-        p922x_enable_ftm(true);
-    }
-    chg_err("%s: end.\n", __func__);
+	chg_err("%s: buffer[%s] .\n", __func__, buffer);
+	if (buffer[0] == '1') {
+		chg_err("%s:ftm_mode write 1.\n", __func__);
+		p922x_enable_ftm(true);
+	} else {
+		chg_err("%s:ftm_mode write 0.\n", __func__);
+		p922x_enable_ftm(false);
+	}
+	chg_err("%s: end.\n", __func__);
 
-    return len;
+	return len;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_ftm_mode_ops =
 {
     .read = proc_wireless_ftm_mode_read,
@@ -5442,6 +5903,15 @@ static const struct file_operations proc_wireless_ftm_mode_ops =
     .open  = simple_open,
     .owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_ftm_mode_ops =
+{
+	.proc_read = proc_wireless_ftm_mode_read,
+	.proc_write  = proc_wireless_ftm_mode_write,
+	.proc_open  = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_rx_voltage_read(struct file *file,
 					     char __user *buf, size_t count,
@@ -5452,7 +5922,10 @@ static ssize_t proc_wireless_rx_voltage_read(struct file *file,
 	len = snprintf(vol_string, 8, "%d",
 		       p922x_chip->p922x_chg_status.charge_voltage);
 
-	copy_to_user(buf, vol_string, len);
+	if (copy_to_user(buf, vol_string, len)) {
+		chg_err("copy to user error\n");
+		return -EFAULT;
+	}
 
 	return 0;
 }
@@ -5469,8 +5942,16 @@ static ssize_t proc_wireless_rx_voltage_write(struct file *file,
 		return -ENODEV;
 	}
 
-	copy_from_user(vol_string, buf, len);
-	kstrtoint(vol_string, 0, &vol);
+	if (copy_from_user(vol_string, buf, len)) {
+		chg_err("copy from user error\n");
+		return -EFAULT;
+	}
+
+	if (kstrtoint(vol_string, 0, &vol) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("set voltage: vol_string = %s, vol = %d.", vol_string, vol);
 	p922x_set_rx_charge_voltage(p922x_chip, vol);
 
@@ -5482,12 +5963,21 @@ static ssize_t proc_wireless_rx_voltage_write(struct file *file,
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_rx_voltage = {
 	.read = proc_wireless_rx_voltage_read,
 	.write = proc_wireless_rx_voltage_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_rx_voltage = {
+	.proc_read = proc_wireless_rx_voltage_read,
+	.proc_write = proc_wireless_rx_voltage_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_tx_read(struct file *file, char __user *buf,
 				     size_t count, loff_t *ppos)
@@ -5540,7 +6030,12 @@ static ssize_t proc_wireless_tx_write(struct file *file, const char __user *buf,
 	}
 
 	chg_err("buffer=%s", buffer);
-	kstrtoint(buffer, 0, &val);
+
+	if (kstrtoint(buffer, 0, &val) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("val = %d", val);
 
 	if (val == 1) {
@@ -5564,12 +6059,21 @@ static ssize_t proc_wireless_tx_write(struct file *file, const char __user *buf,
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_tx_ops = {
 	.read = proc_wireless_tx_read,
 	.write = proc_wireless_tx_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_tx_ops = {
+	.proc_read = proc_wireless_tx_read,
+	.proc_write = proc_wireless_tx_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_epp_read(struct file *file, char __user *buf,
 				      size_t count, loff_t *ppos)
@@ -5618,7 +6122,12 @@ static ssize_t proc_wireless_epp_write(struct file *file,
 		return -EFAULT;
 	}
 	chg_err("buffer=%s", buffer);
-	kstrtoint(buffer, 0, &val);
+
+	if (kstrtoint(buffer, 0, &val) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("val=%d", val);
 	if (val == 1) {
 		force_bpp = true;
@@ -5641,12 +6150,22 @@ static ssize_t proc_wireless_epp_write(struct file *file,
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_epp_ops = {
 	.read = proc_wireless_epp_read,
 	.write = proc_wireless_epp_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_epp_ops = {
+	.proc_read = proc_wireless_epp_read,
+	.proc_write = proc_wireless_epp_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
+
 static int proc_charge_pump_status;
 static ssize_t proc_wireless_charge_pump_read(struct file *file, char __user *buf,
 					   size_t count, loff_t *ppos)
@@ -5674,7 +6193,7 @@ static ssize_t proc_wireless_charge_pump_write(struct file *file,
 	char buffer[2] = { 0 };
 	int val = 0;
 
-	chg_err("%s: len[%d] start.\n", __func__, count);
+	chg_err("%s: len[%zu] start.\n", __func__, count);
 	if (count > 2) {
 		return -EFAULT;
 	}
@@ -5729,12 +6248,21 @@ static ssize_t proc_wireless_charge_pump_write(struct file *file,
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_charge_pump_ops = {
 	.read = proc_wireless_charge_pump_read,
 	.write = proc_wireless_charge_pump_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_charge_pump_ops = {
+	.proc_read = proc_wireless_charge_pump_read,
+	.proc_write = proc_wireless_charge_pump_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_bat_mult_read(struct file *file, char __user *buf,
 					   size_t count, loff_t *ppos)
@@ -5773,19 +6301,33 @@ static ssize_t proc_wireless_bat_mult_write(struct file *file,
 		return -EFAULT;
 	}
 	chg_err("buffer=%s", buffer);
-	kstrtoint(buffer, 0, &val);
+
+	if (kstrtoint(buffer, 0, &val) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("val=%d", val);
 	test_bat_val = val;
 #endif
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_bat_mult_ops = {
 	.read = proc_wireless_bat_mult_read,
 	.write = proc_wireless_bat_mult_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_bat_mult_ops = {
+	.proc_read = proc_wireless_bat_mult_read,
+	.proc_write = proc_wireless_bat_mult_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_deviated_read(struct file *file, char __user *buf,
 					   size_t count, loff_t *ppos)
@@ -5810,12 +6352,21 @@ static ssize_t proc_wireless_deviated_read(struct file *file, char __user *buf,
 	return ret;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_deviated_ops = {
 	.read = proc_wireless_deviated_read,
 	.write = NULL,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_deviated_ops = {
+	.proc_read = proc_wireless_deviated_read,
+	.proc_write = NULL,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_rx_read(struct file *file, char __user *buf,
 					    size_t count, loff_t *ppos)
@@ -5858,7 +6409,12 @@ static ssize_t proc_wireless_rx_write(struct file *file, const char __user *buf,
 	}
 
 	chg_err("buffer=%s", buffer);
-	kstrtoint(buffer, 0, &val);
+
+	if (kstrtoint(buffer, 0, &val) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("val = %d", val);
 
 	if (val == 0) {
@@ -5875,12 +6431,21 @@ static ssize_t proc_wireless_rx_write(struct file *file, const char __user *buf,
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_rx_ops = {
 	.read = proc_wireless_rx_read,
 	.write = proc_wireless_rx_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_rx_ops = {
+	.proc_read = proc_wireless_rx_read,
+	.proc_write = proc_wireless_rx_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 #define UPGRADE_START 0
 #define UPGRADE_FW    1
@@ -5915,7 +6480,10 @@ start:
 			return -EINVAL;
 		}
 		memset(temp_buf, 0, sizeof(struct idt_fw_head));
-		copy_from_user(temp_buf, buf, sizeof(struct idt_fw_head));
+		if (copy_from_user(temp_buf, buf, sizeof(struct idt_fw_head))) {
+			chg_err("copy from user error\n");
+			return -EFAULT;
+		}
 		fw_head = (struct idt_fw_head *)temp_buf;
 		if (fw_head->magic[0] == 0x02 && fw_head->magic[1] == 0x00 &&
 		    fw_head->magic[2] == 0x03 && fw_head->magic[3] == 0x00) {
@@ -5926,7 +6494,10 @@ start:
 				return -ENOMEM;
 			}
 			chg_err("<IDT UPDATE>image header verification succeeded, fw_size=%d\n", fw_size);
-			copy_from_user(fw_buf, buf + sizeof(struct idt_fw_head), count - sizeof(struct idt_fw_head));
+			if (copy_from_user(fw_buf, buf + sizeof(struct idt_fw_head), count - sizeof(struct idt_fw_head))) {
+				chg_err("copy from user error\n");
+				return -EFAULT;
+			}
 			fw_index = count - sizeof(struct idt_fw_head);
 			chg_info("<IDT UPDATE>Receiving image, fw_size=%d, fw_index=%d\n", fw_size, fw_index);
 			if (fw_index >= fw_size) {
@@ -5941,7 +6512,10 @@ start:
 		}
 		break;
 	case UPGRADE_FW:
-		copy_from_user(fw_buf + fw_index, buf, count);
+		if (copy_from_user(fw_buf + fw_index, buf, count)) {
+			chg_err("copy from user error\n");
+			return -EFAULT;
+		}
 		fw_index += count;
 		chg_info("<IDT UPDATE>Receiving image, fw_size=%d, fw_index=%d\n", fw_size, fw_index);
 		if (fw_index >= fw_size) {
@@ -5970,12 +6544,21 @@ start:
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_upgrade_firmware_ops = {
 	.read = NULL,
 	.write = proc_wireless_upgrade_firmware_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_upgrade_firmware_ops = {
+	.proc_read = NULL,
+	.proc_write = proc_wireless_upgrade_firmware_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_rx_freq_read(struct file *file,
 					  char __user *buf, size_t count,
@@ -6012,21 +6595,38 @@ static ssize_t proc_wireless_rx_freq_write(struct file *file,
 	}
 
 	memset(string, 0, 16);
-	copy_from_user(string, buf, count);
-	chg_err("buf = %s, len = %d\n", string, count);
-	kstrtoint(string, 0, &freq);
+	if (copy_from_user(string, buf, count)) {
+		chg_err("copy from user error\n");
+		return -EFAULT;
+	}
+	chg_err("buf = %s, len = %zu\n", string, count);
+
+	if (kstrtoint(string, 0, &freq) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("set freq threshold to %d\n", freq);
 	chip->p922x_chg_status.freq_threshold = freq;
 
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_rx_freq_ops = {
 	.read = proc_wireless_rx_freq_read,
 	.write = proc_wireless_rx_freq_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_rx_freq_ops = {
+	.proc_read = proc_wireless_rx_freq_read,
+	.proc_write = proc_wireless_rx_freq_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 #ifdef HW_TEST_EDITION
 static ssize_t proc_wireless_w30w_time_read(struct file *file, char __user *buf,
@@ -6072,7 +6672,12 @@ static ssize_t proc_wireless_w30w_time_write(struct file *file,
 		return -EFAULT;
 	}
 	chg_err("buffer=%s", buffer);
-	kstrtoint(buffer, 0, &timeminutes);
+
+	if (kstrtoint(buffer, 0, &timeminutes) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	chg_err("set w30w_time = %dm", timeminutes);
 	if (timeminutes >= 0 && timeminutes <= 60)
 		chip->w30w_time = timeminutes;
@@ -6082,12 +6687,21 @@ static ssize_t proc_wireless_w30w_time_write(struct file *file,
 	return count;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_w30w_time_ops = {
 	.read = proc_wireless_w30w_time_read,
 	.write = proc_wireless_w30w_time_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_w30w_time_ops = {
+	.proc_read = proc_wireless_w30w_time_read,
+	.proc_write = proc_wireless_w30w_time_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 #endif
 
@@ -6103,18 +6717,18 @@ static ssize_t proc_wireless_user_sleep_mode_read(struct file *file, char __user
 		return 0;
 	}
 
-	chg_err("chip->quiet_mode_need = %d.\n", chip->quiet_mode_need);
-	sprintf(page, "%d", chip->quiet_mode_need);
+	chg_err("quiet_mode_need[%d], ack[%d]\n", chip->quiet_mode_need, chip->quiet_mode_ack);
+	if (chip->quiet_mode_ack == true) {
+		sprintf(page, "%d", chip->quiet_mode_need);
+		chip->pre_quiet_mode_need  = chip->quiet_mode_need;
+	} else {
+		sprintf(page, "%d", chip->pre_quiet_mode_need);
+	}
 	ret = simple_read_from_buffer(buf, count, ppos, page, strlen(page));
 
 	return ret;
 }
 
-#define FASTCHG_MODE		0
-#define SILENT_MODE			1
-#define BATTERY_FULL_MODE	2
-#define CALL_MODE			598
-#define EXIT_CALL_MODE		599
 static ssize_t proc_wireless_user_sleep_mode_write(struct file *file, const char __user *buf,
 				      size_t len, loff_t *lo)
 {
@@ -6129,7 +6743,7 @@ static ssize_t proc_wireless_user_sleep_mode_write(struct file *file, const char
 	}
 
 	if (len > 4) {
-		chg_err("len[%d] -EFAULT\n", len);
+		chg_err("len[%zu] -EFAULT\n", len);
 		return -EFAULT;
 	}
 
@@ -6139,22 +6753,36 @@ static ssize_t proc_wireless_user_sleep_mode_write(struct file *file, const char
 	}
 
 	chg_err("user mode: buffer=%s\n", buffer);
-	kstrtoint(buffer, 0, &pmw_pulse);
+
+	if (kstrtoint(buffer, 0, &pmw_pulse) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
+	if (chip->cep_timeout_ack == false)
+		return -EBUSY;
 	if (pmw_pulse == FASTCHG_MODE) {
 		rc = p922x_set_silent_mode(false);
-		if (rc == 0)
+		if (rc == 0) {
+			chip->quiet_mode_ack = false;
 			chip->quiet_mode_need = FASTCHG_MODE;
+		}
 		chg_err("<~WPC~> set user mode: %d, fastchg mode, rc: %d\n", pmw_pulse, rc);
 	} else if (pmw_pulse == SILENT_MODE) {
 		rc = p922x_set_silent_mode(true);
-		if (rc == 0)
+		if (rc == 0) {
+			chip->quiet_mode_ack = false;
 			chip->quiet_mode_need = SILENT_MODE;
+		}
 		chg_err("<~WPC~>set user mode: %d, silent mode, rc: %d\n", pmw_pulse, rc);
 		p922x_set_dock_led_pwm_pulse(3);
 	} else if (pmw_pulse == BATTERY_FULL_MODE) {
-		chg_err("<~WPC~> set user mode: %d, battery full mode\n", pmw_pulse);
-		chip->quiet_mode_need = BATTERY_FULL_MODE;
-		p922x_set_dock_fan_pwm_pulse(60);
+		rc = p922x_set_dock_fan_pwm_pulse(chip->p922x_chg_status.dock_fan_pwm_pulse_silent);
+		if (rc == 0) {
+			chip->quiet_mode_ack = false;
+			chip->quiet_mode_need = BATTERY_FULL_MODE;
+		}
+		chg_err("<~WPC~> set user mode: %d, battery full mode, rc: %d\n", pmw_pulse, rc);
 	} else if (pmw_pulse == CALL_MODE) {
 		chg_err("<~WPC~> set user mode: %d, call mode\n", pmw_pulse);
 		chip->p922x_chg_status.call_mode = true;
@@ -6170,12 +6798,21 @@ static ssize_t proc_wireless_user_sleep_mode_write(struct file *file, const char
 	return len;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_user_sleep_mode_ops = {
 	.read = proc_wireless_user_sleep_mode_read,
 	.write = proc_wireless_user_sleep_mode_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_user_sleep_mode_ops = {
+	.proc_read = proc_wireless_user_sleep_mode_read,
+	.proc_write = proc_wireless_user_sleep_mode_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static ssize_t proc_wireless_idt_adc_test_read(struct file *file, char __user *buf,
 		size_t count, loff_t *ppos)
@@ -6215,7 +6852,7 @@ static ssize_t proc_wireless_idt_adc_test_write(struct file *file, const char __
 	}
 
 	if (len > 4) {
-		chg_err("%s: len[%d] -EFAULT.\n", __func__, len);
+		chg_err("%s: len[%zu] -EFAULT.\n", __func__, len);
 		return -EFAULT;
 	}
 
@@ -6224,7 +6861,11 @@ static ssize_t proc_wireless_idt_adc_test_write(struct file *file, const char __
 		return -EFAULT;
 	}
 
-	kstrtoint(buffer, 0, &idt_adc_cmd);
+	if (kstrtoint(buffer, 0, &idt_adc_cmd) != 0) {
+		chg_err("kstrtoint error\n");
+		return -EINVAL;
+	}
+
 	if (idt_adc_cmd == 0) {
 		chg_err("<~WPC~> idt_adc_test: set 0.\n");
 		chip->p922x_chg_status.idt_adc_test_enable = false;
@@ -6238,12 +6879,21 @@ static ssize_t proc_wireless_idt_adc_test_write(struct file *file, const char __
 	return len;
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations proc_wireless_idt_adc_test_ops = {
 	.read = proc_wireless_idt_adc_test_read,
 	.write = proc_wireless_idt_adc_test_write,
 	.open = simple_open,
 	.owner = THIS_MODULE,
 };
+#else
+static const struct proc_ops proc_wireless_idt_adc_test_ops = {
+	.proc_read = proc_wireless_idt_adc_test_read,
+	.proc_write = proc_wireless_idt_adc_test_write,
+	.proc_open = simple_open,
+	.proc_lseek = seq_lseek,
+};
+#endif
 
 static int init_wireless_charge_proc(struct oplus_p922x_ic *chip)
 {
@@ -6380,6 +7030,77 @@ static int init_wireless_charge_proc(struct oplus_p922x_ic *chip)
 	}
 #endif
 	return 0;
+}
+
+static int p922x_wpc_get_max_wireless_power(void)
+{
+	struct oplus_p922x_ic *chip = p922x_chip;
+	int max_wireless_power = 0;
+	int adapter_wireless_power = 0;
+	int base_wireless_power = 0;
+
+	if (chip == NULL) {
+		chg_err("wireless chip NULL\n");
+		return -ENODEV;
+	}
+	adapter_wireless_power = chip->p922x_chg_status.adapter_power;
+	base_wireless_power = chip->p922x_chg_status.dock_version;
+
+	switch (adapter_wireless_power) {
+		case ADAPTER_POWER_NUKNOW:
+			adapter_wireless_power = 0;
+			break;
+		case ADAPTER_POWER_20W:
+			adapter_wireless_power = 12;
+			break;
+		case ADAPTER_POWER_30W:
+			adapter_wireless_power = 12;
+			break;
+		case ADAPTER_POWER_50W:
+			adapter_wireless_power = 35;
+			break;
+		case ADAPTER_POWER_65W:
+			adapter_wireless_power = 45;
+			break;
+		default:
+			adapter_wireless_power = 0;
+			break;
+	}
+
+	switch (base_wireless_power) {
+	case DOCK_OAWV00:
+		base_wireless_power = 30;
+		break;
+	case DOCK_OAWV01:
+		base_wireless_power = 40;
+		break;
+	case DOCK_OAWV02:
+	case DOCK_OAWV03:
+	case DOCK_OAWV04:
+	case DOCK_OAWV05:
+	case DOCK_OAWV06:
+	case DOCK_OAWV07:
+	case DOCK_OAWV08:
+	case DOCK_OAWV09:
+		base_wireless_power = 50;
+		break;
+	case DOCK_OAWV10:
+	case DOCK_OAWV11:
+	case DOCK_OAWV16:
+	case DOCK_OAWV17:
+	case DOCK_OAWV18:
+	case DOCK_OAWV19:
+		base_wireless_power = 100;
+		break;
+	default:
+		base_wireless_power = 15;
+		break;
+	}
+
+	max_wireless_power = adapter_wireless_power > chip->p922x_chg_status.wireless_power ? chip->p922x_chg_status.wireless_power : adapter_wireless_power;
+	max_wireless_power = max_wireless_power > base_wireless_power ? base_wireless_power : max_wireless_power;
+
+	return 1000 * max_wireless_power;
 }
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
@@ -6671,7 +7392,8 @@ bool p922x_check_chip_is_null(void)
 }
 
 struct oplus_wpc_operations p922x_ops = {
-	.wireless_charge_start = p922x_wireless_charge_start,
+	.wpc_get_max_wireless_power = p922x_wpc_get_max_wireless_power,
+	.wpc_get_wireless_charge_start = p922x_wireless_charge_start,
 	.wpc_get_normal_charging = p922x_wpc_get_normal_charging,
 	.wpc_get_fast_charging = p922x_wpc_get_fast_charging,
 	.wpc_get_otg_charging = p922x_wpc_get_otg_charging,
@@ -6684,6 +7406,8 @@ struct oplus_wpc_operations p922x_ops = {
 	.wpc_set_ext2_wireless_otg_en = p922x_set_ext2_wireless_otg_en_val,
 	.wpc_set_rtx_function = p922x_set_rtx_function,
 	.wpc_set_rtx_function_prepare = p922x_set_rtx_function_prepare,
+	.wpc_set_wrx_en = oplus_set_wrx_en_value,
+	.wpc_set_wrx_otg_en = oplus_set_wrx_otg_en_value,
 	.wpc_print_log = p922x_wpc_print_log,
 };
 
@@ -6716,6 +7440,7 @@ static int p922x_driver_probe(struct i2c_client *client, const struct i2c_device
 	wpc_chip->client = client;
 	wpc_chip->dev = &client->dev;
 	wpc_chip->wpc_ops = &p922x_ops;
+	wpc_chip->wpc_chg_data = &chip->p922x_chg_status;
 	oplus_wpc_init(wpc_chip);
 
 	chip->client = client;
@@ -6766,7 +7491,6 @@ static int p922x_driver_probe(struct i2c_client *client, const struct i2c_device
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 	p922x_init_wireless_psy(chip);
 #endif
-
 	chg_debug( " call end\n");
 
 	return 0;                                                                                       

@@ -51,10 +51,6 @@
 #include "power.h"
 #include "genl.h"
 
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_WIFI_MAC)
-#include <soc/oplus/boot_mode.h>
-#endif
-
 #define MAX_PROP_SIZE			32
 #define NUM_LOG_PAGES			10
 #define NUM_LOG_LONG_PAGES		4
@@ -114,6 +110,11 @@ static const char * const icnss_pdr_cause[] = {
 	[ICNSS_ROOT_PD_SHUTDOWN] = "Root PD shutdown",
 	[ICNSS_HOST_ERROR] = "Host error",
 };
+
+#ifdef OPLUS_FEATURE_SWITCH_CHECK
+//Add for: check fw status for switch issue
+static unsigned int cnssprobestate = 0;
+#endif /* OPLUS_FEATURE_SWITCH_CHECK */
 
 static void icnss_set_plat_priv(struct icnss_priv *priv)
 {
@@ -580,11 +581,7 @@ static int icnss_setup_dms_mac(struct icnss_priv *priv)
 	/* DTSI property use-nv-mac is used to force DMS MAC address for WLAN.
 	 * Thus assert on failure to get MAC from DMS even after retries
 	 */
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_WIFI_MAC)
-	if ((get_boot_mode() != MSM_BOOT_MODE__WLAN) && priv->use_nv_mac) {
-#else
 	if (priv->use_nv_mac) {
-#endif
 		for (i = 0; i < ICNSS_DMS_QMI_CONNECTION_WAIT_RETRY; i++) {
 			if (priv->dms.mac_valid)
 				break;
@@ -908,8 +905,8 @@ static int icnss_driver_event_fw_ready_ind(struct icnss_priv *priv, void *data)
 	if (test_bit(ICNSS_PD_RESTART, &priv->state)) {
 		ret = icnss_pd_restart_complete(priv);
 	} else {
-		//if (priv->device_id == WCN6750_DEVICE_ID)
-		icnss_setup_dms_mac(priv);
+		if (priv->device_id == WCN6750_DEVICE_ID)
+			icnss_setup_dms_mac(priv);
 		ret = icnss_call_driver_probe(priv);
 	}
 
@@ -2996,7 +2993,8 @@ int icnss_wlan_enable(struct device *dev, struct icnss_wlan_enable_cfg *config,
 		return -EINVAL;
 	}
 
-	if (!priv->dms.nv_mac_not_prov && !priv->dms.mac_valid)
+	if (priv->device_id == WCN6750_DEVICE_ID &&
+	    !priv->dms.nv_mac_not_prov && !priv->dms.mac_valid)
 		icnss_setup_dms_mac(priv);
 
 	return icnss_send_wlan_enable_to_fw(priv, config, mode, host_version);
@@ -3987,6 +3985,41 @@ static inline void icnss_runtime_pm_deinit(struct icnss_priv *priv)
 	pm_runtime_put_sync(&priv->pdev->dev);
 }
 
+#ifdef OPLUS_FEATURE_SWITCH_CHECK
+//Add for: check fw status for switch issue
+static void icnss_create_fw_state_kobj(void);
+static ssize_t icnss_show_fw_ready(struct device_driver *driver, char *buf)
+{
+	bool firmware_ready = false;
+	bool bdfloadsuccess = false;
+	bool regdbloadsuccess = false;
+	bool cnssprobesuccess = false;
+	if (!penv) {
+           icnss_pr_err("icnss_show_fw_ready plat_env is NULL!\n");
+	} else {
+           firmware_ready = test_bit(ICNSS_FW_READY, &penv->state);
+           regdbloadsuccess = test_bit(CNSS_LOAD_REGDB_SUCCESS, &penv->loadRegdbState);
+           bdfloadsuccess = test_bit(CNSS_LOAD_BDF_SUCCESS, &penv->loadBdfState);
+	}
+	cnssprobesuccess = (cnssprobestate == CNSS_PROBE_SUCCESS);
+	return sprintf(buf, "%s:%s:%s:%s",
+           (firmware_ready ? "fwstatus_ready" : "fwstatus_not_ready"),
+           (regdbloadsuccess ? "regdb_loadsuccess" : "regdb_loadfail"),
+           (bdfloadsuccess ? "bdf_loadsuccess" : "bdf_loadfail"),
+           (cnssprobesuccess ? "cnssprobe_success" : "cnssprobe_fail")
+           );
+}
+
+struct driver_attribute fw_ready_attr = {
+	.attr = {
+		.name = "firmware_ready",
+		.mode = S_IRUGO,
+	},
+	.show = icnss_show_fw_ready,
+	//read only so we don't need to impl store func
+};
+#endif /* OPLUS_FEATURE_SWITCH_CHECK */
+
 static inline bool icnss_use_nv_mac(struct icnss_priv *priv)
 {
 	return of_property_read_bool(priv->pdev->dev.of_node,
@@ -4060,6 +4093,11 @@ static int icnss_probe(struct platform_device *pdev)
 
 	icnss_init_control_params(priv);
 
+	#ifdef OPLUS_FEATURE_SWITCH_CHECK
+	//Add for: check fw status for switch issue
+	icnss_create_fw_state_kobj();
+	#endif /* OPLUS_FEATURE_SWITCH_CHECK */
+
 	icnss_read_device_configs(priv);
 
 	ret = icnss_resource_parse(priv);
@@ -4122,12 +4160,6 @@ static int icnss_probe(struct platform_device *pdev)
 
 	init_completion(&priv->unblock_shutdown);
 
-	ret = icnss_dms_init(priv);
-	if (ret)
-		icnss_pr_err("ICNSS DMS init failed %d\n", ret);
-	priv->use_nv_mac = icnss_use_nv_mac(priv);
-
-	/* will never run on wcn3990 */
 	if (priv->device_id == WCN6750_DEVICE_ID) {
 		ret = icnss_dms_init(priv);
 		if (ret)
@@ -4154,6 +4186,11 @@ static int icnss_probe(struct platform_device *pdev)
 
 	INIT_LIST_HEAD(&priv->icnss_tcdev_list);
 
+	#ifdef OPLUS_FEATURE_SWITCH_CHECK
+	//Add for: check fw status for switch issue
+	cnssprobestate = CNSS_PROBE_SUCCESS;
+	#endif /* OPLUS_FEATURE_SWITCH_CHECK */
+
 	icnss_pr_info("Platform driver probed successfully\n");
 
 	return 0;
@@ -4168,6 +4205,12 @@ out_free_resources:
 	icnss_put_resources(priv);
 out_reset_drvdata:
 	dev_set_drvdata(dev, NULL);
+
+#ifdef OPLUS_FEATURE_SWITCH_CHECK
+//Add for: check fw status for switch issue
+	cnssprobestate = CNSS_PROBE_FAIL;
+#endif /* OPLUS_FEATURE_SWITCH_CHECK */
+
 	return ret;
 }
 
@@ -4189,9 +4232,8 @@ static int icnss_remove(struct platform_device *pdev)
 
 	icnss_pr_info("Removing driver: state: 0x%lx\n", priv->state);
 
-	icnss_dms_deinit(priv);
 	if (priv->device_id == WCN6750_DEVICE_ID) {
-		//icnss_dms_deinit(priv);
+		icnss_dms_deinit(priv);
 		icnss_genl_exit();
 		icnss_runtime_pm_deinit(priv);
 #ifdef CONFIG_ICNSS2_RESTART_LEVEL_NOTIF
@@ -4470,6 +4512,16 @@ static struct platform_driver icnss_driver = {
 		.of_match_table = icnss_dt_match,
 	},
 };
+
+
+#ifdef OPLUS_FEATURE_SWITCH_CHECK
+//Add for: check fw status for switch issue
+static void icnss_create_fw_state_kobj(void) {
+	if (driver_create_file(&(icnss_driver.driver), &fw_ready_attr)) {
+		icnss_pr_info("failed to create %s", fw_ready_attr.attr.name);
+	}
+}
+#endif /* OPLUS_FEATURE_SWITCH_CHECK */
 
 static int __init icnss_initialize(void)
 {

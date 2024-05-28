@@ -260,7 +260,8 @@ EXPORT_SYMBOL(get_test_item_info);
  * Returning parameter number(success) or negative errno(failed)
  */
 int save_test_result(struct auto_testdata *p_auto_testdata,
-		     uint8_t  *data, enum limit_type limit_type, char  *limit_name)
+		     short  *data, int data_size,
+		     enum limit_type limit_type, char  *limit_name)
 {
 	uint8_t  data_buf[64] = {0};
 	int ret = 0;
@@ -283,6 +284,9 @@ int save_test_result(struct auto_testdata *p_auto_testdata,
 		      strlen(data_buf), p_auto_testdata->pos);
 
 	if (limit_type == LIMIT_TYPE_TX_RX_DATA) {
+		if (data_size < p_auto_testdata->rx_num * p_auto_testdata->tx_num) {
+			return -1;
+		}
 		for (i = 0; i < p_auto_testdata->rx_num * p_auto_testdata->tx_num; i++) {
 			snprintf(data_buf, 64, "%d,", data[i]);
 			tp_test_write(p_auto_testdata->fp, p_auto_testdata->length, data_buf,
@@ -300,6 +304,9 @@ int save_test_result(struct auto_testdata *p_auto_testdata,
 			      strlen(data_buf), p_auto_testdata->pos);
 
 	} else if (limit_type == LIMIT_TYPE_SLEF_TX_RX_DATA) {
+		if (data_size < p_auto_testdata->rx_num + p_auto_testdata->tx_num) {
+			return -1;
+		}
 		for (i = 0; i < p_auto_testdata->rx_num + p_auto_testdata->tx_num; i++) {
 			snprintf(data_buf, 64, "%d,", data[i]);
 			tp_test_write(p_auto_testdata->fp, p_auto_testdata->length, data_buf,
@@ -322,7 +329,6 @@ static int tp_test_limit_switch(struct touchpanel_data *ts)
 	uint8_t copy_len = 0;
 
 	if (!ts) {
-		TP_INFO(ts->tp_index, "ts is NULL\n");
 		return -1;
 	}
 
@@ -723,11 +729,11 @@ int tp_black_screen_test(struct file *file, char __user *buffer, size_t count,
 
 	struct touchpanel_data *ts = PDE_DATA(file_inode(file));
 
-	TP_INFO(ts->tp_index, "%s %ld %lld\n", __func__, count, *ppos);
-
 	if (!ts || !ts->gesture_test.flag) {
 		return 0;
 	}
+
+	TP_INFO(ts->tp_index, "%s %ld %lld\n", __func__, count, *ppos);
 
 	ts->gesture_test.message = kzalloc(msg_size, GFP_KERNEL);
 

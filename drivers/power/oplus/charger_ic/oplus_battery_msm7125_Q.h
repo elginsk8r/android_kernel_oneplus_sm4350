@@ -1,13 +1,6 @@
-/* Copyright (c) 2018-2020 The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #ifndef __SMB5_CHARGER_H
@@ -23,16 +16,16 @@
 #include <linux/extcon.h>
 
 /****************************************************/
-#ifndef VENDOR_EDIT
-#define VENDOR_EDIT "VENDOR_EDIT"
+#ifndef OPLUS_FEATURE_CHG_BASIC
+#define OPLUS_FEATURE_CHG_BASIC "OPLUS_FEATURE_CHG_BASIC"
 #endif
 /**************************************************/
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #include "../../../../kernel/msm-4.14/drivers/power/supply/qcom/storm-watch.h"
 #include "../../../../kernel/msm-4.14/drivers/power/supply/qcom/battery.h"
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #include <linux/time.h>
 #include <linux/jiffies.h>
 #include <linux/sched/clock.h>
@@ -77,16 +70,16 @@ enum print_reason {
 #define PL_FCC_LOW_VOTER		"PL_FCC_LOW_VOTER"
 #define WBC_VOTER			"WBC_VOTER"
 #define HW_LIMIT_VOTER			"HW_LIMIT_VOTER"
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define DIVIDER_SET_VOTER			"DIVIDER_SET_VOTER"
 #endif
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define PD_DIS_VOTER			"PD_DIS_VOTER"
 #endif
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define SVOOC_OTG_VOTER		"SVOOC_OTG_VOTER"
-#endif/*VENDOR_EDIT*/
+#endif/*OPLUS_FEATURE_CHG_BASIC*/
 #define PL_SMB_EN_VOTER			"PL_SMB_EN_VOTER"
 #define FORCE_RECHARGE_VOTER		"FORCE_RECHARGE_VOTER"
 #define LPD_VOTER			"LPD_VOTER"
@@ -111,7 +104,7 @@ enum print_reason {
 #define OVERHEAT_LIMIT_VOTER		"OVERHEAT_LIMIT_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define WEAK_CHG_STORM_COUNT	3
 #else
 #define WEAK_CHG_STORM_COUNT	8
@@ -123,7 +116,7 @@ enum print_reason {
 #define ITERM_LIMITS_PM8150B_MA		10000
 #define ADC_CHG_ITERM_MASK		32767
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #define USB_TEMP_HIGH	0x01//bit0
 #define USB_WATER_DETECT	0x02//bit1
 #define USB_RESERVE2	0x04//bit2
@@ -134,7 +127,7 @@ enum print_reason {
 #define SDP_100_MA			100000
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
-#ifndef VENDOR_EDIT
+#ifndef OPLUS_FEATURE_CHG_BASIC
 #define DCP_CURRENT_UA			1500000
 #else
 #define DCP_CURRENT_UA			3000000
@@ -410,7 +403,7 @@ struct smb_iio {
 	struct iio_channel	*connector_temp_chan;
 	struct iio_channel	*sbux_chan;
 	struct iio_channel	*vph_v_chan;
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	struct iio_channel	*usbtemp_v_chan;
 	struct iio_channel	*usbtemp_sup_v_chan;
 #endif
@@ -449,7 +442,7 @@ struct smb_charger {
 	struct power_supply		*dc_psy;
 	struct power_supply		*bms_psy;
 	struct power_supply		*usb_main_psy;
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	struct power_supply		*ac_psy;
 #endif
 	struct power_supply		*usb_port_psy;
@@ -526,13 +519,13 @@ struct smb_charger {
 	bool			sec_cp_present;
 	int			sec_chg_selected;
 	int			cp_reason;
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	struct delayed_work chg_monitor_work;
 #endif
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	struct delayed_work typec_disable_cmd_work;
 #endif
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	unsigned long long hvdcp_detect_time;
 	unsigned long long hvdcp_detach_time;
 	bool hvdcp_detect_ok;
@@ -637,7 +630,7 @@ struct smb_charger {
 	int                     qc2_max_pulses;
 	enum qc2_non_comp_voltage qc2_unsupported_voltage;
 	bool			dbc_usbov;
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	bool			fake_typec_insertion;
 	bool			fake_usb_insertion;
 #endif
@@ -664,14 +657,14 @@ struct smb_charger {
 	u32			irq_status;
 
 	/* wireless */
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	int			pre_current_ma;
 	bool		is_dpdm_on_usb;
 	struct delayed_work	divider_set_work;
 	struct work_struct	dpdm_set_work;
 #endif
 	int			dcin_uv_count;
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	struct work_struct	chargerid_switch_work;
 	struct mutex pinctrl_mutex;
 	struct pinctrl		*usbtemp_gpio1_adc_pinctrl;
@@ -679,12 +672,12 @@ struct smb_charger {
 	struct pinctrl_state	*usbtemp_gpio1_default;
 	struct pinctrl_state	*usbtemp_gpio12_default;
 #endif
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	int			shipmode_id_gpio;
 	struct pinctrl		*shipmode_id_pinctrl;
 	struct pinctrl_state	*shipmode_id_active;
 #endif
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	/* Ji.Xu PSW.BSP.CHG  2018-07-23  Save battery capacity to persist partition  */
 		int 			batt_info[6];
 		int 			batt_info_id;
@@ -697,7 +690,7 @@ struct smb_charger {
 	int			last_wls_vout;
 };
 
-#ifdef VENDOR_EDIT
+#ifdef OPLUS_FEATURE_CHG_BASIC
 struct smb_dt_props {
 	int			usb_icl_ua;
 	struct device_node	*revid_dev_node;

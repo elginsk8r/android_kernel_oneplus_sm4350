@@ -1,19 +1,7 @@
-/************************************************************************************
-** File:  oplus_des.c
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2019-2024, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for wireless charge
-** 
-** Version: 1.0
-** Date created: 21:03:46,04/11/2019
-** Author: Lin Shangbo
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2019-11-04    Lin Shangbo   		Created for wireless charge
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
 #include <linux/proc_fs.h>

@@ -4568,7 +4568,7 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 	return retval;
 }
 
-#ifndef CONFIG_OPLUS_FEATURE_CHG_MISC
+#ifndef OPLUS_FEATURE_CHG_BASIC
 /*
  * There are reports of USB 3.0 devices that say they support USB 2.0 Link PM
  * when they're plugged into a USB 2.0 port, but they don't work when LPM is
@@ -4957,7 +4957,9 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 	/* notify HCD that we have a device connected and addressed */
 	if (hcd->driver->update_device)
 		hcd->driver->update_device(hcd, udev);
-#ifndef CONFIG_OPLUS_FEATURE_CHG_MISC
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	printk(KERN_ERR "remove hub_set_initial_usb2_lpm_policy()");
+#else
 	hub_set_initial_usb2_lpm_policy(udev);
 #endif
 fail:

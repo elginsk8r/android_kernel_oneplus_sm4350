@@ -1,15 +1,7 @@
-/**********************************************************************************
-* Copyright (c)  2008-2015  Guangdong OPLUS Mobile Comm Corp., Ltd
-* OPLUS_FEATURE_CHG_BASIC
-* Description: Charger IC management module for charger system framework.
-*                          Manage all charger IC and define abstarct function flow.
-**
-** Version: 1.0
-** Date created: 21:03:46, 05/04/2012
-**
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>           <date>                <author>                            <desc>
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/delay.h>
 #include <linux/proc_fs.h>
@@ -43,8 +35,6 @@ static void oplus_adpater_awake_init(struct oplus_adapter_chip *chip)
 
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 0))
 	wake_lock_init(&chip->adapter_wake_lock, WAKE_LOCK_SUSPEND, "adpater_wake_lock");
-#elif (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 102))
-	chip->adapter_ws = wakeup_source_register("adpater_wake_lock");
 #else
 	chip->adapter_ws = wakeup_source_register(NULL, "adpater_wake_lock");
 #endif

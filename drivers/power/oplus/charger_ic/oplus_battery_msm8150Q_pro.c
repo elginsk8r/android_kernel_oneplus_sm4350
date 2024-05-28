@@ -1,13 +1,6 @@
-/* Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 #ifdef CONFIG_OPLUS_SM8150Q_PRO_CHARGER
 #include <linux/debugfs.h>
@@ -9727,7 +9720,7 @@ static int oplus_get_otg_online_status(void)
 				__func__, level ? "H" : "L", typec_otg, online);
 	}
 
-	chip->otg_online = online;
+	chip->otg_online = typec_otg;
 	return online;
 }
 
@@ -11601,11 +11594,11 @@ static int smb5_init_hw(struct smb5 *chip)
 {
 	struct smb_charger *chg = &chip->chg;
 	int rc, type = 0;
-    #ifndef OPLUS_FEATURE_CHG_BASIC
+#ifndef OPLUS_FEATURE_CHG_BASIC
 	u8 val = 0, mask = 0;
-    #else
+#else
 	u8 val = 0;
-    #endif
+#endif
 	union power_supply_propval pval;
 
 	if (chip->dt.no_battery)
@@ -13715,7 +13708,7 @@ int oplus_chg_set_qc_config()
 
 	return ret;
 }
-bool oplus_sm8150_get_pd_type(void)
+int oplus_sm8150_get_pd_type(void)
 {
 	struct smb_charger *chg = NULL;
 

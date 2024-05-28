@@ -23,7 +23,7 @@
 #include <linux/pm_wakeup.h>
 #include <linux/spi/spi.h>
 #include "../include/oplus_fp_common.h"
-#include <soc/oplus/oplus_project.h>
+#include <soc/oplus/system/oplus_project.h>
 
 #define FPC_IRQ_DEV_NAME    "fpc_irq"
 

@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (C) 2020 OPlus. All rights reserved.
+ */
 #ifndef __OPLUS_NFC_H__
 #define __OPLUS_NFC_H__
 
@@ -17,7 +21,8 @@ typedef enum{
     SN100F,
     ST21H,
     ST54H,
-    PN557
+    PN557,
+    SN110T
 } chip_type;
 
 bool is_support_chip(chip_type chip);

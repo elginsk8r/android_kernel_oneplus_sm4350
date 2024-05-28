@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (C) 2020 OPlus. All rights reserved.
+ */
 #include <linux/uaccess.h>
 #include <linux/of.h>
 #include <linux/module.h>
@@ -8,9 +12,10 @@
 #include <linux/soc/qcom/smem.h>
 #include <linux/seq_file.h>
 #include <linux/platform_device.h>
-#include <soc/oplus/oplus_project.h>
+#include <soc/oplus/system/oplus_project.h>
 #include <linux/io.h>
 #include <stdbool.h>
+
 
 #include "oplus_nfc.h"
 
@@ -25,10 +30,9 @@ extern char prj_name[];
 int get_project_in_gki_mode() {
         pr_err("prj_name from cmdline : %s\n",prj_name);
 
-	return simple_strtol(prj_name, NULL, 10);
+	return simple_strtol(prj_name, NULL, 16);
 }
 #endif
-
 
 bool is_nfc_support(void)
 {
@@ -47,37 +51,40 @@ bool is_support_chip(chip_type chip)
 	}
 
 	switch(chip) {
-		case NQ330:
-			target_chipset = "NQ330";
-			break;
-		case SN100T:
-			target_chipset = "SN100T";
-			break;
-		case SN100F:
-			target_chipset = "SN100F";
-			break;
-		case ST21H:
-			target_chipset = "ST21H";
-			break;
-		case ST54H:
-			target_chipset = "ST54H";
-			break;
-		case PN557:
-			target_chipset = "PN557";
-			break;
-		default:
-			target_chipset = "UNKNOWN";
-			break;
+	case NQ330:
+		target_chipset = "NQ330";
+		break;
+	case SN100T:
+		target_chipset = "SN100T|SN110T";
+		break;
+	case SN100F:
+		target_chipset = "SN100F";
+		break;
+	case SN110T:
+		target_chipset = "SN100T|SN110T";
+		break;
+	case ST21H:
+		target_chipset = "ST21H";
+		break;
+	case ST54H:
+		target_chipset = "ST54H";
+		break;
+	case PN557:
+		target_chipset = "PN557";
+		break;
+	default:
+		target_chipset = "UNKNOWN";
+		break;
 	}
 
-	if (strcmp(target_chipset, current_chipset) == 0)
-	{
+	if (strstr(target_chipset, current_chipset) != NULL) {
 		ret = true;
 	}
 
 	pr_err("oplus_nfc target_chipset = %s, current_chipset = %s \n", target_chipset, current_chipset);
 	return ret;
 }
+EXPORT_SYMBOL(is_support_chip);
 
 static int nfc_read_func(struct seq_file *s, void *v)
 {
@@ -112,6 +119,7 @@ static int oplus_nfc_probe(struct platform_device *pdev)
 	struct device_node *np;
 	struct device* dev;
 	unsigned int project;
+	int operate = 0;
 	char prop_name[32];
 	const char *chipset_node;
 	struct proc_dir_entry *p_entry;
@@ -124,30 +132,50 @@ static int oplus_nfc_probe(struct platform_device *pdev)
 		pr_err("%s, no device", __func__);
 		goto error_init;
 	}
-    #if IS_MODULE(CONFIG_OPLUS_NFC)
+	#if IS_MODULE(CONFIG_OPLUS_NFC)
 	project = get_project_in_gki_mode();
-    #else
+	#else
 	project = get_project();
-    #endif
-	if(project > 0x10000)
-	{
-		sprintf(prop_name, "chipset-%X", project);
-	} else
-	{
-		sprintf(prop_name, "chipset-%d", project);
+
+	#endif
+
+	operate = get_Operator_Version();
+	if (operate ==  -EINVAL) {
+		pr_err("%s, get Operator Version failed, operate = %d ", __func__ , operate);
+	}
+	np = dev->of_node;
+
+	/*project name consists of 5-symbol
+	**project contains letters is big then 0x10000 == 65536
+	*/
+	if (project > 0x10000) {
+		sprintf(prop_name, "chipset-%X-%d", project , operate);
+	} else {
+		sprintf(prop_name, "chipset-%u-%d", project , operate);
 	}
 	pr_err("%s, prop to be read = %s", __func__, prop_name);
-	np = dev->of_node;
 
 	if (of_property_read_string(dev->of_node, prop_name, &chipset_node))
 	{
-		sprintf(current_chipset, "NULL");
-	} else
-	{
+		if (project > 0x10000) {
+			sprintf(prop_name, "chipset-%X", project);
+		} else {
+			sprintf(prop_name, "chipset-%u", project);
+		}
+		pr_err("%s, prop to be read = %s", __func__, prop_name);
+		if ((of_property_read_string(dev->of_node, prop_name, &chipset_node))) {
+			sprintf(current_chipset, "NULL");
+		} else {
+			pr_err("%s, get chipset_node content = %s", __func__, chipset_node);
+			strcpy(current_chipset, chipset_node);
+			support_nfc = true;
+		}
+	} else {
 		pr_err("%s, get chipset_node content = %s", __func__, chipset_node);
 		strcpy(current_chipset, chipset_node);
 		support_nfc = true;
 	}
+
 
 	nfc_info = proc_mkdir("oplus_nfc", NULL);
 	if (!nfc_info)
@@ -195,7 +223,6 @@ static struct platform_driver oplus_nfc_driver = {
 
 static int __init oplus_nfc_init(void)
 {
-	pr_err("enter %s", __func__);
 	return platform_driver_register(&oplus_nfc_driver);
 }
 
@@ -209,4 +236,3 @@ module_exit(oplus_nfc_exit);
 
 MODULE_DESCRIPTION("OPLUS nfc chipset version");
 MODULE_LICENSE("GPL v2");
-MODULE_AUTHOR("Yukun Wang");

@@ -1,13 +1,6 @@
-/* Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 and
- * only version 2 as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #ifndef __OPLUS_BATTERY_QCOM_SDM8150B_P_H_
@@ -23,8 +16,14 @@
 #include <linux/usb/class-dual-role.h>
 #ifdef OPLUS_FEATURE_CHG_BASIC
 #include "../../../../kernel/msm-4.14/drivers/power/supply/qcom/storm-watch.h"
+#include "../../../../kernel/msm-4.14/drivers/power/supply/qcom/battery.h"
 #endif
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+#include <linux/time.h>
+#include <linux/jiffies.h>
+#include <linux/sched/clock.h>
+#endif
 enum print_reason {
 	PR_INTERRUPT	= BIT(0),
 	PR_REGISTER	= BIT(1),
@@ -384,6 +383,7 @@ struct smb_iio {
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct iio_channel	*chgid_v_chan;
 	struct iio_channel	*usbtemp_v_chan;
+	struct iio_channel	*usbtemp_sup_v_chan;
 #endif
 	struct iio_channel	*die_temp_chan;
 	struct iio_channel	*skin_temp_chan;
@@ -479,6 +479,7 @@ struct smb_charger {
 	struct alarm		moisture_protection_alarm;
 	struct alarm		chg_termination_alarm;
 
+	struct charger_param	chg_param;
 	/* secondary charger config */
 	bool			sec_pl_present;
 	bool			sec_cp_present;
@@ -491,6 +492,12 @@ struct smb_charger {
 	struct delayed_work typec_disable_cmd_work;
 #endif
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	unsigned long long hvdcp_detect_time;
+	unsigned long long hvdcp_detach_time;
+	bool hvdcp_detect_ok;
+	struct delayed_work hvdcp_disable_work;
+#endif
 	/* pd */
 	int			voltage_min_uv;
 	int			voltage_max_uv;
@@ -619,7 +626,9 @@ struct smb_charger {
 	struct pinctrl_state	*ccdetect_active;
 	struct pinctrl_state	*ccdetect_sleep;
 	struct pinctrl		*usbtemp_gpio1_adc_pinctrl;
+	struct pinctrl		*usbtemp_gpio12_adc_pinctrl;
 	struct pinctrl_state	*usbtemp_gpio1_default;
+	struct pinctrl_state	*usbtemp_gpio12_default;
 	struct delayed_work	ccdetect_work;
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC

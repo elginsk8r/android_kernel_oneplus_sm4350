@@ -1,12 +1,7 @@
-/**********************************************************************************
-* Copyright (c)  2017-2019  Guangdong OPLUS Mobile Comm Corp., Ltd
-* OPLUS_FEATURE_CHG_BASIC
-* Description: For short circuit battery check
-* Version   : 1.0
-* Date      : 2017-10-01
-* ------------------------------ Revision History: --------------------------------
-* <version>       <date>        	<author>              		<desc>
-***********************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 #include <linux/delay.h>
 #include <linux/power_supply.h>
 #include <linux/proc_fs.h>
@@ -48,7 +43,9 @@
 #endif
 #include <linux/ktime.h>
 #include <linux/kernel.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/system/boot_mode.h>
+#endif
 #endif
 
 #include "oplus_charger.h"
@@ -113,6 +110,17 @@ ssize_t __attribute__((weak)) vfs_read(struct file *file, char __user *buf, size
 ssize_t __attribute__((weak)) vfs_write(struct file *file, const char __user *buf, size_t count, loff_t *pos)
 {
 	return -EINVAL;
+}
+
+/*kernel-5.10 GKI2.0 NOT allow drivers to use filp_open...*/
+struct file* __attribute__((weak)) filp_open(const char *filename, int flags, umode_t mode)
+{
+	return ERR_PTR(-EINVAL);
+}
+
+int  __attribute__((weak)) filp_close(struct file *filp, fl_owner_t id)
+{
+	return 0;
 }
 #endif
 
@@ -1374,6 +1382,3 @@ void oplus_chg_short_c_battery_check(struct oplus_chg_chip *chip)
 	return;
 }
 #endif /* CONFIG_OPLUS_SHORT_C_BATT_CHECK */
-
-EXPORT_SYMBOL(oplus_short_c_batt_is_prohibit_chg);
-EXPORT_SYMBOL(oplus_short_c_batt_is_disable_rechg);

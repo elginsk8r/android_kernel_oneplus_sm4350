@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -30,11 +30,11 @@
 #include <soc/oplus/system/oplus_project.h>
 
 //#include "oplus_battery_msm7250_Q.h"
-#include "../../../../kernel/msm-4.19/drivers/power/supply/qcom/smb5-reg.h"
-#include "../../../../kernel/msm-4.19/drivers/power/supply/qcom/battery.h"
+#include "../../supply/qcom/smb5-reg.h"
+#include "../../supply/qcom/battery.h"
 //#include "../../../../kernel/msm-4.19/drivers/power/supply/qcom/schgm-flash.h"
-#include "../../../../kernel/msm-4.19/drivers/power/supply/qcom/step-chg-jeita.h"
-#include "../../../../kernel/msm-4.19/drivers/power/supply/qcom/storm-watch.h"
+#include "../../supply/qcom/step-chg-jeita.h"
+#include "../../supply/qcom/storm-watch.h"
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 #include "../oplus_charger.h"
@@ -11046,7 +11046,7 @@ static int oplus_get_otg_online_status(void)
 				__func__, level ? "H" : "L", typec_otg, online);
 	}
 
-	chip->otg_online = online;
+	chip->otg_online = typec_otg;
 	return online;
 }
 

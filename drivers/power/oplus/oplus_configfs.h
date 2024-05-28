@@ -1,12 +1,8 @@
-/**********************************************************************************
-* Copyright (c)  2020-2021  Guangdong OPLUS Mobile Comm Corp., Ltd
-* VENDOR_EDIT
-* Description: For short circuit battery check
-* Version   : 1.0
-* Date      : 2020-09-01
-* ------------------------------ Revision History: --------------------------------
-* <version>       <date>        	<author>              		<desc>
-***********************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2020-2022 Oplus. All rights reserved.
+ */
+
 #ifndef _OPLUS_CONFIGFS_H_
 #define _OPLUS_CONFIGFS_H_
 

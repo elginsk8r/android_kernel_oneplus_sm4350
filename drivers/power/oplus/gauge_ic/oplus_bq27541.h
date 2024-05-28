@@ -1,24 +1,13 @@
-/************************************************************************************
-** File:  \\192.168.144.3\Linux_Share\12015\ics2\development\mediatek\custom\oplus77_12015\kernel\battery\battery
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-**
-** Description:
-**          for dc-dc sn111008 charg
-**
-** Version: 1.0
-** Date created: 21:03:46, 05/04/2012
-** Author: Fanhong.Kong@ProDrv.CHG
-**
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>           <date>                <author>                           <desc>
-* Revision 1.0        2015-06-22        Fanhong.Kong@ProDrv.CHG          Created for new architecture
-************************************************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only  */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #ifndef __OPLUS_BQ27541_H__
 #define __OPLUS_BQ27541_H__
 
-
+#include "../oplus_gauge.h"
+#include "../oplus_chg_track.h"
 #define OPLUS_USE_FAST_CHARGER
 #define DRIVER_VERSION			"1.1.0"
 
@@ -172,13 +161,16 @@
 
 #define DEVICE_TYPE_BQ27541			0x0541
 #define DEVICE_TYPE_BQ27411			0x0421
-#define DEVICE_TYPE_BQ28Z610		0xFFA5
+#define DEVICE_TYPE_BQ28Z610			0xFFA5
 #define DEVICE_TYPE_ZY0602			0x0602
+#define DEVICE_TYPE_ZY0603			0xA5FF
+#define DEVICE_NAME_LEN				12
 
 #define DEVICE_BQ27541				0
 #define DEVICE_BQ27411				1
 #define DEVICE_BQ28Z610				2
 #define DEVICE_ZY0602				3
+#define DEVICE_ZY0603				4
 
 #define DEVICE_TYPE_FOR_VOOC_BQ27541		0
 #define DEVICE_TYPE_FOR_VOOC_BQ27411		1
@@ -218,12 +210,13 @@
 /*----------------------- Bq27541 standard data commands-----------------------------------------*/
 #define BQ28Z610_REG_CNTL1					0x3e
 #define BQ28Z610_REG_CNTL2					0x60
-#define BQ28Z610_SEAL_POLLING_RETRY_LIMIT	10
+#define BQ28Z610_SEAL_POLLING_RETRY_LIMIT	100
 
 #define BQ28Z610_SEAL_STATUS				0x0054
 #define BQ28Z610_SEAL_SUBCMD				0x0030
 #define BQ28Z610_UNSEAL_SUBCMD1				0x0414
 #define BQ28Z610_UNSEAL_SUBCMD2				0x3672
+#define BQ28Z610_CNTL1_DA_CONFIG			0x46fd
 //#define BQ28Z610_SEAL_BIT		     (BIT(8) | BIT(9))
 #define BQ28Z610_SEAL_BIT				(BIT(0) | BIT(1))
 
@@ -242,6 +235,32 @@
 #define BQ28Z610_MAC_CELL_VOLTAGE_ADDR			0x40
 #define BQ28Z610_MAC_CELL_VOLTAGE_SIZE			4//total 34byte,only read 4byte(aaAA bbBB)
 
+#define ZY602_MAC_CELL_DOD0_EN_ADDR			    0x00
+#define ZY602_MAC_CELL_DOD0_CMD				    0x00E3
+#define ZY602_MAC_CELL_DOD0_ADDR				0x40
+#define ZY602_MAC_CELL_DOD0_SIZE				12
+#define ZY602_FW_CHECK_CMD				0xA0
+#define ZY602_FW_CHECK_ERROR				0x3602
+
+#define BQ28Z610_MAC_CELL_DOD0_EN_ADDR			0x3E
+#define BQ28Z610_MAC_CELL_DOD0_CMD				0x0074
+#define BQ28Z610_MAC_CELL_DOD0_ADDR				0x4A
+#define BQ28Z610_MAC_CELL_DOD0_SIZE				6
+
+#define ZY0603_MAC_CELL_SOCCAL0				0x56
+
+#define ZY602_MAC_CELL_QMAX_EN_ADDR			0x00
+#define ZY602_MAC_CELL_QMAX_CMD				0x00E4
+#define ZY602_MAC_CELL_QMAX_ADDR_A			0x40
+#define ZY602_MAC_CELL_QMAX_SIZE_A			18
+
+#define BQ28Z610_MAC_CELL_QMAX_EN_ADDR			0x3E
+#define BQ28Z610_MAC_CELL_QMAX_CMD				0x0075
+#define BQ28Z610_MAC_CELL_QMAX_ADDR_A			0x40
+#define BQ28Z610_MAC_CELL_QMAX_ADDR_B			0x48
+#define BQ28Z610_MAC_CELL_QMAX_SIZE_A			4
+#define BQ28Z610_MAC_CELL_QMAX_SIZE_B			2
+
 #define BQ28Z610_MAC_CELL_BALANCE_TIME_EN_ADDR	0x3E
 #define BQ28Z610_MAC_CELL_BALANCE_TIME_CMD		0x0076
 #define BQ28Z610_MAC_CELL_BALANCE_TIME_ADDR		0x40
@@ -258,6 +277,60 @@
 #define BQ28Z610_DEVICE_CHEMISTRY_ADDR			0x40
 #define BQ28Z610_DEVICE_CHEMISTRY_SIZE			4
 
+#define ZY0603_CMDMASK_ALTMAC_R			0x08000000
+#define ZY0603_CMDMASK_ALTMAC_W			0x88000000
+#define ZY0603_FWVERSION			0x0002
+#define ZYO603_FWVERSION_DATA_LEN		2
+
+
+#define ZYO603_CURRENT_REG			0x0C
+#define ZYO603_VOL_REG				0x08
+
+#define ZY0603_READ_QMAX_CMD			0x0075
+#define ZY0603_QMAX_DATA_OFFSET			0
+#define ZYO603_QMAX_LEN				4
+#define ZY0603_MAX_QMAX_THRESHOLD		32500
+
+#define ZY0603_READ_SFRCC_CMD			0x0073
+#define ZY0603_SFRCC_DATA_OFFSET		12
+#define ZYO603_SFRCC_LEN			2
+
+#define ZYO603_CTRL_REG				0x00
+#define ZYO603_CMD_ALTMAC			0x3E
+#define ZYO603_CMD_ALTBLOCK 			0x40
+#define ZYO603_CMD_ALTCHK 			0x60
+#define ZYO603_CMD_SBS_DELAY 			3000
+#define ZY0603_SOFT_RESET_VERSION_THRESHOLD	0x0015
+#define ZY0603_SOFT_RESET_CMD			0x21
+
+#define ZY0603_MODELRATIO_REG			0x4714
+#define ZY0603_GFCONFIG_CHGP_REG		0x4752
+#define ZY0603_GFCONFIG_R2D_REG			0x475A
+#define ZY0603_GFMAXDELTA_REG			0x479B
+
+
+
+#define U_DELAY_1_MS	1000
+#define U_DELAY_5_MS	5000
+#define M_DELAY_10_S	10000
+
+typedef enum
+{
+	DOUBLE_SERIES_WOUND_CELLS = 0,
+	SINGLE_CELL,
+	DOUBLE_PARALLEL_WOUND_CELLS,
+} SCC_CELL_TYPE;
+
+typedef enum
+{
+	TI_GAUGE = 0,
+	SW_GAUGE,
+	UNKNOWN_GAUGE_TYPE,
+} SCC_GAUGE_TYPE;
+
+#define BCC_PARMS_COUNT 19
+#define BCC_PARMS_COUNT_LEN (BCC_PARMS_COUNT * sizeof(int))
+#define ZY0602_KEY_INDEX	0X02
 struct cmd_address {
 /*      bq27411 standard cmds     */
 	u8	reg_cntl;
@@ -358,20 +431,42 @@ struct bq27541_authenticate_data {
 //#define SMEM_CHARGER_BATTERY_INFO	81
 #define SMEM_RESERVED_BOOT_INFO_FOR_APPS       418
 #define GAUGE_AUTH_MSG_LEN 20
+#define WLS_AUTH_RANDOM_LEN					8
+#define WLS_AUTH_ENCODE_LEN					8
+
 typedef struct {
 	int result;
 	unsigned char msg[GAUGE_AUTH_MSG_LEN];
 	unsigned char rcv_msg[GAUGE_AUTH_MSG_LEN];
 } oplus_gauge_auth_result;
 
+struct wls_chg_auth_result {
+	unsigned char random_num[WLS_AUTH_RANDOM_LEN];
+	unsigned char encode_num[WLS_AUTH_ENCODE_LEN];
+};
+
 typedef struct {
 	oplus_gauge_auth_result rst_k0;
 	oplus_gauge_auth_result rst_k1;
+	struct wls_chg_auth_result wls_auth_data;
+	oplus_gauge_auth_result rst_k2;
 } oplus_gauge_auth_info_type;
+
+#define MODE_CHECK_MAX_LENGTH 1024
+struct gauge_track_mode_info {
+	struct mutex track_lock;
+	bool uploading;
+	u8 *mode_check_buf;
+	struct mutex buf_lock;
+	oplus_chg_track_trigger *load_trigger;
+	struct delayed_work load_trigger_work;
+	bool track_init_done;
+};
 
 struct chip_bq27541 {
 	struct i2c_client *client;
 	struct device *dev;
+	u8 device_name[DEVICE_NAME_LEN];
 
 	int soc_pre;
 	int temp_pre;
@@ -390,6 +485,7 @@ struct chip_bq27541 {
 	int fcf_pre;
 	int sou_pre;
 	int do0_pre;
+	int passed_q_pre;
 	int doe_pre;
 	int trm_pre;
 	int pc_pre;
@@ -398,12 +494,15 @@ struct chip_bq27541 {
 	int device_type_for_vooc;
 	struct cmd_address cmd_addr;
 	atomic_t suspended;
+	atomic_t shutdown;
 	int batt_cell_1_vol;
 	int batt_cell_2_vol;
 	int batt_cell_max_vol;
 	int batt_cell_min_vol;
 	int max_vol_pre;
 	int min_vol_pre;
+	int pre_balancing_config;
+	int pre_balancing_count;
 	/*struct  delayed_work		hw_config;*/
 
 	int opchg_swtich1_gpio;
@@ -425,16 +524,66 @@ struct chip_bq27541 {
 	struct pinctrl_state *gpio_reset_sleep;
 
 	bool modify_soc_smooth;
-	
+	bool modify_soc_calibration;
+
+	bool allow_reading;
+	bool wlchg_started;
+
 	bool battery_full_param;//only for wite battery full param in guage dirver probe on 7250 platform
 	int sha1_key_index;
+	struct delayed_work afi_update;
+	bool afi_update_done;
+	bool protect_check_done;
+	bool disabled;
+	bool error_occured;
+	bool need_check;
+	unsigned int afi_count;
+	unsigned int zy_dts_qmax_min;
+	unsigned int zy_dts_qmax_max;
+	const u8 *static_df_checksum_3e;
+	const u8 *static_df_checksum_60;
+	const u8 **afi_buf;
+	unsigned int *afi_buf_len;
+
 	bool batt_bq28z610;
+	bool batt_zy0603;
 	bool bq28z610_need_balancing;
+	bool enable_sleep_mode;
 	int bq28z610_device_chem;
+	int gauge_num;
+	struct mutex chip_mutex;
+	struct mutex bq28z610_alt_manufacturer_access;
 	struct bq27541_authenticate_data *authenticate_data;
 	struct file_operations *authenticate_ops;
+	struct oplus_gauge_chip	*oplus_gauge;
+
+	int batt_dod0_1;
+	int batt_dod0_2;
+	int batt_dod0_passed_q;
+
+	int batt_qmax_1;
+	int batt_qmax_2;
+	int batt_qmax_passed_q;
+	int bcc_buf[BCC_PARMS_COUNT];
+
+	int capacity_pct;
+	int fg_soft_version;
+	bool b_soft_reset_for_zy;
+	atomic_t gauge_i2c_status;
+	int dump_sh366002_block;
+	unsigned long log_last_update_tick;
+	struct gauge_track_mode_info track_mode;
+
+	bool gauge_fix_cadc;
+	bool gauge_cal_board;
+	bool gauge_check_model;
+	bool gauge_check_por;
 };
 
+int bq27541_track_update_mode_buf(struct chip_bq27541 *chip, char *buf);
 extern bool oplus_gauge_ic_chip_is_null(void);
-
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0))
+int bq27541_driver_init(void);
+void bq27541_driver_exit(void);
+#endif
 #endif  /* __OPLUS_BQ27541_H__ */

@@ -504,7 +504,6 @@ KBUILD_LDFLAGS :=
 GCC_PLUGINS_CFLAGS :=
 CLANG_FLAGS :=
 
-
 # ifdef DOPLUS_FEATUREB_BOOT
 KBUILD_CFLAGS +=   -DOPLUS_FEATUREB_BOOT
 KBUILD_CPPFLAGS += -DOPLUS_FEATUREB_BOOT
@@ -757,6 +756,13 @@ endif # KBUILD_EXTMOD
 # This allow a user to issue only 'make' to build a kernel including modules
 # Defaults to vmlinux, but the arch makefile usually adds further targets
 all: vmlinux
+
+ifdef CONFIG_PGO_CLANG
+CFLAGS_PGO_CLANG := $(KCFLAGS_PGO)
+export CFLAGS_PGO_CLANG
+else ifneq ($(KCFLAGS_PGO),)
+KBUILD_CFLAGS += $(KCFLAGS_PGO)
+endif
 
 CFLAGS_GCOV	:= -fprofile-arcs -ftest-coverage \
 	$(call cc-option,-fno-tree-loop-im) \
@@ -1015,7 +1021,11 @@ endif
 CC_FLAGS_LTO_CLANG += -fvisibility=default
 
 # Limit inlining across translation units to reduce binary size
+ifdef CONFIG_ARCH_SUPPORTS_PGO_CLANG
+LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=60
+else
 LD_FLAGS_LTO_CLANG := -mllvm -import-instr-limit=5
+endif
 
 KBUILD_LDFLAGS += $(LD_FLAGS_LTO_CLANG)
 KBUILD_LDFLAGS_MODULE += $(LD_FLAGS_LTO_CLANG)

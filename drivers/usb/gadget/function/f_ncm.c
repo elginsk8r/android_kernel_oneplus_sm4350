@@ -1653,6 +1653,7 @@ static const struct config_item_type ncm_func_type = {
 	.ct_owner	= THIS_MODULE,
 };
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #ifdef CONFIG_USB_F_NCM
 #define MIRROR_LINK_STRING_LENGTH_MAX 32
 #define CAR_LINK_STRING_LENGTH_MAX 64
@@ -1904,11 +1905,19 @@ static void ncm_setup_work(struct work_struct *data)
 int ncm_ctrlrequest(struct usb_composite_dev *cdev,
 			const struct usb_ctrlrequest *ctrl)
 {
-	struct usb_request	*req = cdev->req;
+	struct usb_request *req = NULL;
+	u16 w_length = 0;
 	int value = -EOPNOTSUPP;
 	int retValue = -EOPNOTSUPP;
-	u16 w_length = le16_to_cpu(ctrl->wLength);
 	int msg_type = 0;
+
+	if (_ncm_setup_desc == NULL || cdev == NULL || ctrl == NULL) {
+		printk("f_ncm param error !\n");
+		return value;
+	}
+
+	w_length = le16_to_cpu(ctrl->wLength);
+	req = cdev->req;
 	req->zero = 0;
 	req->context = cdev;
 	req->length = 0;
@@ -1916,11 +1925,6 @@ int ncm_ctrlrequest(struct usb_composite_dev *cdev,
 		req->complete = android_read_string;
 	} else {
 		req->complete = android_setup_complete;
-	}
-
-	if (_ncm_setup_desc == NULL) {
-		printk("f_ncm is not initial\n");
-		return value;
 	}
 
 	if (ctrl->bRequestType == 0x40 && ctrl->bRequest == 0xF0
@@ -1991,11 +1995,13 @@ int ncm_ctrlrequest(struct usb_composite_dev *cdev,
 	return value;
 }
 #endif /* CONFIG_USB_F_NCM */
+#endif
 
 static void ncm_free_inst(struct usb_function_instance *f)
 {
 	struct f_ncm_opts *opts;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #ifdef CONFIG_USB_F_NCM
 	cancel_work_sync(&_ncm_setup_desc->work);
 	/* release _ncm_setup_desc related resource */
@@ -2004,6 +2010,7 @@ static void ncm_free_inst(struct usb_function_instance *f)
 	destroy_workqueue(ocar_wq);
 	kfree(_ncm_setup_desc);
 #endif /* CONFIG_USB_F_NCM */
+#endif
 
 	opts = container_of(f, struct f_ncm_opts, func_inst);
 	if (opts->bound)
@@ -2042,6 +2049,7 @@ static struct usb_function_instance *ncm_alloc_inst(void)
 	}
 	opts->ncm_interf_group = ncm_interf_group;
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #ifdef CONFIG_USB_F_NCM
 	_ncm_setup_desc = kzalloc(sizeof(*_ncm_setup_desc), GFP_KERNEL);
 	if (!_ncm_setup_desc)
@@ -2051,6 +2059,7 @@ static struct usb_function_instance *ncm_alloc_inst(void)
 	INIT_WORK(&_ncm_setup_desc->work, ncm_setup_work);
 	_ncm_setup_desc->device = create_function_device("f_ncm");
 #endif /* CONFIG_USB_F_NCM */
+#endif
 	return &opts->func_inst;
 }
 

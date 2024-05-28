@@ -15,8 +15,10 @@
 #include <linux/kdev_t.h>
 #include <linux/usb/ch9.h>
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #ifdef CONFIG_USB_F_NCM
 #include "function/u_ncm.h"
+#endif
 #endif
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC
@@ -1614,6 +1616,7 @@ static int android_setup(struct usb_gadget *gadget,
 		}
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
 #ifdef CONFIG_USB_F_NCM
 	printk("android_setup: ctrlrequest->bRequestType=%d, bRequest=%d, value=%d\n", c->bRequestType, c->bRequest, value);
 	if (value < 0)
@@ -1626,6 +1629,7 @@ static int android_setup(struct usb_gadget *gadget,
 	if (value == 0) {
 		return value;
 	}
+#endif
 #endif
 
 #ifdef CONFIG_USB_CONFIGFS_F_ACC

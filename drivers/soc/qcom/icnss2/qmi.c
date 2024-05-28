@@ -31,10 +31,6 @@
 #include "debug.h"
 #include "genl.h"
 
-#if IS_ENABLED(CONFIG_CNSS_UTILS)
-#include <net/cnss_utils.h>
-#endif
-
 #define WLFW_SERVICE_WCN_INS_ID_V01	3
 #define WLFW_SERVICE_INS_ID_V01		0
 #define WLFW_CLIENT_ID			0x4b4e454c
@@ -805,10 +801,6 @@ int icnss_wlfw_wlan_mac_req_send_sync(struct icnss_priv *priv,
 	struct wlfw_mac_addr_resp_msg_v01 resp = {0};
 	struct qmi_txn txn;
 	int ret;
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_WIFI_MAC)
-	int i;
-	char revert_mac[QMI_WLFW_MAC_ADDR_SIZE_V01];
-#endif
 
 	if (!priv || !mac || mac_len != QMI_WLFW_MAC_ADDR_SIZE_V01)
 		return -EINVAL;
@@ -824,24 +816,8 @@ int icnss_wlfw_wlan_mac_req_send_sync(struct icnss_priv *priv,
 
 	icnss_pr_dbg("Sending WLAN mac req [%pM], state: 0x%lx\n",
 			     mac, priv->state);
-#if IS_ENABLED(CONFIG_OPLUS_FEATURE_WIFI_MAC)
-	for (i = 0; i < QMI_WLFW_MAC_ADDR_SIZE_V01; i++) {
-		revert_mac[i] = mac[QMI_WLFW_MAC_ADDR_SIZE_V01 - i - 1];
-	}
-	icnss_pr_dbg("Sending revert WLAN MAC request [%pM], state: 0x%lx\n",
-		    revert_mac, priv->state);
-	memcpy(req.mac_addr, revert_mac, mac_len);
-#else
 	memcpy(req.mac_addr, mac, mac_len);
-#endif
 	req.mac_addr_valid = 1;
-
-#if IS_ENABLED(CONFIG_CNSS_UTILS)
-	ret = cnss_utils_set_wlan_mac_address(req.mac_addr, mac_len);
-	if (ret < 0) {
-		icnss_pr_err("Failed to set cnss utils wlan mac address (non-fatal), err: %d\n", ret);
-	}
-#endif
 
 	ret = qmi_send_request(&priv->qmi, NULL, &txn,
 			       QMI_WLFW_MAC_ADDR_REQ_V01,
@@ -1066,6 +1042,16 @@ int icnss_wlfw_bdf_dnld_send_sync(struct icnss_priv *priv, u32 bdf_type)
 	remaining = fw_entry->size;
 
 bypass_bdf:
+
+#ifdef OPLUS_FEATURE_SWITCH_CHECK
+//Add for: check fw status for switch issue
+	if (bdf_type == ICNSS_BDF_REGDB) {
+		set_bit(CNSS_LOAD_REGDB_SUCCESS, &priv->loadRegdbState);
+	} else if (bdf_type == ICNSS_BDF_ELF){
+		set_bit(CNSS_LOAD_BDF_SUCCESS, &priv->loadBdfState);
+	}
+#endif /* OPLUS_FEATURE_SWITCH_CHECK */
+
 	icnss_pr_dbg("Downloading %s: %s, size: %u\n",
 		     icnss_bdf_type_to_str(bdf_type), filename, remaining);
 
@@ -1141,6 +1127,16 @@ err_send:
 	if (bdf_type != ICNSS_BDF_DUMMY)
 		release_firmware(fw_entry);
 err_req_fw:
+
+#ifdef OPLUS_FEATURE_SWITCH_CHECK
+//Add for: check fw status for switch issue
+	if (bdf_type == ICNSS_BDF_REGDB) {
+		set_bit(CNSS_LOAD_REGDB_FAIL, &priv->loadRegdbState);
+	} else if (bdf_type == ICNSS_BDF_ELF){
+		set_bit(CNSS_LOAD_BDF_FAIL, &priv->loadBdfState);
+	}
+#endif /* OPLUS_FEATURE_SWITCH_CHECK */
+
 	if (bdf_type != ICNSS_BDF_REGDB)
 		ICNSS_QMI_ASSERT();
 	kfree(req);

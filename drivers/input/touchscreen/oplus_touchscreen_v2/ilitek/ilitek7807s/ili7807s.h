@@ -172,7 +172,7 @@ extern bool ili_debug_en;
 #define CORE_VER_1460               0x01040600
 #define CORE_VER_1470               0x01040700
 
-#define MAX_HEX_FILE_SIZE           (256*K)
+#define MAX_HEX_FILE_SIZE           (160*K)
 #define ILI_FILE_HEADER             256
 #define DLM_START_ADDRESS           0x20610
 #define DLM_HEX_ADDRESS             0x10000
