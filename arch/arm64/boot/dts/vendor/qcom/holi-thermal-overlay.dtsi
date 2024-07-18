@@ -9,8 +9,6 @@
 };
 
 &thermal_zones {
-//delete low battery policy for performance
-/*
 	socd {
 		cooling-maps {
 			socd_cpu6 {
@@ -24,7 +22,6 @@
 			};
 		};
 	};
-*/
 
 	pm7250b_tz {
 		cooling-maps {

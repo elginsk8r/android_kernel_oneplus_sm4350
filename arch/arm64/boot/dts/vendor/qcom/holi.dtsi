@@ -257,12 +257,12 @@
 	android {
 		compatible = "android,firmware";
 		vbmeta {
-			compatible = "android,vbmeta";
-			//#ifdef OPLUS_FEATURE_BOOT_SECURITY
-			parts = "vbmeta,boot,system,vendor,dtbo,vendor_boot";
-			//#else
-			//parts = "vbmeta,boot,system,vendor,dtbo";
-			//#endif
+            compatible = "android,vbmeta";
+            //#ifdef OPLUS_FEATURE_BOOT_SECURITY
+            parts = "vbmeta,boot,system,vendor,dtbo,vendor_boot";
+            //#else
+            //parts = "vbmeta,boot,system,vendor,dtbo";
+            //#endif
 		};
 
 		fstab {
@@ -388,14 +388,14 @@
 		reg = <0x0 0x85e00000 0x0 0x00100000>;
 		label = "dfps_data_region";
 	};
-
+/*
 	qcom: ramoops {
 		compatible = "ramoops";
 		reg = <0x0 0xd0000000 0x0 0x200000>;
 		pmsg-size = <0x200000>;
 		mem-type = <2>;
 	};
-
+*/
 	/* global autoconfigured region for contiguous allocations */
 	linux,cma {
 		compatible = "shared-dma-pool";
@@ -2334,8 +2334,9 @@
 				qcom,intents = <0x800  5
 						0x2000 3
 						0x4400 2>;
-				qcom,non-wake-svc = <0x51
-						0x190>;
+
+				/* Qcom case-06236027 add for qrtr wakeup-source */
+				qcom,non-wake-svc = <0x190>;
 			};
 
 			qcom,adsp_glink_ssr {
@@ -2491,6 +2492,19 @@
 		qcom,vm-nav-path;
 	};
 
+    //#ifdef VENDOR_EDIT
+    //#ifdef FEATURE_OPLUS_NV_BACKUP
+    //add for creating a shared memory with uio for nv backup and restore
+    qcom,oembackup_sharedmem@0 {
+        compatible = "qcom,sharedmem-uio";
+        reg = <0x0 0x280000>;
+        reg-names = "oembackup";
+        qcom,client-id = <0x00000004>;
+        qcom,guard-memory;
+    };
+    //#endif /* FEATURE_OPLUS_NV_BACKUP */
+    //#endif /* VENDOR_EDIT */
+
 	ufsphy_mem: ufsphy_mem@4807000 {
 		reg = <0x4807000 0xDDC>;
 		reg-names = "phy_mem";
@@ -2634,7 +2648,7 @@
 		phy-names = "ufsphy";
 		#reset-cells = <1>;
 		limit-phy-submode = <0>;
-		spm-level = <5>;
+		spm-level = <3>;
 		rpm-level = <3>;
 
 		lanes-per-direction = <1>;
