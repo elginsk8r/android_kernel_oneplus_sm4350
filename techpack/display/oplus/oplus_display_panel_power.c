@@ -107,6 +107,10 @@ int dsi_panel_parse_panel_power_cfg(struct dsi_panel *panel)
 		}
 	}
 
+	panel->oplus_priv.cabc_enabled = utils->read_bool(utils->data,
+			"oplus,mdss-dsi-cabc-enabled");
+	DSI_INFO("oplus,mdss-dsi-cabc-enabled: %s", panel->oplus_priv.cabc_enabled ? "true" : "false");
+
 error:
 	return rc;
 }

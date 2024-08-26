@@ -300,10 +300,6 @@ int dsi_panel_parse_oplus_config(struct dsi_panel *panel)
 	DSI_INFO("is_pxlw_iris5: %s",
 		 panel->oplus_priv.is_pxlw_iris5 ? "true" : "false");
 
-	panel->oplus_priv.cabc_enabled = utils->read_bool(utils->data,
-			"oplus,mdss-dsi-cabc-enabled");
-	DSI_INFO("oplus,mdss-dsi-cabc-enabled: %s", panel->oplus_priv.cabc_enabled ? "true" : "false");
-
 	return 0;
 }
 EXPORT_SYMBOL(dsi_panel_parse_oplus_config);
