@@ -1284,6 +1284,7 @@ static const struct adc5_data adc5_data_pmic = {
 
 #ifdef OPLUS_FEATURE_CHG_BASIC
 static const struct adc5_data adc5_data_pmic_chg = {
+	.name = "pm-adc5-chg",
 	.full_scale_code_volt = 0x70e4,
 	.full_scale_code_cur = 0x2710,
 	.adc_chans = adc5_chans_pmic_chg,
