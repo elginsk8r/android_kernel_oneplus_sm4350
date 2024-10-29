@@ -12,6 +12,9 @@
 #include "cam_packet_util.h"
 #include "oplus_cam_sensor_core.h"
 #include "cam_sensor_core.h"
+#include "../cam_flash/oplus_cam_flash_dev.h"
+
+extern struct cam_flash_settings flash_ftm_data;
 
 #define MAX_LENGTH 128
 
@@ -221,6 +224,37 @@ int oplus_sensor_imx471_get_dpc_data(struct cam_sensor_ctrl_t *s_ctrl)
 
     CAM_INFO(CAM_SENSOR, "exit");
     return rc;
+}
+
+int oplus_shift_sensor_mode(struct cam_sensor_ctrl_t *s_ctrl)
+{
+	int rc=0;
+	struct cam_camera_slave_info *slave_info;
+	struct cam_sensor_i2c_reg_array ov32c_array;
+	struct cam_sensor_i2c_reg_setting ov32c_array_write;
+
+	slave_info = &(s_ctrl->sensordata->slave_info);
+
+	if(slave_info->sensor_id == 0x3243)  // ov32c sensorID 0x3243
+	{
+		CAM_ERR(CAM_SENSOR, "sid: %x", s_ctrl->io_master_info.cci_client->sid);
+		s_ctrl->io_master_info.cci_client->sid = 0x30 >> 1;
+		ov32c_array.reg_addr = 0x1001;
+		ov32c_array.reg_data = 0x4;
+		ov32c_array.delay = 0x00;
+		ov32c_array.data_mask = 0x00;
+		ov32c_array_write.reg_setting = &ov32c_array;
+		ov32c_array_write.size = 1;
+		ov32c_array_write.addr_type = CAMERA_SENSOR_I2C_TYPE_WORD;
+		ov32c_array_write.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+		ov32c_array_write.delay = 1;
+
+		rc = camera_io_dev_write(&(s_ctrl->io_master_info),&ov32c_array_write);
+		CAM_INFO(CAM_SENSOR, "write result %d", rc);
+		mdelay(1);
+		s_ctrl->io_master_info.cci_client->sid = 0x20 >> 1;
+	}
+	return rc;
 }
 
 int32_t oplus_cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,

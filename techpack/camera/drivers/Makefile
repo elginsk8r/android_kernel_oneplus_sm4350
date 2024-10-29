@@ -221,9 +221,9 @@ camera-$(CONFIG_SPECTRA_TFE) += \
 
 #ifdef OPLUS_FEATURE_CAMERA_COMMON
 camera-$(CONFIG_SPECTRA_SENSOR) += \
-	oplus/cam_sensor_module/cam_sensor/oplus_cam_sensor_core.o\
-	oplus/cam_sensor_module/cam_sensor/oplus_cam_sensor_dev.o \
-	oplus/cam_sensor_module/cam_flash/oplus_cam_flash_dev.o
+       oplus/cam_sensor_module/cam_sensor/oplus_cam_sensor_core.o \
+       oplus/cam_sensor_module/cam_sensor/oplus_cam_sensor_dev.o \
+       oplus/cam_sensor_module/cam_flash/oplus_cam_flash_dev.o
 #endif /*OPLUS_FEATURE_CAMERA_COMMON*/
 
 camera-y += camera_main.o
