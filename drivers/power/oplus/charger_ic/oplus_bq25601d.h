@@ -1,16 +1,7 @@
-/************************************************************************************
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2018-2019, OPLUS Mobile Comm Corp., Ltd
-**
-** Description:
-**    For bq25601d charger ic driver
-**
-** Version: 1.0
-** Date created: 2018-09-24
-**
-** --------------------------- Revision History: ------------------------------------
-* <version>       <date>         <author>              			<desc>
-*************************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #ifndef __OPLUS_BQ25601D_H__
 
@@ -18,7 +9,12 @@
 
 #include <linux/power_supply.h>
 #ifdef CONFIG_OPLUS_CHARGER_MTK
+#include <linux/version.h>
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
 #include <mt-plat/charger_type.h>
+#else
+#include <mt-plat/v1/charger_type.h>
+#endif
 #endif
 
 #include "../oplus_charger.h"
@@ -145,7 +141,9 @@
 
 /* Address:06h */
 #define REG06_BQ25601D_ADDRESS							0x06
-
+#define REG06_BQ25601D_OVP_MASK					BIT(7) | BIT(6)
+#define REG06_BQ25601D_OVP_SHIFT				6
+#define REG06_BQ25601D_OVP_9V							BIT(7)
 #define REG06_BQ25601D_OTG_VLIM_MASK						(BIT(5) | BIT(4))
 #define REG06_BQ25601D_OTG_VLIM_5150MV					BIT(5)
 
@@ -157,6 +155,10 @@
 
 /* Address:07h */
 #define REG07_BQ25601D_ADDRESS							0x07
+
+#define REG07_BQ25601D_BATFET_DIS_MASK                  BIT(5)
+#define REG07_BQ25601D_BATFET_DIS_Q4_ON                 0x00
+#define REG07_BQ25601D_BATFET_DIS_Q4_OFF                BIT(5)
 
 #define REG07_BQ25601D_IINDET_EN_MASE					BIT(7)
 #define REG07_BQ25601D_IINDET_EN_DET_COMPLETE			0x00
@@ -249,8 +251,14 @@ struct chip_bq25601d {
 	struct device		*dev;
 	int				hw_aicl_point;
 	int				sw_aicl_point;
+	int				bat_cv_mv;
+	bool			sub_chg_irq_disable;
 	atomic_t			charger_suspended;
 	int				irq_gpio;
+	int slave_chg_en_gpio;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *slave_charger_enable;
+	struct pinctrl_state *slave_charger_disable;
 };
 
 int bq25601d_otg_enable(void);
@@ -258,27 +266,45 @@ int bq25601d_otg_disable(void);
 
 extern volatile bool chargin_hw_init_done_bq25601d;
 
+#if defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6833) || defined(CONFIG_OPLUS_CHARGER_MTK6781)
+extern int bq25601d_charging_current_write_fast(int chg_cur);
+extern int bq25601d_input_current_limit_write(int value);
+extern int bq25601d_float_voltage_write(int vfloat_mv);
+extern int bq25601d_enable_charging(void);
+extern int bq25601d_disable_charging(void);
+extern void bq25601d_dump_registers(void);
+extern int bq25601d_hardware_init(void);
+extern int bq25601d_unsuspend_charger(void);
+extern int bq25601d_suspend_charger(void);
+#endif
+
 #ifdef CONFIG_OPLUS_CHARGER_MTK
 //extern CHARGER_TYPE mt_charger_type_detection(void);
-extern int mt_power_supply_type_check(void);
+
 extern bool pmic_chrdet_status(void);
-extern int battery_meter_get_charger_voltage(void);
+
 extern int charger_pretype_get(void);
 
 extern int get_rtc_spare_fg_value(void);
 extern int set_rtc_spare_fg_value(int val);
-extern int get_rtc_spare_oplus_fg_value(void);
-extern int set_rtc_spare_oplus_fg_value(int val);
+
 
 extern void mt_usb_connect(void);
 extern void mt_usb_disconnect(void);
 
-extern int mt_get_chargerid_volt (void);
+
 
 //#ifdef CONFIG_MTK_HAFG_20
+#ifndef CONFIG_OPLUS_CHARGER_MTK6873
 extern void mt_set_chargerid_switch_val(int value);
 extern int mt_get_chargerid_switch_val(void);
 extern int oplus_usb_switch_gpio_gpio_init(void);
+extern int battery_meter_get_charger_voltage(void);
+extern int mt_power_supply_type_check(void);
+extern int get_rtc_spare_oplus_fg_value(void);
+extern int set_rtc_spare_oplus_fg_value(int val);
+extern int mt_get_chargerid_volt(void);
+#endif
 //#endif /* CONFIG_OPLUS_CHARGER_MTK */
 
 #if defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
@@ -296,5 +322,6 @@ extern int qpnp_get_pmic_soc_memory(void);
 #endif /* CONFIG_OPLUS_CHARGER_MTK */
 
 bool oplus_pmic_check_chip_is_null(void);
+bool bq25601d_is_detected(void);
 
 #endif /* __OPLUS_BQ25601D_H__ */

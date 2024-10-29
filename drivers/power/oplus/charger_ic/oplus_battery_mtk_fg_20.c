@@ -1,19 +1,7 @@
-/************************************************************************************
-** File:  \\192.168.144.3\Linux_Share\12015\ics2\development\mediatek\custom\oplus77_12015\kernel\battery\battery
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for dc-dc sn111008 charg
-** 
-** Version: 1.0
-** Date created: 21:03:46,05/04/2012
-** Author: Fanhong.Kong@ProDrv.CHG
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-** 	<author>	<data>			<desc>
-**    1.1          2012-8-08       Fanhong.Kong@ProDrv.CHG   modified charger detect 
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
     
 

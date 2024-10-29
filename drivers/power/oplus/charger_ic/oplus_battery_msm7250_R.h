@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #ifndef __SMB5_CHARGER_H
@@ -20,6 +20,8 @@
 #include <linux/time.h>
 #include <linux/jiffies.h>
 #include <linux/sched/clock.h>
+#include <linux/usb/typec.h>
+#include <linux/usb/usbpd.h>
 #endif
 
 enum print_reason {
@@ -498,6 +500,9 @@ struct smb_charger {
 	struct delayed_work	usbov_dbc_work;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
+#ifdef OPLUS_CUSTOM_OP_DEF
+	struct delayed_work	reset_rd_work;
+#endif
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -523,6 +528,14 @@ struct smb_charger {
 	unsigned long long hvdcp_detach_time;
 	bool hvdcp_detect_ok;
 	struct delayed_work hvdcp_disable_work;
+	struct delayed_work regist_pd;
+	int qc_abnormal_check_count;
+	int real_chg_type;
+#endif
+
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	unsigned long long svooc_detect_time;
+	unsigned long long svooc_detach_time;
 #endif
 
 	/* pd */
@@ -536,6 +549,8 @@ struct smb_charger {
 	bool			ok_to_pd;
 	bool			typec_legacy;
 	bool			typec_irq_en;
+	struct usbpd  *oplus_pd;
+	struct usbpd_svid_handler oplus_svid_handler;
 
 	/* cached status */
 	bool			system_suspend_supported;
@@ -612,6 +627,7 @@ struct smb_charger {
 	int			wls_icl_ua;
 	bool			dcin_aicl_done;
 	bool			hvdcp3_standalone_config;
+	bool			low_voltage_charger;
 
 	/* workaround flag */
 	u32			wa_flags;
@@ -666,8 +682,16 @@ struct smb_charger {
 	struct pinctrl_state	*ccdetect_sleep;
 	struct pinctrl		*usbtemp_gpio1_adc_pinctrl;
 	struct pinctrl_state	*usbtemp_gpio1_default;
-	struct delayed_work	ccdetect_work;
+#ifdef OPLUS_CUSTOM_OP_DEF
+	struct pinctrl		*usbtemp_gpio8_adc_pinctrl;
+	struct pinctrl_state	*usbtemp_gpio8_default;
+	struct delayed_work	connect_check_work;
 #endif
+	struct delayed_work	ccdetect_work;
+	bool		usbtemp_parameter;
+	bool		usbtemp_parameter_20813;
+#endif
+
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct pinctrl		*chg_2uart_pinctrl;
 	struct pinctrl_state	*chg_2uart_default;
@@ -957,10 +981,15 @@ void smblib_hvdcp_detect_enable(struct smb_charger *chg, bool enable);
 void smblib_hvdcp_hw_inov_enable(struct smb_charger *chg, bool enable);
 void smblib_hvdcp_exit_config(struct smb_charger *chg);
 void smblib_apsd_enable(struct smb_charger *chg, bool enable);
+void smblib_bypass_vsafe0_control(struct smb_charger *chg, bool enable);
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val);
 int smblib_get_irq_status(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
+#ifdef OPLUS_CUSTOM_OP_DEF
+int smblib_set_prop_reset_rd(struct smb_charger *chg,
+				const union power_supply_propval *val);
+#endif
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);

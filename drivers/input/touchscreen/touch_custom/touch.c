@@ -1,4 +1,4 @@
-/***************************************************
+	/***************************************************
  * File:touch.c
  * VENDOR_EDIT
  * Copyright (c)  2008- 2030  Oplus Mobile communication Corp.ltd.
@@ -16,7 +16,7 @@
 #include <linux/input.h>
 #include <linux/serio.h>
 #include <linux/regulator/consumer.h>
-#include <soc/oplus/oplus_project.h>
+#include <soc/oplus/system/oplus_project.h>
 #include <soc/oplus/device_info.h>
 
 #include "touch.h"
@@ -51,6 +51,7 @@ struct tp_dev_name tp_dev_names[] = {
 	{TP_HUAXING, "HUAXING"},
 	{TP_HLT, "HLT"},
 	{TP_DJN, "DJN"},
+	{TP_VXN, "VXN"},
 	{TP_UNKNOWN, "UNKNOWN"},
 };
 
@@ -59,6 +60,7 @@ struct tp_dev_name tp_dev_names[] = {
 bool tp_judge_ic_match(char *tp_ic_name) {
 	pr_err("[TP] tp_ic_name = %s \n", tp_ic_name);
 	pr_err("[TP] tp_dsi_display_primary = %s \n", tp_dsi_display_primary);
+
 
 	if (strstr(tp_dsi_display_primary, tp_ic_name)) {
 		pr_err("[TP] tp_judge_ic_match match ok\n");

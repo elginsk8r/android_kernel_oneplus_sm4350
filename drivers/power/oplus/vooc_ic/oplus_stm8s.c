@@ -1,24 +1,13 @@
-/************************************************************************************
-** File:  \\192.168.144.3\Linux_Share\12015\ics2\development\mediatek\custom\oplus77_12015\kernel\battery\battery
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-**
-** Description:
-**          for dc-dc sn111008 charg
-**
-** Version: 1.0
-** Date created: 21:03:46, 05/04/2012
-** Author: Fanhong.Kong@ProDrv.CHG
-**
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>           <date>                <author>                                <desc>
-* Revision 1.0        2015-06-22        Fanhong.Kong@ProDrv.CHG            Created for new architecture
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #define VOOC_MCU_STM8S
 
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
+#include <linux/version.h>
 #ifdef CONFIG_OPLUS_CHARGER_MTK
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
@@ -31,16 +20,18 @@
 #include <linux/kobject.h>
 #include <linux/platform_device.h>
 #include <asm/atomic.h>
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 #include <linux/xlog.h>
-
+#endif
 //#include <upmu_common.h>
 //#include <mt-plat/mtk_gpio.h>
 #include <linux/dma-mapping.h>
 
 //#include <mt-plat/battery_meter.h>
 #include <linux/module.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/device_info.h>
+#endif
 
 #else
 #include <linux/i2c.h>
@@ -59,7 +50,9 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/device_info.h>
+#endif
 #endif
 #include "oplus_vooc_fw.h"
 
@@ -558,7 +551,7 @@ static int stm8s_fw_check_then_recover(struct oplus_vooc_chip *chip)
 		opchg_set_clock_active(chip);
 		chip->mcu_boot_by_gpio = true;
 		msleep(10);
-		opchg_set_reset_active(chip);
+		opchg_set_reset_active_force(chip);
 		chip->mcu_update_ing = true;
 		msleep(2500);
 		chip->mcu_boot_by_gpio = false;
@@ -572,7 +565,7 @@ static int stm8s_fw_check_then_recover(struct oplus_vooc_chip *chip)
 				chip->mcu_boot_by_gpio = true;
 				msleep(10);
 				chip->mcu_update_ing = false;
-				opchg_set_reset_active(chip);
+				opchg_set_reset_active_force(chip);
 				chip->mcu_update_ing = true;
 				msleep(2500);
 				chip->mcu_boot_by_gpio = false;
@@ -619,6 +612,7 @@ struct oplus_vooc_operations oplus_stm8s_ops = {
 
 static void register_vooc_devinfo(void)
 {
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 	int ret = 0;
 	char *version;
 	char *manufacture;
@@ -630,6 +624,7 @@ static void register_vooc_devinfo(void)
 	if (ret) {
 		chg_err(" fail\n");
 	}
+#endif
 }
 
 static void stm8s_shutdown(struct i2c_client *client)
@@ -673,10 +668,17 @@ static ssize_t vooc_fw_check_read(struct file *filp,
 	return (len < count ? len : count);
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations vooc_fw_check_proc_fops = {
 	.read = vooc_fw_check_read,
 	.llseek = noop_llseek,
 };
+#else
+static const struct proc_ops vooc_fw_check_proc_fops = {
+	.proc_read = vooc_fw_check_read,
+	.proc_lseek = noop_llseek,
+};
+#endif
 
 static int init_proc_vooc_fw_check(void)
 {
@@ -685,6 +687,190 @@ static int init_proc_vooc_fw_check(void)
 	p = proc_create("vooc_fw_check", 0444, NULL, &vooc_fw_check_proc_fops);
 	if (!p) {
 		chg_err("proc_create vooc_fw_check_proc_fops fail!\n");
+	}
+	return 0;
+}
+
+static int stm8s_parse_fw_from_dt(struct oplus_vooc_chip *chip)
+{
+	struct device_node *node = chip->dev->of_node;
+	const char *data;
+	int len = 0;
+
+	if (!node) {
+		pr_err("device tree info. missing\n");
+		return -ENOMEM;
+	}
+
+	data = of_get_property(node, "vooc,firmware_data", &len);
+	if (!data) {
+		pr_err("%s: parse vooc fw failed\n", __func__);
+		return -ENOMEM;
+	}
+
+	chip->firmware_data = data;
+	chip->fw_data_count = len;
+	chip->fw_data_version = data[len - 4];
+	pr_err("%s: version: 0x%x, count: %d\n", __func__, chip->fw_data_version, chip->fw_data_count);
+
+	return 0;
+}
+
+static stm8s_parse_fw_from_array(struct oplus_vooc_chip *chip)
+{
+	if (chip->batt_type_4400mv) {
+		chip->firmware_data = Stm8s_firmware_data_4400mv;
+		chip->fw_data_count = sizeof(Stm8s_firmware_data_4400mv);
+		chip->fw_data_version = Stm8s_firmware_data_4400mv[chip->fw_data_count - FW_VERSION_OFFSET];
+	} else {
+		chip->firmware_data = Stm8s_firmware_data_4350mv;
+		chip->fw_data_count = sizeof(Stm8s_firmware_data_4350mv);
+		chip->fw_data_version = Stm8s_firmware_data_4350mv[chip->fw_data_count - FW_VERSION_OFFSET];
+	}
+
+	switch (chip->vooc_fw_type) {
+	case VOOC_FW_TYPE_STM8S_4400_AVOID_FAKE_ADAPTER:
+		chip->firmware_data = Stm8s_fw_data_4400_avoid_fake_adapter;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_fake_adapter);
+		chip->fw_data_version = Stm8s_fw_data_4400_avoid_fake_adapter[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_AVOID_FG_I2C_ERR:
+		chip->firmware_data = Stm8s_fw_data_4400_avoid_fg_i2c_err;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_fg_i2c_err);
+		chip->fw_data_version = Stm8s_fw_data_4400_avoid_fg_i2c_err[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_AVOID_OVER_TEMP:
+		chip->firmware_data = Stm8s_fw_data_4400_avoid_over_temp;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_over_temp);
+		chip->fw_data_version = Stm8s_fw_data_4400_avoid_over_temp[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_AVOID_OVER_TEMP_NTC61C:
+		chip->firmware_data = Stm8s_fw_data_4400_avoid_over_temp_ntc61c;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_over_temp_ntc61c);
+		chip->fw_data_version = Stm8s_fw_data_4400_avoid_over_temp_ntc61c[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_09C:
+		chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_09c;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_09c);
+		chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_09c[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C:
+		chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c);
+		chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C_FV4450:
+		chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c_fv4450;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c_fv4450);
+		chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c_fv4450[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_FFC:
+		chip->firmware_data = Stm8s_fw_data_4450_ffc;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc);
+		chip->fw_data_version = Stm8s_fw_data_4450_ffc[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_FFC_5V6A:
+		chip->firmware_data = Stm8s_fw_data_4450_ffc_5v6a;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_5v6a);
+		chip->fw_data_version = Stm8s_fw_data_4450_ffc_5v6a[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C_TI411:
+		chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c_ti411;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c_ti411);
+		chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c_ti411[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_FFC_5C_VOOC:
+		chip->firmware_data = Stm8s_fw_data_4450_ffc_5c_vooc;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_5c_vooc);
+		chip->fw_data_version = Stm8s_fw_data_4450_ffc_5c_vooc[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_FFC_5V5P9A:
+		chip->firmware_data = Stm8s_fw_data_4400_ffc_5v5p9a;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_ffc_5v5p9a);
+		chip->fw_data_version = Stm8s_fw_data_4400_ffc_5v5p9a[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_FFC_5V6A_VOOC_4052MA_3BIT:
+		chip->firmware_data = Stm8s_fw_data_4450_ffc_5v6a_3bit;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_5v6a_3bit);
+		chip->fw_data_version = Stm8s_fw_data_4450_ffc_5v6a_3bit[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_FFC_5V4A_VOOC_4052MA_3BIT:
+		chip->firmware_data = Stm8s_fw_data_4450_vooc_ffc_5v4a_3bit;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_vooc_ffc_5v4a_3bit);
+		chip->fw_data_version = Stm8s_fw_data_4450_vooc_ffc_5v4a_3bit[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C_18041:
+		chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c_18041;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c_18041);
+		chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c_18041[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_VOOC_FFC_5V6A_19365:
+		chip->firmware_data = Stm8s_fw_data_4450_VOOC_FFC_5V6A_19365;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_VOOC_FFC_5V6A_19365);
+		chip->fw_data_version = Stm8s_fw_data_4450_VOOC_FFC_5V6A_19365[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_FFC_SHORT_RESET_WINDOW:
+		chip->firmware_data = Stm8s_fw_data_4450_ffc_ShortResetWindow;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_ShortResetWindow);
+		chip->fw_data_version = Stm8s_fw_data_4450_ffc_ShortResetWindow[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_3500MA:
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_3500MA;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_3500MA);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_3500MA[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_1000MA:
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_1000MA;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_1000MA);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_1000MA[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_5000MA :
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_5000MA;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_5000MA);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_5000MA[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA:
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA:
+		chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA);
+		chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA_FV4490:
+		chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA_fv4490;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA_fv4490);
+		chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA_fv4490[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA_disableI2C:
+		chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA_disableI2C;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA_disableI2C);
+		chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA_disableI2C[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA_8250:
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA_8250;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA_8250);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA_8250[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA_8250:
+		chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA_8250;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA_8250);
+		chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA_8250[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA_8250_LINK:
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA_8250_link;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA_8250_link);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA_8250_link[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA_8250_LINK_LITE:
+		chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA_8250_link_lite;
+		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA_8250_link_lite);
+		chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA_8250_link_lite[chip->fw_data_count - FW_VERSION_OFFSET];
+		break;
+	default:
+		break;
 	}
 	return 0;
 }
@@ -727,161 +913,11 @@ static int stm8s_driver_probe(struct i2c_client *client,
 	mutex_init(&chip->pinctrl_mutex);
 
 	oplus_vooc_fw_type_dt(chip);
-	if (chip->batt_type_4400mv) {
-		chip->firmware_data = Stm8s_firmware_data_4400mv;
-		chip->fw_data_count = sizeof(Stm8s_firmware_data_4400mv);
-		chip->fw_data_version = Stm8s_firmware_data_4400mv[chip->fw_data_count - 4];
-	} else {
-		chip->firmware_data = Stm8s_firmware_data_4350mv;
-		chip->fw_data_count = sizeof(Stm8s_firmware_data_4350mv);
-		chip->fw_data_version = Stm8s_firmware_data_4350mv[chip->fw_data_count - 4];
-	}
 
-	switch (chip->vooc_fw_type) {
-		case VOOC_FW_TYPE_STM8S_4400_AVOID_FAKE_ADAPTER:
-			chip->firmware_data = Stm8s_fw_data_4400_avoid_fake_adapter;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_fake_adapter);
-			chip->fw_data_version = Stm8s_fw_data_4400_avoid_fake_adapter[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_AVOID_FG_I2C_ERR:
-			chip->firmware_data = Stm8s_fw_data_4400_avoid_fg_i2c_err;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_fg_i2c_err);
-			chip->fw_data_version = Stm8s_fw_data_4400_avoid_fg_i2c_err[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_AVOID_OVER_TEMP:
-			chip->firmware_data = Stm8s_fw_data_4400_avoid_over_temp;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_over_temp);
-			chip->fw_data_version = Stm8s_fw_data_4400_avoid_over_temp[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_AVOID_OVER_TEMP_NTC61C:
-			chip->firmware_data = Stm8s_fw_data_4400_avoid_over_temp_ntc61c;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_avoid_over_temp_ntc61c);
-			chip->fw_data_version = Stm8s_fw_data_4400_avoid_over_temp_ntc61c[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_09C:
-			chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_09c;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_09c);
-			chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_09c[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C:
-			chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c);
-			chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C_FV4450:
-			chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c_fv4450;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c_fv4450);
-			chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c_fv4450[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_FFC:
-			chip->firmware_data = Stm8s_fw_data_4450_ffc;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc);
-			chip->fw_data_version = Stm8s_fw_data_4450_ffc[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_FFC_5V6A:
-			chip->firmware_data = Stm8s_fw_data_4450_ffc_5v6a;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_5v6a);
-			chip->fw_data_version = Stm8s_fw_data_4450_ffc_5v6a[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C_TI411:
-			chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c_ti411;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c_ti411);
-			chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c_ti411[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_FFC_5C_VOOC:
-			chip->firmware_data = Stm8s_fw_data_4450_ffc_5c_vooc;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_5c_vooc);
-			chip->fw_data_version = Stm8s_fw_data_4450_ffc_5c_vooc[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_FFC_5V5P9A:
-			chip->firmware_data = Stm8s_fw_data_4400_ffc_5v5p9a;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_ffc_5v5p9a);
-			chip->fw_data_version = Stm8s_fw_data_4400_ffc_5v5p9a[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_FFC_5V6A_VOOC_4052MA_3BIT:
-			chip->firmware_data = Stm8s_fw_data_4450_ffc_5v6a_3bit;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_5v6a_3bit);
-			chip->fw_data_version = Stm8s_fw_data_4450_ffc_5v6a_3bit[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_FFC_5V4A_VOOC_4052MA_3BIT:
-			chip->firmware_data = Stm8s_fw_data_4450_vooc_ffc_5v4a_3bit;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_vooc_ffc_5v4a_3bit);
-			chip->fw_data_version = Stm8s_fw_data_4450_vooc_ffc_5v4a_3bit[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_VOOC_FFC_15C_18041:
-			chip->firmware_data = Stm8s_fw_data_4400_vooc_ffc_15c_18041;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_vooc_ffc_15c_18041);
-			chip->fw_data_version = Stm8s_fw_data_4400_vooc_ffc_15c_18041[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_VOOC_FFC_5V6A_19365:
-			chip->firmware_data = Stm8s_fw_data_4450_VOOC_FFC_5V6A_19365;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_VOOC_FFC_5V6A_19365);
-			chip->fw_data_version = Stm8s_fw_data_4450_VOOC_FFC_5V6A_19365[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_FFC_SHORT_RESET_WINDOW:
-			chip->firmware_data = Stm8s_fw_data_4450_ffc_ShortResetWindow;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_ffc_ShortResetWindow);
-			chip->fw_data_version = Stm8s_fw_data_4450_ffc_ShortResetWindow[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_SVOOC_3500MA:
-			chip->firmware_data = Stm8s_fw_data_4400_svooc_3500MA;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_3500MA);
-			chip->fw_data_version = Stm8s_fw_data_4400_svooc_3500MA[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_SVOOC_1000MA:
-			chip->firmware_data = Stm8s_fw_data_4400_svooc_1000MA;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_1000MA);
-			chip->fw_data_version = Stm8s_fw_data_4400_svooc_1000MA[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_SVOOC_5000MA :
-			chip->firmware_data = Stm8s_fw_data_4400_svooc_5000MA;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_5000MA);
-			chip->fw_data_version = Stm8s_fw_data_4400_svooc_5000MA[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA:
-			chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA);
-			chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA:
-			chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA);
-			chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA_FV4490:
-			chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA_fv4490;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA_fv4490);
-			chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA_fv4490[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA_disableI2C:
-			chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA_disableI2C;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA_disableI2C);
-			chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA_disableI2C[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA_8250:
-			chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA_8250;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA_8250);
-			chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA_8250[chip->fw_data_count - 4];
-			break;
-		case VOOC_FW_TYPE_STM8S_4450_SVOOC_6500MA_8250:
-			chip->firmware_data = Stm8s_fw_data_4450_svooc_6500MA_8250;
-			chip->fw_data_count = sizeof(Stm8s_fw_data_4450_svooc_6500MA_8250);
-			chip->fw_data_version = Stm8s_fw_data_4450_svooc_6500MA_8250[chip->fw_data_count - 4];
-			break;
-	case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA_8250_LINK:
-		chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA_8250_link;
-		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA_8250_link);
-		chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA_8250_link[chip->fw_data_count - 4];
-		break;
-	case VOOC_FW_TYPE_STM8S_4400_SVOOC_6500MA_8250_LINK_LITE:
-		chip->firmware_data = Stm8s_fw_data_4400_svooc_6500MA_8250_link_lite;
-		chip->fw_data_count = sizeof(Stm8s_fw_data_4400_svooc_6500MA_8250_link_lite);
-		chip->fw_data_version = Stm8s_fw_data_4400_svooc_6500MA_8250_link_lite[chip->fw_data_count - 4];
-		break;
-		default:
-			break;
-	}
-
+	if (chip->parse_fw_from_dt)
+		stm8s_parse_fw_from_dt(chip);
+	else
+		stm8s_parse_fw_from_array(chip);
 
 	chip->vops = &oplus_stm8s_ops;
 	chip->fw_mcu_version = 0;
@@ -941,6 +977,11 @@ struct i2c_driver stm8s_i2c_driver = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 static int __init stm8s_subsys_init(void)
 #else
+void stm8s_subsys_exit(void)
+{
+	i2c_del_driver(&stm8s_i2c_driver);
+}
+
 int stm8s_subsys_init(void)
 #endif
 {

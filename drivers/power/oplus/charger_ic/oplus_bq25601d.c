@@ -1,21 +1,13 @@
-/************************************************************************************
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2018-2019, OPLUS Mobile Comm Corp., Ltd
-**
-** Description:
-**    For bq25601d charger ic driver
-**
-** Version: 1.0
-** Date created: 2018-09-24
-**
-** --------------------------- Revision History: ------------------------------------
-* <version>       <date>         <author>              			<desc>
-*************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
 
 #ifdef CONFIG_OPLUS_CHARGER_MTK
+#include <linux/version.h>
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
@@ -33,13 +25,17 @@
 #include <mt-plat/mt_gpio.h>
 #include <mt_boot_common.h>
 #include <mt-plat/mtk_rtc.h>
-#elif defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+#elif defined(CONFIG_OPLUS_CHARGER_MTK6763) \
+	|| defined(CONFIG_OPLUS_CHARGER_MTK6771) \
+	|| defined(CONFIG_OPLUS_CHARGER_MTK6833) \
+	|| defined(CONFIG_OPLUS_CHARGER_MTK6781)
 #include <linux/module.h>
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
 #include <mt-plat/mtk_gpio.h>
-
+#endif
 #include <mt-plat/mtk_rtc.h>
-
+#elif defined(CONFIG_OPLUS_CHARGER_MTK6873)
+#include <linux/module.h>
 #else
 #include <mach/mt_typedefs.h>
 #include <mach/mt_gpio.h>
@@ -84,19 +80,59 @@ void (*enable_aggressive_segmentation_fn)(bool);
 #include <oplus_bq25601d.h>
 extern int oplus_get_rtc_ui_soc(void);
 extern int oplus_set_rtc_ui_soc(int value);
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+extern int oplus_battery_meter_get_battery_voltage(void);
+#endif
 static struct chip_bq25601d *charger_ic = NULL;
 static int aicl_result = 500;
 static struct delayed_work charger_modefy_work;
+static int bq25601d_online = false;
 
 static DEFINE_MUTEX(bq25601d_i2c_access);
 
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#define BQ25601D_VFLOAT_4467MV							4467
+#define REG00_BQ25601D_INPUT_1200MA						0x0B
+#endif
+
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+enum bq2560x_part_no {
+	BQ25600 = 0x00,
+	BQ25601ORSGM41511 = 0x02,
+	BQ21120 = 0x08,
+	SY6974 = 0x09,
+};
+static struct chip_ver {
+	char *version;
+	char *manufacture;
+}chip_ver;
+
+#endif
 static int __bq25601d_read_reg(struct chip_bq25601d *chip, int reg, int *returnData)
 {
 #ifdef CONFIG_OPLUS_CHARGER_MTK
-#if defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	int ret = 0;
+	int retry = 3;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	ret = i2c_smbus_read_byte_data(chip->client, reg);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_byte_data(chip->client, reg);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		chg_err("i2c read fail: can't read from %02x: %d\n", reg, ret);
 		return ret;
@@ -107,6 +143,11 @@ static int __bq25601d_read_reg(struct chip_bq25601d *chip, int reg, int *returnD
 	char cmd_buf[1] = {0x00};
 	char readData = 0;
 	int ret = 0;
+
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	chip->client->ext_flag = ((chip->client->ext_flag) & I2C_MASK_FLAG) | I2C_WR_FLAG | I2C_DIRECTION_FLAG;
 	chip->client->timing = 300;
@@ -121,11 +162,25 @@ static int __bq25601d_read_reg(struct chip_bq25601d *chip, int reg, int *returnD
 	*returnData = readData;
 
 	chip->client->ext_flag = 0;
-#endif
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 #else
 	int ret = 0;
+	int retry = 3;
 
 	ret = i2c_smbus_read_byte_data(chip->client, reg);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_byte_data(chip->client, reg);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		chg_err("i2c read fail: can't read from %02x: %d\n", reg, ret);
 		return ret;
@@ -140,6 +195,10 @@ static int __bq25601d_read_reg(struct chip_bq25601d *chip, int reg, int *returnD
 static int bq25601d_read_reg(struct chip_bq25601d *chip, int reg, int *returnData)
 {
 	int ret = 0;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	mutex_lock(&bq25601d_i2c_access);
 	ret = __bq25601d_read_reg(chip, reg, returnData);
@@ -150,10 +209,28 @@ static int bq25601d_read_reg(struct chip_bq25601d *chip, int reg, int *returnDat
 static int __bq25601d_write_reg(struct chip_bq25601d *chip, int reg, int val)
 {
 #ifdef CONFIG_OPLUS_CHARGER_MTK
-#if defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+#ifdef OPLUS_FEATURE_CHG_BASIC
 	int ret = 0;
+	int retry = 3;
 
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 	ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		chg_err("i2c write fail: can't write %02x to %02x: %d\n", val, reg, ret);
 		return ret;
@@ -174,11 +251,25 @@ static int __bq25601d_write_reg(struct chip_bq25601d *chip, int reg, int val)
 	}
 
 	chip->client->ext_flag = 0;
-#endif
+#endif /* OPLUS_FEATURE_CHG_BASIC */
 #else /* CONFIG_OPLUS_CHARGER_MTK */
 	int ret = 0;
+	int retry = 3;
 
 	ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		chg_err("i2c write fail: can't write %02x to %02x: %d\n", val, reg, ret);
 		return ret;
@@ -192,6 +283,10 @@ static int bq25601d_config_interface (struct chip_bq25601d *chip, int RegNum, in
 {
 	int bq25601d_reg = 0;
 	int ret = 0;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	mutex_lock(&bq25601d_i2c_access);
 	ret = __bq25601d_read_reg(chip, RegNum, &bq25601d_reg);
@@ -234,8 +329,8 @@ static int chg_vol_mini(int *chg_vol)
 	return chg_vol_temp;
 }
 #endif
-
-static int bq25601d_input_current_limit_write(int value)
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+int bq25601d_input_current_limit_write(int value)
 {
 	int rc = 0;
 	int i = 0;
@@ -244,6 +339,10 @@ static int bq25601d_input_current_limit_write(int value)
 	int aicl_point_temp = 0;
 	int chg_vol_all[10] = {0};
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -307,7 +406,7 @@ static int bq25601d_input_current_limit_write(int value)
 	j = 6; /* 2000 */
 	rc = bq25601d_config_interface(chip, REG00_BQ25601D_ADDRESS, REG00_BQ25601D_INPUT_CURRENT_LIMIT_2000MA, REG00_BQ25601D_INPUT_CURRENT_LIMIT_MASK);
 	msleep(90);
-#if defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+#if defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771) || defined(CONFIG_OPLUS_CHARGER_MTK6873)
 	for (i = 0; i < AICL_COUNT; i++) {
 		chg_vol = battery_meter_get_charger_voltage();
 		chg_vol_all[i] = chg_vol;
@@ -333,10 +432,10 @@ static int bq25601d_input_current_limit_write(int value)
 	} else if (value >= 3000)
 		goto aicl_end;
 
-aicl_pre_step:		
+aicl_pre_step:
 	chg_debug("usb input max current limit aicl chg_vol=%d j[%d]=%d sw_aicl_point:%d aicl_pre_step\n", chg_vol, j, bq25601d_usbin_input_current_limit[j], aicl_point_temp);
 	goto aicl_rerun;
-aicl_end:		
+aicl_end:
 	chg_debug("usb input max current limit aicl chg_vol=%d j[%d]=%d sw_aicl_point:%d aicl_end\n", chg_vol, j, bq25601d_usbin_input_current_limit[j], aicl_point_temp);
 	goto aicl_rerun;
 aicl_rerun:
@@ -372,12 +471,44 @@ aicl_rerun:
 	}
 	return rc;
 }
+#else
+int bq25601d_input_current_limit_write(int value)
+{
+	int rc = 0;
+	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
+#if defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	value = value / 1000;
+#endif
+
+	chg_err("bq25601d_input_current_limit_write: %d\n", value);
+
+	rc = bq25601d_config_interface(chip, REG00_BQ25601D_ADDRESS, (value - 100)/100, REG00_BQ25601D_INPUT_CURRENT_LIMIT_MASK);
+	if (rc < 0) {
+                chg_err("Couldn't config current limit, rc = %d\n", rc);
+        }
+
+	return rc;
+}
+#endif
+
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_charging_current_write_fast(int chg_cur)
+#else
+int bq25601d_charging_current_write_fast(int chg_cur)
+#endif
 {
 	int rc = 0;
 	int value = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -406,6 +537,10 @@ static int bq25601d_set_vindpm_vol(int vol)
 	int rc = 0;
 	int value = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -422,6 +557,33 @@ static int bq25601d_set_vindpm_vol(int vol)
 	return rc;
 }
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6833
+static int bq25601d_set_ovp_value(void)
+{
+	int rc = 0;
+	struct chip_bq25601d *chip = charger_ic;
+
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
+
+	if (atomic_read(&chip->charger_suspended) == 1) {
+		chg_err("charger in suspended.\n");
+		return 0;
+	}
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	rc = bq25601d_config_interface(chip, REG06_BQ25601D_ADDRESS,
+		REG06_BQ25601D_OVP_9V, REG06_BQ25601D_OVP_MASK);
+	if (rc < 0) {
+		chg_err("Couldn't config ovp rc = %d\n", rc);
+	}
+#endif
+	return rc;
+}
+#endif
+
+#ifndef CONFIG_OPLUS_CHARGER_MTK6873
 #ifdef CONFIG_OPLUS_SHORT_C_BATT_CHECK
 /* This function is getting the dynamic aicl result/input limited in mA.
  * If charger was suspended, it must return 0(mA).
@@ -436,6 +598,10 @@ static int bq25601d_chg_get_dyna_aicl_result(void)
 static void bq25601d_set_aicl_point(int vbatt)
 {
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -452,11 +618,15 @@ static void bq25601d_set_aicl_point(int vbatt)
 		bq25601d_set_vindpm_vol(chip->hw_aicl_point);
 	}
 }
-
+#endif
 static int bq25601d_set_enable_volatile_writes(void)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -470,6 +640,10 @@ static int bq25601d_set_complete_charge_timeout(int val)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -492,12 +666,19 @@ static int bq25601d_set_complete_charge_timeout(int val)
 
 	return rc;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_float_voltage_write(int vfloat_mv)
+#else
+int bq25601d_float_voltage_write(int vfloat_mv)
+#endif
 {
 	int rc = 0;
 	int value = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -524,6 +705,10 @@ static int bq25601d_set_prechg_current(int ipre_ma)
 {
 	int value = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -546,6 +731,10 @@ static int bq25601d_set_termchg_current(int term_curr)
 	int value = 0;
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -573,7 +762,11 @@ static int bq25601d_set_rechg_voltage(int recharge_mv)
 	int reg = 0;
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
-	
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
+
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
 		return 0;
@@ -597,6 +790,10 @@ static int bq25601d_set_wdt_timer(int reg)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -608,11 +805,18 @@ static int bq25601d_set_wdt_timer(int reg)
 
 	return rc;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_set_chging_term_disable(void)
+#else
+int bq25601d_set_chging_term_disable(void)
+#endif
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -624,11 +828,18 @@ static int bq25601d_set_chging_term_disable(void)
 
 	return rc;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_kick_wdt(void)
+#else
+int bq25601d_kick_wdt(void)
+#endif
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -650,6 +861,10 @@ static int bq25601d_enable_charging(void)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -676,10 +891,14 @@ static int bq25601d_enable_charging(void)
 	return rc;
 }
 
-static int bq25601d_disable_charging(void)
+int bq25601d_disable_charging(void)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	/* Only for BATTERY_STATUS__HIGH_TEMP or BATTERY_STATUS__WARM_TEMP, */
 	/* system power is from charger but NOT from battery to avoid temperature rise problem */
@@ -698,35 +917,91 @@ static int bq25601d_disable_charging(void)
 	return rc;
 }
 #else /* CONFIG_MTK_PMIC_CHIP_MT6353 */
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_enable_charging(void)
+#else
+int bq25601d_enable_charging(void)
+#endif
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
-
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
 		return 0;
 	}
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	rc = bq25601d_config_interface(chip, REG07_BQ25601D_ADDRESS,
+	REG07_BQ25601D_BATFET_DIS_Q4_ON, REG07_BQ25601D_BATFET_DIS_MASK);
+	if (rc < 0) {
+		chg_err("Couldn't config batfet rc = %d\n", rc);
+	}
+	pinctrl_select_state(chip->pinctrl, chip->slave_charger_enable);
+#endif
 	rc = bq25601d_config_interface(chip, REG01_BQ25601D_ADDRESS,
 			REG01_BQ25601D_CHARGING_ENABLE, REG01_BQ25601D_CHARGING_MASK);
 	if (rc < 0) {
 		chg_err("Couldn'tbq25601d_enable_charging rc = %d\n", rc);
 	}
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	if (chip->bat_cv_mv > 0) {
+		rc = bq25601d_float_voltage_write(chip->bat_cv_mv);
+		if (rc < 0) {
+			chg_debug("set sub float voltage:%d fail\n", chip->bat_cv_mv);
+		}
+	} else {
+		rc = bq25601d_float_voltage_write(BQ25601D_VFLOAT_4467MV);
+		if (rc < 0) {
+			chg_debug("set sub float voltage:%d fail\n", BQ25601D_VFLOAT_4467MV);
+		}
+	}
 
+	rc = bq25601d_config_interface(chip, REG05_BQ25601D_ADDRESS, REG05_BQ25601D_CHG_SAFETY_TIMER_DISABLE,
+			REG05_BQ25601D_CHG_SAFETY_TIMER_MASK);
+	if (rc < 0) {
+		chg_debug("set chg_safety_timer:fail\n");
+	}
+	rc = bq25601d_set_wdt_timer(REG05_BQ25601D_WATCHDOG_TIMER_DISABLE);
+	if (rc < 0) {
+		chg_debug("set bq25601 watchdog timer disable:fail\n");
+	}
+	rc = bq25601d_config_interface(chip, REG06_BQ25601D_ADDRESS, 0xA6, 0xFF);
+	if (rc < 0) {
+		chg_debug("set REG06 failed\n");
+	}
+#endif
 	return rc;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_disable_charging(void)
+#else
+int bq25601d_disable_charging(void)
+#endif
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
 		return 0;
 	}
 
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	rc = bq25601d_config_interface(chip, REG07_BQ25601D_ADDRESS,
+		REG07_BQ25601D_BATFET_DIS_Q4_OFF, REG07_BQ25601D_BATFET_DIS_MASK);
+	if (rc < 0) {
+		chg_err("Couldn't config batfet rc = %d\n", rc);
+	}
+	pinctrl_select_state(chip->pinctrl, chip->slave_charger_disable);
+#endif
 	rc = bq25601d_config_interface(chip, REG01_BQ25601D_ADDRESS,
 			REG01_BQ25601D_CHARGING_DISABLE, REG01_BQ25601D_CHARGING_MASK);
 	if (rc < 0) {
@@ -744,6 +1019,10 @@ static bool bq25601d_check_charger_suspend_enable(void)
 	int reg_val = 0;
 	bool charger_suspend_enable = false;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -765,6 +1044,10 @@ static int bq25601d_check_charging_enable(void)
 {
 	bool rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -778,12 +1061,17 @@ static int bq25601d_check_charging_enable(void)
 		return 1;
 }
 #else /* CONFIG_MTK_PMIC_CHIP_MT6353 */
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_check_charging_enable(void)
 {
 	int rc = 0;
 	int reg_val = 0;
 	bool charging_enable = false;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -800,14 +1088,19 @@ static int bq25601d_check_charging_enable(void)
 
 	return charging_enable;
 }
+#endif
 #endif /*CONFIG_MTK_PMIC_CHIP_MT6353*/
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_registers_read_full(void)
 {
 	int rc = 0;
 	int reg_full = 0;
 	int reg_ovp = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -831,7 +1124,7 @@ static int bq25601d_registers_read_full(void)
 	//chg_err("bq25601d_registers_read_full, reg_full = %d, reg_ovp = %d\r\n", reg_full, reg_ovp);
 	return (reg_full || reg_ovp);
 }
-
+#endif
 static int oplus_otg_online = 0;
 
 int bq25601d_otg_enable(void)
@@ -849,8 +1142,13 @@ int bq25601d_otg_enable(void)
 	}
 #endif /* CONFIG_OPLUS_CHARGER_MTK */
 
-	bq25601d_config_interface(chip, REG00_BQ25601D_ADDRESS,
+	rc = bq25601d_config_interface(chip, REG00_BQ25601D_ADDRESS,
 			REG00_BQ25601D_SUSPEND_MODE_DISABLE, REG00_BQ25601D_SUSPEND_MODE_MASK);
+	if (rc) {
+		chg_err("Couldn't enable SUSPEND mode rc=%d\n", rc);
+	} else {
+		chg_debug("bq25601d_SUSPEND_enable rc=%d\n", rc);
+	}
 
 	rc = bq25601d_config_interface(chip, REG01_BQ25601D_ADDRESS,
 			REG01_BQ25601D_OTG_ENABLE, REG01_BQ25601D_OTG_MASK);
@@ -859,7 +1157,7 @@ int bq25601d_otg_enable(void)
 	} else {
 		chg_debug("bq25601d_otg_enable rc=%d\n", rc);
 	}
-	
+
 	bq25601d_set_wdt_timer(REG05_BQ25601D_WATCHDOG_TIMER_DISABLE);
 	oplus_otg_online = 1;
 	oplus_chg_set_otg_online(true);
@@ -871,6 +1169,10 @@ int bq25601d_otg_disable(void)
 	int rc = 0;
 	int val_buf;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (!chip) {
 		return 0;
@@ -888,18 +1190,25 @@ int bq25601d_otg_disable(void)
 		chg_err("Couldn't disable OTG mode rc=%d\n", rc);
 	else
 		chg_debug("bq25601d_otg_disable rc=%d\n", rc);
-	
+
 	bq25601d_set_wdt_timer(REG05_BQ25601D_WATCHDOG_TIMER_40S);
 	oplus_otg_online = 0;
 	oplus_chg_set_otg_online(false);
 
 	return rc;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_suspend_charger(void)
+#else
+int bq25601d_suspend_charger(void)
+#endif
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -922,11 +1231,18 @@ static int bq25601d_suspend_charger(void)
 
 	return rc;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_unsuspend_charger(void)
+#else
+int bq25601d_unsuspend_charger(void)
+#endif
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -941,14 +1257,21 @@ static int bq25601d_unsuspend_charger(void)
 		chg_debug("rc = %d\n", rc);
 	}
 
+#ifdef OPLUS_FEATURE_CHG_BASIC
+	msleep(300);
+#endif
 	return rc;
 }
 
-#if defined (CONFIG_MTK_PMIC_CHIP_MT6353) || defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)
+#ifdef OPLUS_FEATURE_CHG_BASIC
 static int bq25601d_reset_charger(void)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -979,7 +1302,11 @@ static int bq25601d_reset_charger(void)
 	if (rc < 0) {
 		chg_err("Couldn't reset REG05 rc = %d\n", rc);
 	}
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	rc = bq25601d_config_interface(chip, REG06_BQ25601D_ADDRESS, 0xA6, 0xFF);
+#else
 	rc = bq25601d_config_interface(chip, REG06_BQ25601D_ADDRESS, 0x66, 0xFF);
+#endif
 	if (rc < 0) {
 		chg_err("Couldn't reset REG06 rc = %d\n", rc);
 	}
@@ -991,15 +1318,27 @@ static int bq25601d_reset_charger(void)
 	if (rc < 0) {
 		chg_err("Couldn't reset REG0A rc = %d\n", rc);
 	}
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	rc = bq25601d_config_interface(chip, REG07_BQ25601D_ADDRESS,
+		REG07_BQ25601D_BATFET_DIS_Q4_OFF, REG07_BQ25601D_BATFET_DIS_MASK);
+	if (rc < 0) {
+		chg_err("Couldn't config batfet rc = %d\n", rc);
+	}
+#endif
+
 	chg_debug("rc = %d\n", rc);
 
 	return rc;
 }
-#else /*defined (CONFIG_MTK_PMIC_CHIP_MT6353) || defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)*/
+#else /* OPLUS_FEATURE_CHG_BASIC */
 static int bq25601d_reset_charger(void)
 {
 	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -1016,11 +1355,15 @@ static int bq25601d_reset_charger(void)
 
 	return rc;
 }
-#endif /*defined (CONFIG_MTK_PMIC_CHIP_MT6353) || defined(CONFIG_OPLUS_CHARGER_MTK6763) || defined(CONFIG_OPLUS_CHARGER_MTK6771)*/
-
+#endif /* OPLUS_FEATURE_CHG_BASIC */
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static bool bq25601d_check_charger_resume(void)
 {
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		return false;
@@ -1028,15 +1371,23 @@ static bool bq25601d_check_charger_resume(void)
 		return true;
 	}
 }
-
+#endif
 #define DUMP_REG_LOG_CNT_30S  1
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static void bq25601d_dump_registers(void)
+#else
+void bq25601d_dump_registers(void)
+#endif
 {
 	int rc = 0;
 	int addr = 0;
 	unsigned int val_buf[BQ25601D_REG_NUMBER] = {0x0};
 	static int dump_count = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -1068,6 +1419,10 @@ static int bq25601d_check_registers(void)
 	int addr = 0;
 	unsigned int val_buf[BQ25601D_REG_NUMBER] = {0x0};
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	if (atomic_read(&chip->charger_suspended) == 1) {
 		chg_err("charger in suspended.\n");
@@ -1081,18 +1436,34 @@ static int bq25601d_check_registers(void)
 			 return -1;
 		}
 	}
+	bq25601d_online = true;
 
   	return 0;
 }
 
+bool bq25601d_is_detected(void)
+{
+	return bq25601d_online;
+}
+
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_get_chg_current_step(void)
 {
 	return 60;
 }
-
+#endif
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6833) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 static int bq25601d_hardware_init(void)
+#else
+int bq25601d_hardware_init(void)
+#endif
 {
+	int rc = 0;
 	struct chip_bq25601d *chip = charger_ic;
+	if (!charger_ic) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
 
 	/* must be before set_vindpm_vol and set_input_current */
 	chip->hw_aicl_point = 4400;
@@ -1108,7 +1479,13 @@ static int bq25601d_hardware_init(void)
 		msleep(100);
 	}
 
-	bq25601d_float_voltage_write(4370);
+	if (chip->bat_cv_mv > 0) {
+		rc = bq25601d_float_voltage_write(chip->bat_cv_mv);
+		if (rc < 0) {
+			chg_debug("set sub float voltage:%d fail\n", chip->bat_cv_mv);
+		}
+	} else
+		bq25601d_float_voltage_write(4370);
 
 	bq25601d_set_enable_volatile_writes();
 
@@ -1123,7 +1500,16 @@ static int bq25601d_hardware_init(void)
 	bq25601d_set_rechg_voltage(100);
 
 	bq25601d_set_vindpm_vol(chip->hw_aicl_point);
-
+#if defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	rc = bq25601d_config_interface(chip, REG06_BQ25601D_ADDRESS,
+		0x80, REG06_BQ25601D_OVP_MASK);
+	if (rc < 0) {
+		chg_err("Couldn't config ovp rc = %d\n", rc);
+	}
+#endif
+#ifdef CONFIG_OPLUS_CHARGER_MTK6833
+	bq25601d_set_ovp_value();
+#endif
 #ifdef CONFIG_OPLUS_CHARGER_MTK
 	if (get_boot_mode() == META_BOOT || get_boot_mode() == FACTORY_BOOT
 			|| get_boot_mode() == ADVMETA_BOOT || get_boot_mode() == ATE_FACTORY_BOOT) {
@@ -1135,14 +1521,24 @@ static int bq25601d_hardware_init(void)
 #else /* CONFIG_OPLUS_CHARGER_MTK */
 	bq25601d_unsuspend_charger();
 #endif /* CONFIG_OPLUS_CHARGER_MTK */
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#ifndef CONFIG_OPLUS_CHARGER_MTK6833
 	bq25601d_enable_charging();
-
+#endif
+#endif
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	bq25601d_disable_charging();
+#endif
+#if defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6833) || defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	bq25601d_set_wdt_timer(REG05_BQ25601D_WATCHDOG_TIMER_DISABLE);
+#else
 	bq25601d_set_wdt_timer(REG05_BQ25601D_WATCHDOG_TIMER_40S);
-
+#endif
 	return true;
 }
 
+
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873)
 #ifdef CONFIG_OPLUS_RTC_DET_SUPPORT
 static int rtc_reset_check(void)
 {
@@ -1188,8 +1584,9 @@ close_time:
 	return 0;
 }
 #endif /* CONFIG_OPLUS_RTC_DET_SUPPORT */
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 extern bool oplus_chg_get_shortc_hw_gpio_status(void);
+#endif
 
 struct oplus_chg_operations  bq25601d_chg_ops = {
 	.dump_registers = bq25601d_dump_registers,
@@ -1202,22 +1599,30 @@ struct oplus_chg_operations  bq25601d_chg_ops = {
 	.term_current_set = bq25601d_set_termchg_current,
 	.charging_enable = bq25601d_enable_charging,
 	.charging_disable = bq25601d_disable_charging,
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 	.get_charging_enable = bq25601d_check_charging_enable,
+#endif
 	.charger_suspend = bq25601d_suspend_charger,
 	.charger_unsuspend = bq25601d_unsuspend_charger,
 	.set_rechg_vol = bq25601d_set_rechg_voltage,
 	.reset_charger = bq25601d_reset_charger,
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 	.read_full = bq25601d_registers_read_full,
+#endif
 	.otg_enable = bq25601d_otg_enable,
 	.otg_disable = bq25601d_otg_disable,
 	.set_charging_term_disable = bq25601d_set_chging_term_disable,
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 	.check_charger_resume = bq25601d_check_charger_resume,
 	.get_chg_current_step = bq25601d_get_chg_current_step,
+#endif
 #ifdef CONFIG_OPLUS_CHARGER_MTK
 	.get_charger_type = mt_power_supply_type_check,
 	.get_charger_volt = battery_meter_get_charger_voltage,
 	.check_chrdet_status = (bool (*) (void)) pmic_chrdet_status,
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 	.get_instant_vbatt = oplus_battery_meter_get_battery_voltage,
+#endif
 	.get_boot_mode = (int (*)(void))get_boot_mode,
 	.get_boot_reason = (int (*)(void))get_boot_reason,
 	.get_chargerid_volt = mt_get_chargerid_volt,
@@ -1252,25 +1657,87 @@ struct oplus_chg_operations  bq25601d_chg_ops = {
 #ifdef CONFIG_OPLUS_SHORT_C_BATT_CHECK
 	.get_dyna_aicl_result = bq25601d_chg_get_dyna_aicl_result,
 #endif
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6781)
 	.get_shortc_hw_gpio_status = oplus_chg_get_shortc_hw_gpio_status,
+#endif
 #ifdef CONFIG_OPLUS_RTC_DET_SUPPORT
 	.check_rtc_reset = rtc_reset_check,
 #endif
 };
+#endif
+
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#define REG0B_PN_MASK				0x78
+#define REG0B_PN_SHIFT				3
+
+static int bq2560x_detect_device(void)
+{
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
+	int ret;
+	int reg_val;
+	enum bq2560x_part_no part_no;
+	struct chip_bq25601d *chip = charger_ic;
+
+	ret = bq25601d_read_reg(chip, REG0B_BQ25601D_ADDRESS, &reg_val);
+	if (ret >= 0) {
+		part_no = (reg_val & REG0B_PN_MASK) >> REG0B_PN_SHIFT;
+		switch (part_no) {
+		case BQ25600:
+			chip_ver.version = "bq25600";
+			chip_ver.manufacture = "TI";
+			break;
+		case BQ25601ORSGM41511/*0x02*/:
+			switch (reg_val) {
+			case 0x14:
+				chip_ver.version = "SGM41511";
+				chip_ver.manufacture = "SGM";
+				break;
+			case 0x11:
+				chip_ver.version = "bq25601";
+				chip_ver.manufacture = "TI";
+				break;
+			}
+			break;
+		case BQ21120:
+			chip_ver.version = "bq21120";
+			chip_ver.manufacture = "TI";
+			break;
+		case SY6974:
+			chip_ver.version = "ST6974";
+			chip_ver.manufacture = "SY";
+			break;
+		}
+		chg_err("bq2560x Part Num:%d, reg_val:%d\n", part_no, reg_val);
+	}
+	ret = register_device_proc("chargeric", chip_ver.version, chip_ver.manufacture);
+	if (ret)
+		chg_err("!!!register_charger_devinfo fail\n");
+
+	 return ret;
+#endif
+}
+#endif
 
 static void register_charger_devinfo(void)
 {
 	int ret = 0;
 	char *version = "bq25601d";
 	char *manufacture = "TI";
-	ret = register_device_proc("charger", version, manufacture);
+
+#if defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	bq2560x_detect_device();
+#else
+//	ret = register_device_proc("charger", version, manufacture);
 	if (ret)
 		chg_err("register_charger_devinfo fail\n");
+#endif
 }
 
 extern void Charger_Detect_Init(void);
 extern void Charger_Detect_Release(void);
 extern bool is_usb_rdy(void);
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#ifndef CONFIG_OPLUS_CHARGER_MTK6833
 static void hw_bc12_init(void)
 {
 	int timeout = 350;
@@ -1296,9 +1763,12 @@ static void hw_bc12_init(void)
 	}
 	Charger_Detect_Init();
 }
-
+#endif
+#endif
 //static DEVICE_ATTR(bq25601d_access, 0664, show_bq25601d_access, store_bq25601d_access);
 #ifdef OPLUS_FEATURE_CHG_BASIC
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#ifndef CONFIG_OPLUS_CHARGER_MTK6833
 extern enum charger_type MTK_CHR_Type_num;
 extern unsigned int upmu_get_rgs_chrdet(void);
 
@@ -1537,6 +2007,8 @@ enum charger_type mt_charger_type_detection_bq25601d(void)
 }
 #endif
 #endif
+#endif
+#endif
 
 static void do_charger_modefy_work(struct work_struct *data)
 {
@@ -1548,6 +2020,10 @@ static void do_charger_modefy_work(struct work_struct *data)
 }
 	
 static struct delayed_work bq25601d_irq_delay_work;
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+static struct delayed_work bq25601d_input_current_delay_work;
+bool bq25601d_input_current_delay_work_running = false;
+#endif
 bool fg_bq25601d_irq_delay_work_running = false;
 static void do_bq25601d_irq_delay_work(struct work_struct *data)
 {
@@ -1579,9 +2055,42 @@ static void do_bq25601d_irq_delay_work(struct work_struct *data)
 	return; 
 }
 
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+static void do_bq25601d_input_current_delay_work(struct work_struct *data)
+{
+	int reg_val = 0;
+	int rc = 0;
+	struct chip_bq25601d *chip = charger_ic;
+	if (!chip) {
+		pr_err("%s chip null,return\n", __func__);
+		return;
+	}
+	/*chg_err("do_bq25601d_input_current_delay_work: start\n");*/
+	rc = bq25601d_read_reg(chip, REG00_BQ25601D_ADDRESS, &reg_val);
+	if (rc) {
+		chg_err("Couldn't read REG00_BQ25601D_ADDRESS rc = %d\n", rc);
+		return;
+	}
+	/*chg_err("do_bq25601d_input_current_delay_work:REG00: %d\n", reg_val);*/
+	msleep(500);
+	if((reg_val & REG00_BQ25601D_INPUT_1200MA) == 0x00) {
+		rc = bq25601d_config_interface(chip, REG00_BQ25601D_ADDRESS, REG00_BQ25601D_INPUT_CURRENT_LIMIT_1200MA, REG00_BQ25601D_INPUT_CURRENT_LIMIT_MASK);
+		if (rc < 0) {
+			chg_err("Couldn't config current limit, rc = %d\n", rc);
+        }
+		chg_err("bq25601d_irq_handler_fn:bq25601d current limit write: %d\n", REG00_BQ25601D_INPUT_1200MA);
+	}
+	bq25601d_input_current_delay_work_running = false;
+}
+#endif
+
 static irqreturn_t bq25601d_irq_handler_fn(int irq, void *dev_id)
 {
 	//int val_buf;
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	int reg_val = 0;
+	int rc = 0;
+#endif
 	struct chip_bq25601d *chip = charger_ic;
 
 	pr_err("%s start\n", __func__);
@@ -1589,6 +2098,12 @@ static irqreturn_t bq25601d_irq_handler_fn(int irq, void *dev_id)
 		pr_err("%s chip null,return\n", __func__);
 		return IRQ_HANDLED;
 	}
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	if (bq25601d_input_current_delay_work_running == false) {
+		bq25601d_input_current_delay_work_running = true;
+		schedule_delayed_work(&bq25601d_input_current_delay_work, round_jiffies_relative(msecs_to_jiffies(0)));
+	}
+#endif
 	if (oplus_otg_online == 0) {
 		return IRQ_HANDLED;
 	}
@@ -1600,6 +2115,45 @@ static irqreturn_t bq25601d_irq_handler_fn(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+#if defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6833) || defined(CONFIG_OPLUS_CHARGER_MTK6781)
+static int bq25601d_slave_chg_en_gpio_init(struct chip_bq25601d *chip)
+{
+	if (!chip) {
+		chg_err("chip bq25601d not ready!\n");
+		return -EINVAL;
+	}
+
+	chip->pinctrl = devm_pinctrl_get(chip->dev);
+
+	if (IS_ERR_OR_NULL(chip->pinctrl)) {
+		chg_err("get slave_chg_en_pinctrl fail\n");
+		return -EINVAL;
+	}
+
+	chip->slave_charger_enable = pinctrl_lookup_state(chip->pinctrl, "slave_charger_enable");
+	if (IS_ERR_OR_NULL(chip->slave_charger_enable)) {
+		chg_err("get slave_charger_enable fail\n");
+		return -EINVAL;
+	}
+
+	chip->slave_charger_disable = pinctrl_lookup_state(chip->pinctrl, "slave_charger_disable");
+	if (IS_ERR_OR_NULL(chip->slave_charger_disable)) {
+		chg_err("get slave_charger_disable fail\n");
+		return -EINVAL;
+	}
+
+	if (get_boot_mode() == META_BOOT || get_boot_mode() == FACTORY_BOOT
+			|| get_boot_mode() == ADVMETA_BOOT
+			|| get_boot_mode() == ATE_FACTORY_BOOT) {
+		chg_err("META mode, disable slave charger.\n");
+		pinctrl_select_state(chip->pinctrl, chip->slave_charger_disable);
+	} else {
+		pinctrl_select_state(chip->pinctrl, chip->slave_charger_enable);
+	}
+
+	return 0;
+}
+#endif
 static int bq25601d_parse_dts(void)
 {
 	int ret = 0;
@@ -1609,6 +2163,14 @@ static int bq25601d_parse_dts(void)
 		chg_err("chip is NULL\n");
 		return -1;
 	}
+
+	if (of_property_read_u32(chip->client->dev.of_node, "bat_cv_mv", &chip->bat_cv_mv) < 0)
+		chg_err("%s: Couldn't read bat_cv_mv default = %d\n", __func__, chip->bat_cv_mv);
+	else
+		chg_err("%s: read bat_cv_mv = %d\n", __func__, chip->bat_cv_mv);
+
+	chip->sub_chg_irq_disable = of_property_read_bool(chip->client->dev.of_node, "sub_chg_irq_disable");
+	chg_err("%s: read sub_chg_irq_disable = %d\n", __func__, chip->sub_chg_irq_disable);
 
 	chip->irq_gpio = of_get_named_gpio(chip->client->dev.of_node, "chg-irq-gpio", 0);
 	if (chip->irq_gpio <= 0) {
@@ -1630,6 +2192,25 @@ static int bq25601d_parse_dts(void)
 		}
 	}
 	chg_err("chg-irq-gpio[%d]\n", chip->irq_gpio);
+
+#if defined(CONFIG_OPLUS_CHARGER_MTK6873) || defined(CONFIG_OPLUS_CHARGER_MTK6833) || defined(CONFIG_OPLUS_CHARGER_MTK6781)
+	chip->slave_chg_en_gpio = of_get_named_gpio(chip->client->dev.of_node, "qcom,slave-chg-en-gpio", 0);
+        if (chip->slave_chg_en_gpio <= 0) {
+                chg_err("Couldn't read slave_chg_en_gpio:%d\n", chip->slave_chg_en_gpio);
+                return -1;
+        } else {
+                if (gpio_is_valid(chip->slave_chg_en_gpio)) {
+                        ret = gpio_request(chip->slave_chg_en_gpio, "slave-chg-en-gpio");
+                        if (ret) {
+                                chg_err("unable to request slave-chg-en-gpio[%d]\n", chip->slave_chg_en_gpio);
+                                chip->slave_chg_en_gpio = -EINVAL;
+                        } else {
+				bq25601d_slave_chg_en_gpio_init(chip);
+                                //gpio_direction_input(chip->irq_gpio);
+                        }
+                }
+        }
+#endif
 	return ret;
 }
 
@@ -1637,11 +2218,16 @@ static int bq25601d_irq_registration(void)
 {
 	int ret = 0;
 	struct chip_bq25601d *chip = charger_ic;
-
+	if (!charger_ic) {
+		return -1;
+	}
 	if (chip->irq_gpio <= 0) {
 		chg_err("chip->irq_gpio fail\n");
 		return -1;
 	}
+
+	if(chip->sub_chg_irq_disable)
+		return 0;
 
 	ret = request_threaded_irq(gpio_to_irq(chip->irq_gpio), NULL,
 			bq25601d_irq_handler_fn,
@@ -1653,8 +2239,11 @@ static int bq25601d_irq_registration(void)
 	}
 	return 0;
 }
-
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#ifndef CONFIG_OPLUS_CHARGER_MTK6833
 extern int charger_ic_flag;
+#endif
+#endif
 static int bq25601d_driver_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int reg = 0;
@@ -1678,14 +2267,25 @@ static int bq25601d_driver_probe(struct i2c_client *client, const struct i2c_dev
 	charger_ic = chip;
 	chip->client = client;
 	chip->dev = &client->dev;
-	
+
 	reg = bq25601d_check_registers();
 	if (reg < 0) {
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+		chg_err("bq25601d registers fail !! \n");
+		devm_kfree(&client->dev, chip);
+		charger_ic = NULL;
+#endif
 		return -ENODEV;
 	}
+#if !defined(CONFIG_OPLUS_CHARGER_MTK6873) && !defined(CONFIG_OPLUS_CHARGER_MTK6781)
+#ifndef CONFIG_OPLUS_CHARGER_MTK6833
 	charger_ic_flag = 2;
-	
+#endif
+#endif
 	INIT_DELAYED_WORK(&bq25601d_irq_delay_work, do_bq25601d_irq_delay_work);
+#ifdef CONFIG_OPLUS_CHARGER_MTK6781
+	INIT_DELAYED_WORK(&bq25601d_input_current_delay_work, do_bq25601d_input_current_delay_work);
+#endif
 	bq25601d_parse_dts();
 	bq25601d_irq_registration();
 	atomic_set(&chip->charger_suspended, 0);

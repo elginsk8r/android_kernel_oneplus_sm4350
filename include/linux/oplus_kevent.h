@@ -2,6 +2,8 @@
  * oplus_kevent.h - for kevent action upload upload to user layer
  *  author by wangzhenhua,Plf.Framework
  */
+#ifndef __LINUX_OPLUS_KEVENT_H
+#define __LINUX_OPLUS_KEVENT_H
 
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -33,7 +35,8 @@ int kevent_send_to_user(struct kernel_packet_info *userinfo);
 void kernel_kevent_receive(struct sk_buff *__skbbr);
 //#endif /* CONFIG_OPLUS_KEVENT_UPLOAD */
 
-//#ifdef CONFIG_OPLUS_KEVENT_TEST
+//#ifdef CONFIG_OPLUS_KEVENT_UPLOAD
 ssize_t demo_kevent_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos);
-//#endif /* CONFIG_OPLUS_KEVENT_TEST */
+//#endif /* CONFIG_OPLUS_KEVENT_UPLOAD */
 
+#endif /* __LINUX_OPLUS_KEVENT_H */

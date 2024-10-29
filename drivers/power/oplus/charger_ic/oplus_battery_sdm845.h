@@ -1,13 +1,7 @@
-/**********************************************************************
-* Copyright (c)  2018-2019  Guangdong OPLUS Mobile Comm Corp., Ltd
-* OPLUS_FEATURE_CHG_BASIC
-* Description: Charger IC management module for charger system framework.
-*              Manage all charger IC and define abstarct function flow.
-* Version   : 1.0
-* Date      : 2018-01-12
-* ------------------------------ Revision History: --------------------------------
-* <version>       <date>          <author>              			 <desc>
-**********************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only  */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 
 #ifndef _OPLUS_BATTERY_QCOM_SDM845_H_

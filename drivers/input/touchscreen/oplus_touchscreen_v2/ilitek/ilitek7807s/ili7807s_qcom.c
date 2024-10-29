@@ -2566,6 +2566,8 @@ static int ilitek_reset(void *chip_data)
 		ILI_ERR("Failed to upgrade firmware, ret = %d\n", ret);
 	}
 
+	ili_reset_ctrl(TP_HW_RST_ONLY);
+
 	mutex_unlock(&chip_info->touch_mutex);
 	return 0;
 }
@@ -2577,23 +2579,6 @@ static int ilitek_power_control(void *chip_data, bool enable)
 
 	if (gpio_is_valid(chip_info->hw_res->reset_gpio)) {
 		gpio_direction_output(chip_info->hw_res->reset_gpio, 0);
-	}
-
-	return 0;
-}
-
-static int ilitek_reset_gpio_control(void *chip_data, bool enable)
-{
-	struct ilitek_ts_data *chip_info = (struct ilitek_ts_data *)chip_data;
-	int rc = 0;
-
-	if (gpio_is_valid(chip_info->hw_res->reset_gpio)) {
-		rc = gpio_direction_output(chip_info->hw_res->reset_gpio, enable);
-		if (rc) {
-			ILI_INFO("unable to set dir for reset_gpio rc=%d", rc);
-		}
-		gpio_set_value(chip_info->hw_res->reset_gpio, enable);
-		ILI_INFO("set reset %d\n", enable);
 	}
 
 	return 0;
@@ -3028,7 +3013,6 @@ static struct oplus_touchpanel_operations ilitek_ops = {
 	.sensitive_lv_set           = ilitek_sensitive_lv_set,
 	.tp_queue_work_prepare      = ilitek_reset_queue_work_prepare,
 	.tp_irq_throw_away          = ilitek_irq_throw_away,
-	.reset_gpio_control         = ilitek_reset_gpio_control,
 };
 
 static int ilitek_read_debug_data(struct seq_file *s,
@@ -3694,11 +3678,17 @@ static void ilitek_free_global_data(void)
 		return;
 	}
 
-	ili_irq_disable();
-	devm_free_irq(ilits->dev, ilits->irq_num, NULL);
+	if (ilits->irq_num) {
+		ili_irq_disable();
+		devm_free_irq(ilits->dev, ilits->irq_num, NULL);
+	}
 	mutex_lock(&ilits->touch_mutex);
-	gpio_free(ilits->tp_int);
-	gpio_free(ilits->tp_rst);
+	if (ilits->tp_int) {
+		gpio_free(ilits->tp_int);
+	}
+	if (ilits->tp_rst) {
+		gpio_free(ilits->tp_rst);
+	}
 
 	if (ilits->ws) {
 		wakeup_source_unregister(ilits->ws);
@@ -3710,7 +3700,7 @@ static void ilitek_free_global_data(void)
 	ili_kfree((void **)&ilits->spi_tx);
 	ili_kfree((void **)&ilits->spi_rx);
 	mutex_unlock(&ilits->touch_mutex);
-	ili_kfree((void **)&ilits);
+	devm_kfree(ilits->dev, ilits);
 }
 
 
@@ -3957,7 +3947,7 @@ static int __init tp_driver_init_ili_7807s(void)
 
 	if (!tp_judge_ic_match(DRIVER_NAME)) {
 		ILI_ERR("TP driver is already register\n");
-		return -1;
+		return 0;
 	}
 
 	get_oem_verified_boot_state();

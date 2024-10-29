@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #include <linux/device.h>
@@ -11046,7 +11046,7 @@ static int oplus_get_otg_online_status(void)
 				__func__, level ? "H" : "L", typec_otg, online);
 	}
 
-	chip->otg_online = online;
+	chip->otg_online = typec_otg;
 	return online;
 }
 

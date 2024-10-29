@@ -5,7 +5,7 @@
 
 #include <linux/module.h>
 #include <linux/proc_fs.h>
-#include <soc/oplus/oplus_project.h>
+#include <soc/oplus/system/oplus_project.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
 #include <linux/fs.h>
@@ -14,7 +14,7 @@
 #include <linux/delay.h>
 #include <linux/string.h>
 #include <linux/mutex.h>
-#include <linux/module.h>
+#include <soc/oplus/touchpanel_event_notify.h>
 #include "../include/oplus_fp_common.h"
 //extern char *saved_command_line;
 
@@ -27,13 +27,17 @@
 #include <soc/qcom/smem.h>
 #endif
 
+#ifdef FP_TEE_BINDE_CORE_ENABLE
+#include "mc_linux_api.h"
+#endif
+
 #define FP_GPIO_PREFIX_NODE    "oplus,fp_gpio_"
 #define FP_GPIO_NUM_NODE       "oplus,fp_gpio_num"
 #define FP_ID_VALUE_NODE       "oplus,fp-id"
 #define FP_VENDOR_CHIP_NODE    "vendor-chip"
 #define FP_CHIP_NAME_NODE      "chip-name"
 #define FP_ENG_MENU_NODE       "eng-menu"
-
+#define TEE_BIND_CORE       "tee_bind_bigcore"
 #define CHIP_UNKNOWN           "unknown"
 #define ENGINEER_MENU_DEFAULT  "-1,-1"
 
@@ -158,14 +162,32 @@ void opticalfp_irq_handler_register(opticalfp_handler handler) {
 }
 EXPORT_SYMBOL(opticalfp_irq_handler_register);
 
-int opticalfp_irq_handler(struct fp_underscreen_info* tp_info) {
+static int opticalfp_irq_handler(struct fp_underscreen_info *tp_info) {
     if (g_opticalfp_irq_handler) {
         return g_opticalfp_irq_handler(tp_info);
     } else {
         return FP_UNKNOWN;
     }
 }
-EXPORT_SYMBOL(opticalfp_irq_handler);
+
+static int opticalfp_touch_event_notify(struct notifier_block *self, unsigned long action, void *data) {
+    struct touchpanel_event *event = (struct touchpanel_event *)data;
+    if (event) {
+        if (action == EVENT_ACTION_FOR_FINGPRINT) {
+            struct fp_underscreen_info tp_info;
+            tp_info.touch_state = (uint8_t)event->touch_state;
+            tp_info.area_rate = (uint8_t)event->area_rate;
+            tp_info.x = (uint16_t)event->x;
+            tp_info.y = (uint16_t)event->y;
+            opticalfp_irq_handler(&tp_info);
+        }
+    }
+    return NOTIFY_OK;
+}
+
+struct notifier_block _input_event_notifier = {
+    .notifier_call = opticalfp_touch_event_notify,
+};
 
 static int fp_gpio_parse_child_dts(struct fp_data *fp_data)
 {
@@ -310,6 +332,46 @@ static struct file_operations lcd_type_node_ctrl = {
 };
 
 
+static ssize_t fp_tee_node_write(struct file *file, const char __user *buf, size_t count, loff_t *pos)
+{
+    char fp_state[32] = {'\0'};
+    if (copy_from_user(fp_state, buf, count) != 0) {
+        dev_err(fp_data_ptr->dev, "write fp manu value fail\n");
+        return -EFAULT;
+    }
+    dev_err(fp_data_ptr->dev, "fp write state, %s\n", (char *)fp_state);
+#ifdef FP_TEE_BINDE_CORE_ENABLE
+    if (fp_state[0] == '0') {
+        fp_bind_tee_core(false);
+    } else {
+        fp_bind_tee_core(true);
+    }
+#endif
+    return count;
+}
+
+static struct file_operations tee_bind_func = {
+    .write = fp_tee_node_write,
+    .read = NULL,
+};
+
+static int teecore_register_proc_fs(void)
+{
+    int ret = FP_OK;
+    char *tee_node = "tee_bind_core";
+    struct proc_dir_entry *tee_node_dir = NULL;
+
+    tee_node_dir = proc_create(tee_node, 0666, NULL, &tee_bind_func);
+    if (tee_node_dir == NULL) {
+        ret = -FP_ERROR_GENERAL;
+        goto exit;
+    }
+
+    return FP_OK;
+exit :
+    return ret;
+}
+
 static int lcd_type_register_proc_fs(void)
 {
     int ret = FP_OK;
@@ -379,6 +441,16 @@ static int oplus_fp_common_probe(struct platform_device *fp_dev)
         goto exit;
     }
 
+    ret = touchpanel_event_register_notifier(&_input_event_notifier);
+    if (ret < 0) {
+        dev_err(dev, "Touch Event Registration failed: %d\n", ret);
+        goto exit;
+    }
+
+    ret = teecore_register_proc_fs();
+    if (ret) {
+        goto exit;
+    }
     return FP_OK;
 
 exit:
@@ -401,6 +473,7 @@ exit:
 
 static int oplus_fp_common_remove(struct platform_device *pdev)
 {
+    touchpanel_event_unregister_notifier(&_input_event_notifier);
     return FP_OK;
 }
 
@@ -431,6 +504,5 @@ static void __exit oplus_fp_common_exit(void)
 
 subsys_initcall(oplus_fp_common_init);
 module_exit(oplus_fp_common_exit)
-
 MODULE_DESCRIPTION("oplus fingerprint common driver");
 MODULE_LICENSE("GPL");

@@ -1,13 +1,7 @@
-/**********************************************************************
-* Copyright (c)  2018-2019  Guangdong OPLUS Mobile Comm Corp., Ltd
-* OPLUS_FEATURE_CHG_BASIC
-* Description: Charger IC management module for charger system framework.
-*              Manage all charger IC and define abstarct function flow.
-* Version   : 1.0
-* Date      : 2019-07-17
-* ------------------------------ Revision History: --------------------------------
-* <version>       <date>          <author>              			 <desc>
-**********************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/debugfs.h>
 #include <linux/delay.h>
@@ -7492,7 +7486,7 @@ static int oplus_get_otg_online_status(void)
 				__func__, level ? "H" : "L", typec_otg, online);
 	}
 
-	chip->otg_online = online;
+	chip->otg_online = typec_otg;
 	return chip->otg_online;
 }
 extern int oplus_set_dpdm_status(int status);

@@ -1,20 +1,7 @@
-/************************************************************************************
-** File:  \\192.168.144.3\Linux_Share\12015\ics2\development\mediatek\custom\oplus77_12015\kernel\battery\battery
-** VENDOR_EDIT
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for dc-dc sn111008 charg
-** 
-** Version: 1.0
-** Date created: 21:03:46,05/04/2012
-** Author: Fanhong.Kong@ProDrv.CHG
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2015-06-22    Fanhong.Kong@ProDrv.CHG   		Created for new architecture
-* Revision 2.0    2018-04-14        Fanhong.Kong@ProDrv.CHG     Upgrade for SVOOC
-************************************************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only  */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 
 #ifndef __OPLUS_MAX77932B_H__

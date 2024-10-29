@@ -1,15 +1,7 @@
-/**********************************************************************************
-* Copyright (c)  2008-2015  Guangdong OPLUS Mobile Comm Corp., Ltd
-* OPLUS_FEATURE_CHG_BASIC
-* Description: Charger IC management module for charger system framework.
-*                          Manage all charger IC and define abstarct function flow.
-**
-** Version: 1.0
-** Date created: 21:03:46, 05/04/2012
-**
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>           <date>                <author>                            <desc>
-************************************************************************************************************/
+/* SPDX-License-Identifier: GPL-2.0-only  */
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 //#ifndef _OPLUS_ADAPTER_H_
 //#define _OPLUS_ADAPTER_H_
@@ -21,7 +13,9 @@
 #endif
 #include <linux/timer.h>
 #include <linux/slab.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/device_info.h>
+#endif
 #include <linux/firmware.h>
 
 enum {

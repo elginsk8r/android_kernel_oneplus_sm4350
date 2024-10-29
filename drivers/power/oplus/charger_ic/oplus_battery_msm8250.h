@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #ifndef __SMB5_CHARGER_H
@@ -20,6 +20,8 @@
 #include <linux/time.h>
 #include <linux/jiffies.h>
 #include <linux/sched/clock.h>
+#include <linux/usb/typec.h>
+#include <linux/usb/usbpd.h>
 #endif
 
 enum print_reason {
@@ -31,6 +33,7 @@ enum print_reason {
 	PR_WLS		= BIT(5),
 };
 
+#define OTG_VOTER			"OTG_VOTER"
 #define DEFAULT_VOTER			"DEFAULT_VOTER"
 #define USER_VOTER			"USER_VOTER"
 #define PD_VOTER			"PD_VOTER"
@@ -92,8 +95,10 @@ enum print_reason {
 #define CC_MODE_VOTER			"CC_MODE_VOTER"
 #define MAIN_FCC_VOTER			"MAIN_FCC_VOTER"
 #define DCIN_AICL_VOTER			"DCIN_AICL_VOTER"
+#define WIRED_CONN_VOTER		"WIRED_CONN_VOTER"
 #define WLS_PL_CHARGING_VOTER		"WLS_PL_CHARGING_VOTER"
 #define ICL_CHANGE_VOTER		"ICL_CHANGE_VOTER"
+#define WLCH_FFC_VOTER			"WLCH_FFC_VOTER"
 
 #define BOOST_BACK_STORM_COUNT	3
 #ifdef OPLUS_FEATURE_CHG_BASIC
@@ -115,8 +120,12 @@ enum print_reason {
 #define USB_RESERVE2	0x04//bit2
 #define USB_RESERVE3	0x08//bit3
 #define USB_RESERVE4	0x10//bit4
-#define USB_DONOT_USE	0x80000000//bit31
+#define USB_DONOT_USE	0x80000000/*bit31*/
 #endif
+
+#define ADC_CHECK_HIGH_LEVEL_1	0x1282
+#define ADC_CHECK_HIGH_LEVEL_2	0x1283
+#define ADC_CHECK_HIGH_LEVEL_3	0x3546
 
 #define SDP_100_MA			100000
 #define SDP_CURRENT_UA			500000
@@ -325,6 +334,8 @@ enum icl_override_mode {
 	SW_OVERRIDE_USB51_MODE,
 	/* ICL other than USB51 */
 	SW_OVERRIDE_HC_MODE,
+	/* ICL in wireless mode */
+	SW_OVERRIDE_WIRELESS_MODE,
 };
 
 /* EXTCON_USB and EXTCON_USB_HOST are mutually exclusive */
@@ -376,6 +387,7 @@ struct smb_params {
 	struct smb_chg_param	icl_max_stat;
 	struct smb_chg_param	icl_stat;
 	struct smb_chg_param	otg_cl;
+	struct smb_chg_param	otg_vol;
 	struct smb_chg_param	dc_icl;
 	struct smb_chg_param	jeita_cc_comp_hot;
 	struct smb_chg_param	jeita_cc_comp_cold;
@@ -401,6 +413,8 @@ struct smb_iio {
 	struct iio_channel	*chgid_v_chan;
 	struct iio_channel	*usbtemp_v_chan;
 	struct iio_channel	*usbtemp_sup_v_chan;
+	struct iio_channel	*op_skin_therm_chan;
+	struct iio_channel	*btbtemp_v_chan;
 #endif
 	struct iio_channel	*die_temp_chan;
 	struct iio_channel	*skin_temp_chan;
@@ -435,6 +449,7 @@ struct smb_charger {
 	struct power_supply		*usb_psy;
 	struct power_supply		*dc_psy;
 	struct power_supply		*bms_psy;
+	struct power_supply_desc	usb_psy_desc;
 	struct power_supply		*usb_main_psy;
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct power_supply		*ac_psy;
@@ -496,6 +511,9 @@ struct smb_charger {
 	struct delayed_work	usbov_dbc_work;
 	struct delayed_work	pr_swap_detach_work;
 	struct delayed_work	pr_lock_clear_work;
+#ifdef OPLUS_CUSTOM_OP_DEF
+	struct delayed_work	reset_rd_work;
+#endif
 
 	struct alarm		lpd_recheck_timer;
 	struct alarm		moisture_protection_alarm;
@@ -520,6 +538,8 @@ struct smb_charger {
 	unsigned long long hvdcp_detach_time;
 	bool hvdcp_detect_ok;
 	struct delayed_work hvdcp_disable_work;
+	struct delayed_work regist_pd;
+	int real_chg_type;
 #endif
 
 	/* pd */
@@ -533,8 +553,13 @@ struct smb_charger {
 	bool			ok_to_pd;
 	bool			typec_legacy;
 	bool			typec_irq_en;
-
+	struct	usbpd	*oplus_pd;
+	struct	usbpd_svid_handler	oplus_svid_handler;
 	/* cached status */
+	bool				time_out;
+	bool				chg_disabled;
+	bool				chg_ovp;
+	bool				is_audio_adapter;
 	bool			system_suspend_supported;
 	int			boost_threshold_ua;
 	int			system_temp_level;
@@ -543,6 +568,7 @@ struct smb_charger {
 	int			dcp_icl_ua;
 	int			fake_capacity;
 	int			fake_batt_status;
+	bool			soc_ready_check;
 	bool			step_chg_enabled;
 	bool			sw_jeita_enabled;
 	bool			typec_legacy_use_rp_icl;
@@ -574,6 +600,7 @@ struct smb_charger {
 	u8			typec_try_mode;
 	enum lpd_stage		lpd_stage;
 	bool			lpd_disabled;
+	bool			adc_check_pulse;
 	enum lpd_reason		lpd_reason;
 	bool			fcc_stepper_enable;
 	int			die_temp;
@@ -609,6 +636,7 @@ struct smb_charger {
 	int			wls_icl_ua;
 	bool			dcin_aicl_done;
 	bool			hvdcp3_standalone_config;
+	bool			low_voltage_charger;
 
 	/* workaround flag */
 	u32			wa_flags;
@@ -643,9 +671,14 @@ struct smb_charger {
 	u32			irq_status;
 
 	/* wireless */
-		int			dcin_uv_count;
+	int			dcin_uv_count;
 	ktime_t			dcin_uv_last_time;
 	int			last_wls_vout;
+	bool			wireless_present;
+	bool			apsd_delayed;
+	bool			wireless_high_vol_mode;
+	bool			chg_wake_lock_on;
+	bool			wlchg_fast; /* wireless fast chargeing */
 	int			wireless_vout;
 	#ifdef OPLUS_FEATURE_CHG_BASIC
 	int			pre_current_ma;
@@ -655,6 +688,7 @@ struct smb_charger {
 #endif
 #ifdef OPLUS_FEATURE_CHG_BASIC
 	struct work_struct	chargerid_switch_work;
+	struct delayed_work  switch_to_wired_work;
 	struct mutex pinctrl_mutex;
 
 	int			ccdetect_gpio;
@@ -673,6 +707,10 @@ struct smb_charger {
 	struct delayed_work wait_wired_charge_on;
 	struct delayed_work wait_wired_charge_off;
 	struct delayed_work otg_disable_timeout_work;
+	struct delayed_work recovery_suspend_work; /* for fix vbus remain issus after plugout*/
+#ifdef OPLUS_CUSTOM_OP_DEF
+	struct delayed_work connect_check_work;
+#endif
 	int wired_in_flag;
 	int otg_disable_timeout;
 #endif
@@ -1002,11 +1040,23 @@ void smblib_hvdcp_detect_enable(struct smb_charger *chg, bool enable);
 void smblib_hvdcp_hw_inov_enable(struct smb_charger *chg, bool enable);
 void smblib_hvdcp_exit_config(struct smb_charger *chg);
 void smblib_apsd_enable(struct smb_charger *chg, bool enable);
+void smblib_bypass_vsafe0_control(struct smb_charger *chg, bool enable);
 int smblib_force_vbus_voltage(struct smb_charger *chg, u8 val);
 int smblib_get_irq_status(struct smb_charger *chg,
 				union power_supply_propval *val);
 int smblib_get_qc3_main_icl_offset(struct smb_charger *chg, int *offset_ua);
+#ifdef OPLUS_CUSTOM_OP_DEF
+int smblib_set_prop_reset_rd(struct smb_charger *chg,
+				const union power_supply_propval *val);
+#endif
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+extern void notify_pd_in_to_wireless(void);
+void smblib_usb_plugin_locked(struct smb_charger *chg);
+int op_charging_en(struct smb_charger *chg, bool en);
+int op_wireless_high_vol_en(bool enable);
+extern void exchg_information_register(struct smb_charger *chg);
+extern void op_release_usb_lock(void);
+void op_switch_normal_set(void);
 #endif /* __SMB5_CHARGER_H */

@@ -11,7 +11,6 @@
 #include "touch_interfaces.h"
 #include "../touchpanel_common.h"
 #include "../touch_comon_api/touch_comon_api.h"
-#include "../touchpanel_healthinfo/touchpanel_healthinfo.h"
 
 #define FIX_I2C_LENGTH   256
 
@@ -277,10 +276,16 @@ int touch_i2c_read_byte(struct i2c_client *client, unsigned short addr)
 {
 	int retval = 0;
 	unsigned char buf[2] = {0};
-	struct touchpanel_data *ts = i2c_get_clientdata(client);
+	struct touchpanel_data *ts = NULL;
 
 	if (!client) {
 		dump_stack();
+		return -1;
+	}
+
+	ts = i2c_get_clientdata(client);
+	if (!ts) {
+		TPD_INFO("%s: ts is null\n", __func__);
 		return -1;
 	}
 
@@ -346,10 +351,15 @@ int touch_i2c_read_word(struct i2c_client *client, unsigned short addr)
 {
 	int retval;
 	unsigned char buf[2] = {0};
-	struct touchpanel_data *ts = i2c_get_clientdata(client);
+	struct touchpanel_data *ts = NULL;
 
 	if (!client) {
 		dump_stack();
+		return -1;
+	}
+	ts = i2c_get_clientdata(client);
+	if (!ts) {
+		TPD_INFO("%s: ts is null\n", __func__);
 		return -1;
 	}
 

@@ -18,7 +18,7 @@
 #include <linux/regulator/consumer.h>
 #include "oplus_touchscreen/tp_devices.h"
 #include "oplus_touchscreen/touchpanel_common.h"
-#include <soc/oplus/oplus_project.h>
+#include <soc/oplus/system/oplus_project.h>
 #include <soc/oplus/device_info.h>
 
 #define MAX_CMDLINE_PARAM_LEN 512

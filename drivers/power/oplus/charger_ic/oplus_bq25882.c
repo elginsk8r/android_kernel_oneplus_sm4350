@@ -1,20 +1,7 @@
-/************************************************************************************
-** File:  \\192.168.144.3\Linux_Share\12015\ics2\development\mediatek\custom\oplus77_12015\kernel\battery\battery
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for dc-dc sn111008 charg
-** 
-** Version: 1.0
-** Date created: 21:03:46,05/04/2012
-** Author: Fanhong.Kong@ProDrv.CHG
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2015-06-22    Fanhong.Kong@ProDrv.CHG   		Created for new architecture
-* Revision 2.0    2018-04-14    Fanhong.Kong@ProDrv.CHG     	Upgrade for SVOOC
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
@@ -76,8 +63,22 @@ static int __bq25882_read_reg(int reg, int *returnData)
 {
     int ret = 0;
     struct chip_bq25882 *chip = charger_ic;
+	int retry = 3;
 
     ret = i2c_smbus_read_byte_data(chip->client, reg);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_byte_data(chip->client, reg);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
     if (ret < 0) {
         chg_err("i2c read fail: can't read from %02x: %d\n", reg, ret);
         return ret;
@@ -102,8 +103,22 @@ static int __bq25882_write_reg(int reg, int val)
 {
     int ret = 0;
     struct chip_bq25882 *chip = charger_ic;
+	int retry = 3;
 
     ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
     if (ret < 0) {
         chg_err("i2c write fail: can't write %02x to %02x: %d\n",
         val, reg, ret);
@@ -1119,6 +1134,7 @@ struct oplus_chg_operations * oplus_get_chg_ops(void)
 
 static void register_charger_devinfo(void)
 {
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
     int ret = 0;
     char *version;
     char *manufacture;
@@ -1129,6 +1145,7 @@ static void register_charger_devinfo(void)
     ret = register_device_proc("charger", version, manufacture);
     if (ret)
         chg_err("register_charger_devinfo fail\n");
+#endif
 }
 
 bool oplus_charger_ic_chip_is_null(void)

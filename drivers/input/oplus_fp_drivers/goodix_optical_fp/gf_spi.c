@@ -45,7 +45,7 @@
 #if IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY) || IS_ENABLED(CONFIG_DRM_MSM)
 #include <linux/msm_drm_notify.h>
 #endif //IS_ENABLED(CONFIG_DRM_OPLUS_NOTIFY) || IS_ENABLED(CONFIG_DRM_MSM)
-#include <soc/oplus/boot_mode.h>
+#include <soc/oplus/system/boot_mode.h>
 #include <linux/version.h>
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
@@ -59,6 +59,10 @@
 #define VER_MAJOR   1
 #define VER_MINOR   2
 #define PATCH_LEVEL 9
+
+#ifndef MSM_DRM_ONSCREENFINGERPRINT_EVENT
+#define MSM_DRM_ONSCREENFINGERPRINT_EVENT 0x10
+#endif
 
 #define WAKELOCK_HOLD_TIME 500 /* in ms */
 #define SENDCMD_WAKELOCK_HOLD_TIME 1000 /* in ms */
@@ -100,6 +104,8 @@ struct gf_key_map maps[] = {
     {EV_KEY, GF_NAV_INPUT_HEAVY},
 #endif
 };
+
+static int gf_opticalfp_irq_handler(struct fp_underscreen_info *tp_info);
 
 static void gf_enable_irq(struct gf_dev *gf_dev)
 {
@@ -893,11 +899,12 @@ static int __init gf_init(void)
      */
 
     if ((FP_GOODIX_3268 != get_fpsensor_type())
-            && (FP_GOODIX_5288 != get_fpsensor_type())
-            && (FP_GOODIX_5228 != get_fpsensor_type())
-            && (FP_GOODIX_5658 != get_fpsensor_type())
-            && (FP_GOODIX_OPTICAL_95 != get_fpsensor_type())
-            && (FP_GOODIX_3626 != get_fpsensor_type())) {
+        	&& (FP_GOODIX_5288 != get_fpsensor_type())
+        	&& (FP_GOODIX_5228 != get_fpsensor_type())
+        	&& (FP_GOODIX_5658 != get_fpsensor_type())
+		&& (FP_GOODIX_OPTICAL_95 != get_fpsensor_type())
+		&& (FP_GOODIX_3626 != get_fpsensor_type())
+        	&& (FP_GOODIX_3956 != get_fpsensor_type())) {
         pr_err("%s, found not goodix sensor\n", __func__);
         status = -EINVAL;
         return status;
@@ -955,6 +962,7 @@ static void __exit gf_exit(void)
 }
 module_exit(gf_exit);
 
+MODULE_SOFTDEP("pre:oplus_fp_common");
 MODULE_AUTHOR("Jiangtao Yi, <yijiangtao@goodix.com>");
 MODULE_AUTHOR("Jandy Gou, <gouqingsong@goodix.com>");
 MODULE_DESCRIPTION("goodix fingerprint sensor device driver");

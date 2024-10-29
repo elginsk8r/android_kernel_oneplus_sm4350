@@ -1,17 +1,13 @@
-/**********************************************************************************
-* Copyright (c)  2017-2019  Guangdong OPLUS Mobile Comm Corp., Ltd
-* OPLUS_FEATURE_CHG_BASIC
-* Description: For Nuvoton N76E003 MCU
-* Version   : 1.0
-* Date      : 2018-03-12
-* ------------------------------ Revision History: --------------------------------
-* <version>       <date>        	<author>              		<desc>
-***********************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #define VOOC_MCU_N76E
 
 #include <linux/uaccess.h>
 #include <linux/proc_fs.h>
+#include <linux/version.h>
 #ifdef CONFIG_OPLUS_CHARGER_MTK
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
@@ -25,14 +21,18 @@
 #include <linux/platform_device.h>
 #include <asm/atomic.h>
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 #include <linux/xlog.h>
+#endif
 //#include <upmu_common.h>
 //#include <mt-plat/mtk_gpio.h>
 #include <linux/dma-mapping.h>
 
 //#include <mt-plat/battery_meter.h>
 #include <linux/module.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/device_info.h>
+#endif
 
 #else
 #include <linux/i2c.h>
@@ -51,7 +51,9 @@
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/device_info.h>
+#endif
 #endif
 #include "oplus_vooc_fw.h"
 
@@ -439,7 +441,7 @@ static int n76e_get_fw_verion_from_ic(struct oplus_vooc_chip *chip)
 		opchg_set_clock_active(chip);
 		chip->mcu_boot_by_gpio = true;
 		msleep(10);
-		opchg_set_reset_active(chip);
+		opchg_set_reset_active_force(chip);
 		chip->mcu_update_ing = true;
 		msleep(2500);
 		chip->mcu_boot_by_gpio = false;
@@ -484,7 +486,7 @@ static int n76e_fw_check_then_recover(struct oplus_vooc_chip *chip)
 		opchg_set_clock_active(chip);
 		chip->mcu_boot_by_gpio = true;
 		msleep(10);
-		opchg_set_reset_active(chip);
+		opchg_set_reset_active_force(chip);
 		chip->mcu_update_ing = true;
 		msleep(2500);
 		chip->mcu_boot_by_gpio = false;
@@ -497,7 +499,7 @@ static int n76e_fw_check_then_recover(struct oplus_vooc_chip *chip)
 		}
 		chip->mcu_update_ing = false;
 		msleep(5);
-		opchg_set_reset_active(chip);
+		opchg_set_reset_active_force(chip);
 		ret = FW_CHECK_MODE;
 	}
 
@@ -532,6 +534,7 @@ struct oplus_vooc_operations oplus_n76e_ops = {
 
 static void register_vooc_devinfo(void)
 {
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 	int ret = 0;
 	char *version;
 	char *manufacture;
@@ -543,6 +546,7 @@ static void register_vooc_devinfo(void)
 	if (ret) {
 		chg_err(" fail\n");
 	}
+#endif
 }
 
 static void n76e_shutdown(struct i2c_client *client)
@@ -585,10 +589,17 @@ static ssize_t vooc_fw_check_read(struct file *filp, char __user *buff, size_t c
 	return (len < count ? len : count);
 }
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0))
 static const struct file_operations vooc_fw_check_proc_fops = {
 	.read = vooc_fw_check_read,
 	.llseek = noop_llseek,
 };
+#else
+static const struct proc_ops vooc_fw_check_proc_fops = {
+	.proc_read = vooc_fw_check_read,
+	.proc_lseek = noop_llseek,
+};
+#endif
 
 static int init_proc_vooc_fw_check(void)
 {
@@ -713,6 +724,11 @@ struct i2c_driver n76e_i2c_driver = {
 #if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 static int __init n76e_subsys_init(void)
 #else
+void  n76e_subsys_exit(void)
+{
+	i2c_del_driver(&n76e_i2c_driver);
+}
+
 int n76e_subsys_init(void)
 #endif
 {

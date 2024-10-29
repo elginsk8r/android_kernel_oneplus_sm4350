@@ -14,6 +14,12 @@
 
 #include "../novatek_common.h"
 
+#ifdef CONFIG_TOUCHPANEL_MTK_PLATFORM
+#include "mtk_spi.h"
+#else
+#include "oplus_spi.h"
+#endif
+
 #ifdef TPD_DEVICE
 #undef TPD_DEVICE
 #define TPD_DEVICE "novatek,nf_nt36672c"
@@ -121,6 +127,8 @@
 #define TOUCH_DATA_ADDR     0x25198
 #define DISP_OFF_ADDR       0x2800
 #endif /* NVT_TOUCH_ESD_DISP_RECOVERY */
+/* define for fw event buffer protocol */
+#define NVT_EVENTBUF_PROT_HIGH_RESO 0xF1
 
 typedef enum {
 	NVT_RAWDATA,    /*raw data*/
@@ -263,6 +271,7 @@ struct chip_data_nt36672c {
 	uint8_t                         point_data[POINT_DATA_LEN + 2];
 	uint8_t                         fw_ver;
 	uint8_t                         fw_sub_ver;
+	uint8_t                         fw_eventbuf_prot;
 	uint8_t                         recovery_cnt;
 	uint8_t                         ilm_dlm_num;
 	uint8_t                         *fwbuf;

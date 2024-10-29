@@ -1,26 +1,16 @@
-/************************************************************************************
-** File:  oplus_chargepump.c
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      
-** 
-** Version: 1.0
-** Date created: 21:03:46,09/04/2019
-** Author: Lin Shangbo
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2019-04-09    Lin Shangbo    		Created for new charger
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
-
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/rtc.h>
+#include <linux/version.h>
 #ifdef CONFIG_OPLUS_CHARGER_MTK
-
-
 #include <linux/slab.h>
 #include <linux/irq.h>
 #include <linux/miscdevice.h>
@@ -31,36 +21,35 @@
 #include <linux/kobject.h>
 #include <linux/platform_device.h>
 #include <asm/atomic.h>
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 #include <linux/xlog.h>
-
-#include <linux/module.h>
 #include <upmu_common.h>
 #include <mt-plat/mtk_gpio.h>
-#include <mtk_boot_common.h>
 #include <mt-plat/mtk_rtc.h>
 #include <mt-plat/charging.h>
+#endif
+#include <linux/module.h>
+#include <mtk_boot_common.h>
 
 #include <soc/oplus/device_info.h>
 
-extern void mt_power_off(void); 
+extern void mt_power_off(void);
 #else
 
 #include <linux/debugfs.h>
-#include <linux/gpio.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/power_supply.h>
-#include <linux/of.h>
-#include <linux/of_gpio.h>
 #include <linux/bitops.h>
 #include <linux/mutex.h>
 #include <linux/regulator/driver.h>
 #include <linux/regulator/of_regulator.h>
 #include <linux/regulator/machine.h>
-#include <linux/rtc.h>
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 #include <soc/oplus/device_info.h>
+#endif
 #endif
 #include "../oplus_vooc.h"
 #include "../oplus_gauge.h"
@@ -78,6 +67,7 @@ static int __chargepump_read_reg(int reg, int *returnData)
 {
 	int ret = 0;
 	struct chip_chargepump *chip = chargepump_ic;
+	int retry = 3;
 
 	if(chip == NULL) {
 		chg_err("chargepump_ic is NULL!\n");
@@ -85,6 +75,19 @@ static int __chargepump_read_reg(int reg, int *returnData)
 	}
 	
 	ret = i2c_smbus_read_byte_data(chip->client, (unsigned char)reg);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_read_byte_data(chip->client, (unsigned char)reg);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		chg_err("i2c read fail: can't read from %02x: %d\n", reg, ret);
 		return ret;
@@ -109,6 +112,7 @@ static int __chargepump_write_reg(int reg, int val)
 {
 	int ret = 0;
 	struct chip_chargepump *chip = chargepump_ic;
+	int retry = 3;
 
 	if(chip == NULL) {
 		chg_err("chargepump_ic is NULL!\n");
@@ -116,6 +120,19 @@ static int __chargepump_write_reg(int reg, int val)
 	}
 
 	ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+
+	if (ret < 0) {
+		while(retry > 0) {
+			usleep_range(5000, 5000);
+			ret = i2c_smbus_write_byte_data(chip->client, reg, val);
+			if (ret < 0) {
+				retry--;
+			} else {
+				break;
+			}
+		}
+	}
+
 	if (ret < 0) {
 		chg_err("i2c write fail: can't write %02x to %02x: %d\n",
 			val, reg, ret);
@@ -525,7 +542,7 @@ int chargepump_get_chargepump_en_val(void)
 	struct chip_chargepump *chip = chargepump_ic;
 
 	if (!chip) {
-		printk(KERN_ERR "[OPLUS_CHG][%s]: chargepump_ic not ready!\n", __func__);
+		/*printk(KERN_ERR "[OPLUS_CHG][%s]: chargepump_ic not ready!\n", __func__);*/
 		return -1;
 	}
 
@@ -617,7 +634,7 @@ void chargepump_print_log(void)
 	int reg_value = 0;
 
 	if (!chargepump_ic) {
-		chg_err("<~WPC~> chargepump_ic is NULL!\n");
+		/*chg_err("<~WPC~> chargepump_ic is NULL!\n");*/
 		return;
 	}
 
@@ -689,7 +706,7 @@ static int chargepump_gpio_init(struct chip_chargepump *chip)
 	// Parsing gpio chargepump_en_gpio
 	chip->chargepump_en_gpio = of_get_named_gpio(node, "qcom,cp_en-gpio", 0);
 	if(chip->chargepump_en_gpio < 0 ){
-		pr_err("chip->chargepump_en_gpio not specified\n");	
+		pr_err("chip->chargepump_en_gpio not specified\n");
 	}
 	else
 	{
@@ -702,24 +719,13 @@ static int chargepump_gpio_init(struct chip_chargepump *chip)
 		rc = chargepump_en_gpio_init(chip);
 		pr_err("chip->chargepump_en_gpio =%d\n",chip->chargepump_en_gpio);
 	}
-	
 
 	chg_err(" chargepump_gpio_init FINISH\n");
 
 	return rc;
 }
 
-#if 0
-struct oplus_wpc_operations      *cp_ops = {
-	.cp_hw_init = chargepump_hardware_init;
-	.cp_set_for_otg = chargepump_set_for_otg;
-	.cp_set_for_EPP = chargepump_set_for_EPP;
-	.cp_set_for_LDO = chargepump_set_for_LDO;
-	.cp_enable = chargepump_enable;
-};
-#endif
-
-static int chargepump_driver_probe(struct i2c_client *client, const struct i2c_device_id *id) 
+static int chargepump_driver_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	int ret = 0;
 	struct chip_chargepump *chg_ic;

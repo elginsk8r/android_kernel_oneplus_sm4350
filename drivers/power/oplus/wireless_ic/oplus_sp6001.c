@@ -1,19 +1,7 @@
-/************************************************************************************
-** File:  oplus_p922x.c
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-** 
-** Description: 
-**      for wireless charge
-** 
-** Version: 1.0
-** Date created: 21:03:46,06/11/2018
-** Author: Lin Shangbo, Li Jiada
-** 
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2018-11-06    Lin Shangbo,Li Jiada   		Created for wireless charge
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 #include <linux/interrupt.h>
 #include <linux/i2c.h>

@@ -1,16 +1,7 @@
-/************************************************************************************
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2018-2019, OPLUS Mobile Comm Corp., Ltd
-**
-** Description:
-**    For P80 charger ic driver
-**
-** Version: 1.0
-** Date created: 2018-11-09
-**
-** --------------------------- Revision History: ------------------------------------
-* <version>       <date>         <author>              			<desc>
-*************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 #include <linux/init.h>		/* For init/exit macros */
 #include <linux/module.h>	/* For MODULE_ marcros  */
 #include <linux/fs.h>
@@ -3212,6 +3203,5 @@ static void __exit mtk_charger_exit(void)
 module_exit(mtk_charger_exit);
 
 
-MODULE_AUTHOR("LiYue");
 MODULE_DESCRIPTION("OPLUS Charger Driver");
 MODULE_LICENSE("GPL");

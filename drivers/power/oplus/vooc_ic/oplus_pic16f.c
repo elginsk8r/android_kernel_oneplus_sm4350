@@ -1,19 +1,7 @@
-/************************************************************************************
-** File:  \\192.168.144.3\Linux_Share\12015\ics2\development\mediatek\custom\oplus77_12015\kernel\battery\battery
-** OPLUS_FEATURE_CHG_BASIC
-** Copyright (C), 2008-2012, OPLUS Mobile Comm Corp., Ltd
-**
-** Description:
-**      for dc-dc sn111008 charg
-**
-** Version: 1.0
-** Date created: 21:03:46,05/04/2012
-** Author: Fanhong.Kong@ProDrv.CHG
-**
-** --------------------------- Revision History: ------------------------------------------------------------
-* <version>       <date>        <author>              			<desc>
-* Revision 1.0    2015-06-22    Fanhong.Kong@ProDrv.CHG   		Created for new architecture
-************************************************************************************************************/
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
+ */
 
 
 #define VOOC_MCU_PIC16F
@@ -441,7 +429,7 @@ static int pic16f_fw_check_then_recover(struct oplus_vooc_chip *chip)
 		opchg_set_clock_active(chip);
 		chip->mcu_boot_by_gpio = true;
 		msleep(10);
-		opchg_set_reset_active(chip);
+		opchg_set_reset_active_force(chip);
 		chip->mcu_update_ing = true;
 		msleep(2500);
 		chip->mcu_boot_by_gpio = false;
@@ -452,7 +440,7 @@ static int pic16f_fw_check_then_recover(struct oplus_vooc_chip *chip)
 			chg_debug( " fw check ok\n");
 		chip->mcu_update_ing = false;
 		msleep(5);
-		opchg_set_reset_active(chip);
+		opchg_set_reset_active_force(chip);
 		ret = FW_CHECK_MODE;
 	}
 
@@ -484,6 +472,7 @@ struct oplus_vooc_operations oplus_pic16f_ops = {
 
 static void register_vooc_devinfo(void)
 {
+#ifndef CONFIG_DISABLE_OPLUS_FUNCTION
 	int ret = 0;
 	char *version;
 	char *manufacture;
@@ -494,6 +483,7 @@ static void register_vooc_devinfo(void)
 	if (ret) {
 		chg_err("register_vooc_devinfo fail\n");
 	}
+#endif
 }
 
 static int pic16f_driver_probe(struct i2c_client *client, const struct i2c_device_id *id)
@@ -576,7 +566,16 @@ struct i2c_driver pic16f_i2c_driver = {
 	.id_table = pic16f_id,
 };
 
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 static int __init pic16f_subsys_init(void)
+#else
+void pic16f_subsys_exit(void)
+{
+	i2c_del_driver(&pic16f_i2c_driver);
+}
+
+int pic16f_subsys_init(void)
+#endif
 {
 	int ret=0;
 
@@ -594,14 +593,9 @@ static int __init pic16f_subsys_init(void)
 	return ret;
 }
 
-/*
-static void  pic16f_exit(void)
-{
-	i2c_del_driver(&pic16f_i2c_driver);
-}
-*/
-
+#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 0))
 subsys_initcall(pic16f_subsys_init);
+#endif
 MODULE_DESCRIPTION("Driver for oplus vooc pic16f fast mcu");
 MODULE_LICENSE("GPL v2");
 

@@ -162,6 +162,8 @@ struct gf_key_map maps[] = {
 #endif
 };
 
+static int gf_opticalfp_irq_handler(struct fp_underscreen_info *tp_info);
+
  static void gf_spi_clk_enable(struct gf_dev *gf_dev)
  {
     #if !defined(CONFIG_MTK_CLKMGR)
@@ -995,7 +997,7 @@ static int gf_remove(struct platform_device *pdev)
 
 static struct of_device_id gx_match_table[] = {
 	{ .compatible = GF_SPIDEV_NAME },
-	{ .compatible = OPLUS_SPIDEV_NAME },
+    { .compatible = OPLUS_SPIDEV_NAME },
 	{},
 };
 

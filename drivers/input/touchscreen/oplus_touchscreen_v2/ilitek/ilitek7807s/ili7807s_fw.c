@@ -229,8 +229,10 @@ static int ilitek_tddi_fw_iram_read(u8 *buf, u32 start, int len)
 
 int ili_fw_dump_iram_data(u32 start, u32 end, bool save, bool mcu)
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	struct file *f = NULL;
 	loff_t pos = 0;
+#endif
 	int i, ret = 0;
 	int len, tmp = ili_debug_en;
 	bool ice = atomic_read(&ilits->ice_stat);
@@ -264,6 +266,11 @@ int ili_fw_dump_iram_data(u32 start, u32 end, bool save, bool mcu)
 	}
 
 	if (save) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+		ILI_ERR("GKI2.0 not allow drivers to use filp_open\n");
+		ret = -ENOMEM;
+		goto out;
+#else
 		f = filp_open(DUMP_IRAM_PATH, O_WRONLY | O_CREAT | O_TRUNC, 644);
 
 		if (ERR_ALLOC_MEM(f)) {
@@ -278,7 +285,7 @@ int ili_fw_dump_iram_data(u32 start, u32 end, bool save, bool mcu)
 		kernel_write(f, ilits->update_buf, len, &pos);
 		filp_close(f, NULL);
 		ILI_INFO("Save iram data to %s\n", DUMP_IRAM_PATH);
-
+#endif
 	} else {
 		ili_debug_en = DEBUG_ALL;
 		ili_dump_data(ilits->update_buf, 8, len, 0, "IRAM");
@@ -844,11 +851,19 @@ static int ilitek_tddi_fw_hex_convert(u8 *phex, int size, u8 *pfw)
 
 static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 {
-	int ret = 0, fsize = 0;
+	int ret = 0;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
+	int fsize = 0;
 	struct file *f = NULL;
 	loff_t pos = 0;
+#endif
 
 	if (!ilits->oplus_fw_update) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
+		ILI_ERR("GKI2.0 not allow drivers to use filp_open\n");
+		ret = -1;
+		goto out;
+#else
 		ILI_INFO("Open file method = %s, path = %s\n",
 			 "FILP_OPEN", DEF_FW_FILP_PATH);
 		f = filp_open(DEF_FW_FILP_PATH, O_RDONLY, 0644);
@@ -889,7 +904,7 @@ static int ilitek_tdd_fw_hex_open(u8 op, u8 *pfw)
 		kernel_read(f, (u8 *)ilits->tp_fw.data, fsize, &pos);
 		filp_close(f, NULL);
 		ilits->tp_fw.size = fsize;
-
+#endif
 	} else {
 		ILI_INFO("oplus fw update already request firmware\n");
 	}

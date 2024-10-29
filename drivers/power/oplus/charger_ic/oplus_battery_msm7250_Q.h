@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2018-2019 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2018-2020 Oplus. All rights reserved.
  */
 
 #ifndef __OPLUS_BATTERY_QCOM_SDM8150B_P_H_
