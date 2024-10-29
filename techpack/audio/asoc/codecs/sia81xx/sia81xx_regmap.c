@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
+/*#define DEBUG*/
 #define LOG_FLAG	"sia81xx_regmap"
 
  
@@ -23,6 +23,9 @@
 #include "sia8101_regs.h"
 #include "sia8108_regs.h"
 #include "sia8109_regs.h"
+#include "sia8152_regs.h"
+#include "sia8152s_regs.h"
+#include "sia8159_regs.h"
 
 
 struct reg_map_info {
@@ -46,6 +49,21 @@ static const struct reg_map_info reg_map_info_table[] = {
 		.config = &sia8109_regmap_config,
 		.reg_default = &sia8109_reg_default_val,
 		.opt = &sia8109_opt_if
+	},
+	[CHIP_TYPE_SIA8152] = {
+		.config = &sia8152_regmap_config,
+		.reg_default = &sia8152_reg_default_val,
+		.opt = &sia8152_opt_if
+	},
+	[CHIP_TYPE_SIA8152S] = {
+		.config = &sia8152s_regmap_config,
+		.reg_default = &sia8152s_reg_default_val,
+		.opt = &sia8152s_opt_if
+	},
+	[CHIP_TYPE_SIA8159] = {
+		.config = &sia8159_regmap_config,
+		.reg_default = &sia8159_reg_default_val,
+		.opt = &sia8159_opt_if
 	}
 };
 
@@ -53,9 +71,9 @@ static int verify_chip_type(
 	unsigned int type)
 {
 	if(type >= ARRAY_SIZE(reg_map_info_table)) {
-		pr_err("[  err][%s] %s: chip_type = %u, "
-			"ARRAY_SIZE(reg_map_info) = %lu \r\n", 
-			LOG_FLAG, __func__, type, ARRAY_SIZE(reg_map_info_table));
+		//pr_warn("[ warn][%s] %s: chip_type = %u, "
+		//	"ARRAY_SIZE(reg_map_info) = %lu \r\n", 
+		//	LOG_FLAG, __func__, type, ARRAY_SIZE(reg_map_info_table));
 		return -ENODEV;
 	}
 
@@ -154,7 +172,10 @@ void sia81xx_regmap_defaults(
 
 	for(i = 0; i < ARRAY_SIZE(reg_map_info_table); i++) {
 		
-		if(chip_type == reg_map_info_table[i].reg_default->chip_type) {			
+		if (NULL == reg_map_info_table[i].reg_default)
+			continue;
+
+		if(chip_type == reg_map_info_table[i].reg_default->chip_type) {
 			ret = sia81xx_regmap_write(
 				regmap, 
 				reg_map_info_table[i].reg_default->offset,
@@ -168,7 +189,7 @@ void sia81xx_regmap_defaults(
 	}
 	
 	if(0 != ret) {
-		pr_err("[  err][%s] %s: ret = %d, chip_type = %u, regmap = %p \r\n", 
+		pr_warn("[ warn][%s] %s: ret = %d, chip_type = %u, regmap = %p \r\n", 
 			LOG_FLAG, __func__, ret, chip_type, regmap);
 	}
 }
@@ -189,8 +210,10 @@ struct regmap *sia81xx_regmap_init(
 void sia81xx_regmap_remove(
 	struct regmap *regmap) 
 {
-	if(!IS_ERR(regmap))
-		regmap_exit(regmap);
+	#ifdef OPLUS_ARCH_EXTENDS
+	//if(!IS_ERR(regmap))
+		//regmap_exit(regmap);
+	#endif /* OPLUS_ARCH_EXTENDS */
 }
 
 
@@ -234,11 +257,87 @@ void sia81xx_regmap_set_xfilter(
 	return ;
 }
 
+void sia81xx_regmap_set_chip_on(
+	struct regmap *regmap, 
+	unsigned int chip_type,
+	unsigned int scene,
+	unsigned int channel_num)
+{
+	if(NULL == regmap)
+		return ;
+	
+	if(0 != verify_chip_type(chip_type))
+		return ;
+
+	if(NULL != reg_map_info_table[chip_type].opt->chip_on) {
+		reg_map_info_table[chip_type].opt->chip_on(regmap, scene, channel_num);
+	}
+}
+
+void sia81xx_regmap_set_chip_off(
+	struct regmap *regmap, 
+	unsigned int chip_type)
+{
+	if(NULL == regmap)
+		return ;
+	
+	if(0 != verify_chip_type(chip_type))
+		return ;
+
+	if(NULL != reg_map_info_table[chip_type].opt->chip_off) {
+		reg_map_info_table[chip_type].opt->chip_off(regmap);
+	}
+}
+
+bool sia81xx_regmap_get_chip_en(
+	struct regmap *regmap, 
+	unsigned int chip_type)
+{
+	if(NULL == regmap)
+		return false;
+	
+	if(0 != verify_chip_type(chip_type))
+		return false;
+
+	if(NULL != reg_map_info_table[chip_type].opt->get_chip_en) {
+		return reg_map_info_table[chip_type].opt->get_chip_en(regmap);
+	}
+
+	return false;
+}
+
+void sia81xx_regmap_set_pvdd_limit(
+	struct regmap *regmap, 
+	unsigned int chip_type,
+	unsigned int vol)
+{
+	if(NULL == regmap)
+		return ;
+
+	if(0 != verify_chip_type(chip_type))
+		return ;
+
+	if(NULL != reg_map_info_table[chip_type].opt->set_pvdd_limit) {
+		reg_map_info_table[chip_type].opt->set_pvdd_limit(regmap, vol);
+	}
+}
+
+void sia81xx_regmap_check_trimming(
+	struct regmap *regmap, 
+	unsigned int chip_type)
+{
+	if(NULL == regmap)
+		return ;
+
+	if(0 != verify_chip_type(chip_type))
+		return ;
+
+	if(NULL != reg_map_info_table[chip_type].opt->check_trimming) {
+		reg_map_info_table[chip_type].opt->check_trimming(regmap);
+	}
+}
+
 /********************************************************************
  * end - sia81xx reg map opt functions
  ********************************************************************/
-
-
-
-
 

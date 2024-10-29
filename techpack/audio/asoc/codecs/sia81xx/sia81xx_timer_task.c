@@ -11,7 +11,7 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
+/*#define DEBUG*/
 #define LOG_FLAG	"sia81xx_timer_task"
 
 #include <linux/delay.h>
@@ -303,7 +303,7 @@ int sia81xx_timer_task_start(
 		ret = -ECHILD;
 		goto err;
 	}
-	
+
 	if((ret = wake_up_process(timer->task)) < 0) {
 		pr_err("[  err][%s] %s: wake_up_process fail, err code : %d \r\n", 
 			LOG_FLAG, __func__, ret);

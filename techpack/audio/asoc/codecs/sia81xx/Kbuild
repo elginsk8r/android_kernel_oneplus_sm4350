@@ -64,6 +64,9 @@ ifdef CONFIG_SND_SOC_SIA81XX
 	SND_SOC_SIA81XX_OBJS += sia8101_regs.o
 	SND_SOC_SIA81XX_OBJS += sia8108_regs.o
 	SND_SOC_SIA81XX_OBJS += sia8109_regs.o
+	SND_SOC_SIA81XX_OBJS += sia8152_regs.o
+	SND_SOC_SIA81XX_OBJS += sia8152s_regs.o
+	SND_SOC_SIA81XX_OBJS += sia8159_regs.o
 	SND_SOC_SIA81XX_OBJS += sia81xx_timer_task.o
 endif
 

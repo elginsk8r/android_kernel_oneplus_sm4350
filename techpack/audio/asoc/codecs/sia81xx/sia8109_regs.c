@@ -11,19 +11,19 @@
  * GNU General Public License for more details.
  */
 
-#define DEBUG
+/*#define DEBUG*/
 #define LOG_FLAG	"sia8109_regs"
 
- 
+#include <linux/delay.h>
 #include <linux/regmap.h>
 #include <linux/device.h>
 #include "sia81xx_common.h"
 #include "sia81xx_regmap.h"
 #include "sia8109_regs.h"
 
-#define SIA8108_WRITEABLE_REG_NUM			(14)
+#define SIA8109_WRITEABLE_REG_NUM			(14)
 
-static const char sia8109_palyback_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
+static const char sia8109_palyback_defaults[][SIA8109_WRITEABLE_REG_NUM] = {
 	[SIA81XX_CHANNEL_L] = {
 				0x07,		//SIA8109_REG_SYSCTRL
 				0x80,		//SIA8109_REG_AGCCTRL
@@ -58,7 +58,7 @@ static const char sia8109_palyback_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
 	}
 };
 
-static const char sia8109_voice_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
+static const char sia8109_voice_defaults[][SIA8109_WRITEABLE_REG_NUM] = {
 	[SIA81XX_CHANNEL_L] = {
 				0x07,		//SIA8109_REG_SYSCTRL
 				0x80,		//SIA8109_REG_AGCCTRL
@@ -93,7 +93,7 @@ static const char sia8109_voice_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
 	}
 };
 
-static const char sia8109_receiver_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
+static const char sia8109_receiver_defaults[][SIA8109_WRITEABLE_REG_NUM] = {
 	[SIA81XX_CHANNEL_L] = {
 				0x06,		//SIA8109_REG_SYSCTRL
 				0xFF,		//SIA8109_REG_AGCCTRL
@@ -114,6 +114,41 @@ static const char sia8109_receiver_defaults[][SIA8108_WRITEABLE_REG_NUM] = {
 				0x06,		//SIA8109_REG_SYSCTRL
 				0xFF,		//SIA8109_REG_AGCCTRL
 				0xCE,		//SIA8109_REG_BOOST_CFG
+				0x09,		//SIA8109_REG_CLSD_CFG1
+				0x26,		//SIA8109_REG_CLSD_CFG2
+				0x0A,		//SIA8109_REG_BSG_CFG
+				0x02,		//SIA8109_REG_SML_CFG1
+				0x28,		//SIA8109_REG_SML_CFG2
+				0x03,		//SIA8109_REG_SML_CFG3
+				0x50,		//SIA8109_REG_SML_CFG4
+				0x00,		//SIA8109_REG_Excur_CTRL_1
+				0x00,		//SIA8109_REG_Excur_CTRL_2
+				0x00,		//SIA8109_REG_Excur_CTRL_3
+				0x00		//SIA8109_REG_Excur_CTRL_4
+	}
+};
+
+static const char sia8109_factory_defaults[][SIA8109_WRITEABLE_REG_NUM] = {
+	[SIA81XX_CHANNEL_L] = {
+				0x07,		//SIA8109_REG_SYSCTRL
+				0x80,		//SIA8109_REG_AGCCTRL
+				0xCC,		//SIA8109_REG_BOOST_CFG
+				0x09,		//SIA8109_REG_CLSD_CFG1
+				0x26,		//SIA8109_REG_CLSD_CFG2
+				0x0A,		//SIA8109_REG_BSG_CFG
+				0x02,		//SIA8109_REG_SML_CFG1
+				0x28,		//SIA8109_REG_SML_CFG2
+				0x03,		//SIA8109_REG_SML_CFG3
+				0x50,		//SIA8109_REG_SML_CFG4
+				0x00,		//SIA8109_REG_Excur_CTRL_1
+				0x00,		//SIA8109_REG_Excur_CTRL_2
+				0x00,		//SIA8109_REG_Excur_CTRL_3
+				0x00		//SIA8109_REG_Excur_CTRL_4
+	},
+	[SIA81XX_CHANNEL_R] = {
+				0x07,		//SIA8109_REG_SYSCTRL
+				0x80,		//SIA8109_REG_AGCCTRL
+				0xCC,		//SIA8109_REG_BOOST_CFG
 				0x09,		//SIA8109_REG_CLSD_CFG1
 				0x26,		//SIA8109_REG_CLSD_CFG2
 				0x0A,		//SIA8109_REG_BSG_CFG
@@ -142,6 +177,10 @@ const struct sia81xx_reg_default_val sia8109_reg_default_val = {
 	.reg_defaults[AUDIO_SCENE_RECEIVER] = {
 		.vals = (char *)sia8109_receiver_defaults,
 		.num = ARRAY_SIZE(sia8109_receiver_defaults[0])
+	},
+	.reg_defaults[AUDIO_SCENE_FACTORY] = {
+		.vals = (char *)sia8109_factory_defaults,
+		.num = ARRAY_SIZE(sia8109_factory_defaults[0])
 	}
 };
 
@@ -150,7 +189,7 @@ static bool sia8109_writeable_register(
 	unsigned int reg)
 {
 	switch (reg) {
-		case SIA8109_REG_SYSCTRL ... SIA8109_REG_Excur_CTRL_4 :
+		case SIA8109_REG_SYSCTRL ... 0x22 :
 			return true;
 		default : 
 			break;
@@ -164,7 +203,7 @@ static bool sia8109_readable_register(
 	unsigned int reg)
 {
 	switch (reg) {
-		case SIA8109_REG_SYSCTRL ... SIA8109_REG_Excur_CTRL_4 :
+		case SIA8109_REG_SYSCTRL ... 0x22 :
 		case SIA8109_REG_CHIP_ID : 
 			return true;
 		default : 
@@ -205,7 +244,8 @@ static int sia8109_check_chip_id(
 	if(0 != sia81xx_regmap_read(regmap, SIA8109_REG_CHIP_ID, 1, &val))
 		return -1;
 
-	if(SIA8109_CHIP_ID_V0_1 != val)
+	if(SIA8109_CHIP_ID_V0_1 != val && 
+		SIA8109_CHIP_ID_V1 != val)
 		return -1;
 
 	return 0;
@@ -224,9 +264,53 @@ static void sia8109_set_xfilter(
 	pr_debug("[debug][%s] %s: val = %u \r\n", LOG_FLAG, __func__, val);
 }
 
+static void sia8109_chip_on(
+	struct regmap *regmap, 
+	unsigned int scene,
+	unsigned int channel_num)
+{
+#if 0
+	char val = 0x80;
+	
+	mdelay(45); // use agc to rise gain
+
+#ifdef USE_ON_CHIP_AGC
+	if (AUDIO_SCENE_VOICE == scene)
+		val = 0x9C;
+	else
+		val = 0x80;
+#endif
+
+	// disable agc
+	if (0 != sia81xx_regmap_write(regmap, SIA8109_REG_AGCCTRL, 1, &val)) {
+		pr_err("[  err][%s] %s: write reg err !!! \r\n", 
+			LOG_FLAG, __func__);
+	}
+#endif
+}
+
+static void sia8109_chip_off(
+	struct regmap *regmap)
+{
+	const char val = 0x06;
+
+	// set rcv mode to reduce pop noise
+	if (0 != sia81xx_regmap_write(regmap, SIA8109_REG_SYSCTRL, 1, &val)) {
+		pr_err("[  err][%s] %s: write reg err !!! \r\n", 
+			LOG_FLAG, __func__);
+	}
+
+	udelay(10);
+}
+
 const struct sia81xx_opt_if sia8109_opt_if = {
 	.check_chip_id = sia8109_check_chip_id,
 	.set_xfilter = sia8109_set_xfilter,
+	.chip_on = sia8109_chip_on,
+	.chip_off = sia8109_chip_off,
+	.get_chip_en = NULL,
+	.set_pvdd_limit = NULL,
+	.check_trimming = NULL,
 };
 
 
