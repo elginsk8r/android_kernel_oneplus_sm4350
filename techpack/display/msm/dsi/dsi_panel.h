@@ -132,6 +132,7 @@ struct dsi_backlight_config {
 	u32 bl_normal_max_level;
 	u32 brightness_normal_max_level;
 	u32 brightness_default_level;
+	u32 bl_hbm_min_level;
 #endif /* OPLUS_BUG_STABILITY */
 
 	u32 bl_level;
@@ -166,9 +167,18 @@ struct dsi_panel_reset_config {
 	int disp_en_gpio;
 	int lcd_mode_sel_gpio;
 	u32 mode_sel_state;
+#if defined(CONFIG_PXLW_IRIS5)
+        int iris_rst_gpio;
+        int abyp_gpio;
+        int abyp_status_gpio;
+        int iris_osd_gpio;
+        bool iris_osd_autorefresh;
+        int iris_vdd_gpio;
+#endif
 #ifdef OPLUS_BUG_STABILITY
 	int panel_vout_gpio;
 	int panel_vddr_aod_en_gpio;
+	int panel_tp_reset_gpio;
 #endif
 };
 
@@ -201,7 +211,43 @@ struct dsi_panel_oplus_privite {
 	bool skip_mipi_last_cmd;
 	bool is_pxlw_iris5;
 	bool dfps_idle_off;
+	bool is_osc_support;
+	u32 osc_clk_mode0_rate;
+	u32 osc_clk_mode1_rate;
+	bool lp_config_flag;
+	// Add for apollo support
+	bool is_apollo_support;
+
+	struct oplus_brightness_alpha *bl_remap;
+	int bl_remap_count;
+/* #ifdef OPLUS_BUG_COMPATIBILITY */
 	bool cabc_enabled;
+	u32 cabc_status;
+/* #endif */
+
+	bool is_aod_ramless;
+
+	bool gamma_switch_enable;
+/********************************************
+	fp_type usage:
+	bit(0):lcd capacitive fingerprint(aod/fod are not supported)
+	bit(1):oled capacitive fingerprint(only support aod)
+	bit(2):optical fingerprint old solution(dim layer and pressed icon are controlled by kernel)
+	bit(3):optical fingerprint new solution(dim layer and pressed icon are not controlled by kernel)
+	bit(4):local hbm
+	bit(5):pressed icon brightness adaptive
+	bit(6):ultrasonic fingerprint
+	bit(7):ultra low power aod
+********************************************/
+	u32 fp_type;
+	bool disable_53h_control;
+	bool dimming_control;
+};
+
+struct dsi_panel_oplus_serial_number {
+	bool is_switch_page;
+	u32 *serial_number_multi_regs;
+	int serial_number_index;
 };
 #endif /* OPLUS_BUG_STABILITY */
 
@@ -265,6 +311,11 @@ struct dsi_panel {
 
 	struct dsi_parser_utils utils;
 
+#if defined(CONFIG_PXLW_IRIS5)
+	struct dsi_regulator_info iris5_power_info;
+	struct clk *ext_clk;
+#endif
+
 	bool lp11_init;
 	bool ulps_feature_enabled;
 	bool ulps_suspend_enabled;
@@ -291,6 +342,7 @@ struct dsi_panel {
 	struct oplus_brightness_alpha *ba_seq;
 	int ba_count;
 	struct dsi_panel_oplus_privite oplus_priv;
+	struct dsi_panel_oplus_serial_number oplus_ser;
 #endif
 	u32 dsc_count;
 	u32 lm_count;
@@ -430,6 +482,16 @@ void dsi_panel_calc_dsi_transfer_time(struct dsi_host_common_cfg *config,
 #ifdef OPLUS_BUG_STABILITY
 int dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 			   enum dsi_cmd_set_type type);
+#endif
+
+#if defined(CONFIG_PXLW_IRIS5)
+void iris5_gpio_free(struct dsi_panel *panel);
+void iris5_gpio_request(struct dsi_panel *panel);
+void iris5_gpio_parse(struct dsi_panel *panel);
+void iris5_power_off(struct dsi_panel *panel);
+void iris5_control_pwr_regulator(struct dsi_panel *panel, bool on);
+void iris5_reset(struct dsi_panel *panel);
+void iris5_power_on(struct dsi_panel *panel);
 #endif
 
 int dsi_panel_get_cmd_pkt_count(const char *data, u32 length, u32 *cnt);

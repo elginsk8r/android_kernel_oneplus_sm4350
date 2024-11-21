@@ -1,8 +1,14 @@
 /***************************************************************
 ** Copyright (C),  2020,  oplus Mobile Comm Corp.,  Ltd
+** VENDOR_EDIT
 ** File : oplus_aod.c
 ** Description : oplus aod feature
 ** Version : 1.0
+** Date : 2020/04/23
+**
+** ------------------------------- Revision History: -----------
+**  <author>        <data>        <version >        <desc>
+**   Qianxu         2020/04/23        1.0           Build this moudle
 ******************************************************************/
 
 #include "dsi_defs.h"
@@ -46,6 +52,9 @@ int oplus_update_aod_light_mode_unlock(struct dsi_panel *panel)
 }
 EXPORT_SYMBOL(oplus_update_aod_light_mode_unlock);
 
+#ifdef OPLUS_FEATURE_AOD_RAMLESS
+extern bool is_oplus_display_aod_mode(void);
+#endif /* OPLUS_FEATURE_AOD_RAMLESS */
 int oplus_update_aod_light_mode(void)
 {
 	struct dsi_display *display = get_main_display();
@@ -77,6 +86,15 @@ int oplus_update_aod_light_mode(void)
 
 	mutex_lock(&display->panel->panel_lock);
 
+#ifdef OPLUS_FEATURE_AOD_RAMLESS
+	if (display->panel->oplus_priv.is_aod_ramless &&
+		!is_oplus_display_aod_mode()) {
+		pr_err("not support update aod_light_mode at non-aod mode\n");
+		ret = -EINVAL;
+		goto error;
+	}
+#endif /* OPLUS_FEATURE_AOD_RAMLESS */
+
 	if (!dsi_panel_initialized(display->panel)) {
 		pr_err("dsi_panel_aod_low_light_mode is not init\n");
 		ret = -EINVAL;
@@ -95,7 +113,7 @@ error:
 
 	if (display->config.panel_mode == DSI_OP_CMD_MODE) {
 		dsi_display_clk_ctrl(display->dsi_clk_handle,
-				     DSI_ALL_CLKS, DSI_CLK_OFF);
+				     DSI_CORE_CLK, DSI_CLK_OFF);
 	}
 
 	mutex_unlock(&display->display_lock);
