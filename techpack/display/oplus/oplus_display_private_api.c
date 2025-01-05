@@ -19,9 +19,6 @@
  */
 #include <linux/notifier.h>
 #include <linux/msm_drm_notify.h>
-#ifdef CONFIG_OPLUS_FEATURE_MM_FEEDBACK
-#include <soc/oplus/system/oplus_mm_kevent_fb.h>
-#endif //CONFIG_OPLUS_FEATURE_MM_FEEDBACK
 #include <soc/oplus/device_info.h>
 #if defined(OPLUS_FEATURE_PXLW_IRIS5)
 #include <video/mipi_display.h>
