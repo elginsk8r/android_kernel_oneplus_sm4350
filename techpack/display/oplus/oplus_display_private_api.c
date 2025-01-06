@@ -20,12 +20,6 @@
 #include <linux/notifier.h>
 #include <linux/msm_drm_notify.h>
 #include <soc/oplus/device_info.h>
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-#include <video/mipi_display.h>
-#include "dsi_iris5_api.h"
-#include "dsi_iris5_lightup.h"
-#include "dsi_iris5_loop_back.h"
-#endif
 #include "dsi_pwr.h"
 #include "oplus_display_panel.h"
 
@@ -118,110 +112,6 @@ int oplus_set_display_vendor(struct dsi_display *display)
 	return 0;
 }
 EXPORT_SYMBOL(oplus_set_display_vendor);
-
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-int iris_panel_dcs_type_set(struct dsi_cmd_desc *cmd, void *data, size_t len)
-{
-	switch (len) {
-	case 0:
-		return -EINVAL;
-
-	case 1:
-		cmd->msg.type = MIPI_DSI_DCS_SHORT_WRITE;
-		break;
-
-	case 2:
-		cmd->msg.type = MIPI_DSI_DCS_SHORT_WRITE_PARAM;
-		break;
-
-	default:
-		cmd->msg.type = MIPI_DSI_DCS_LONG_WRITE;
-		break;
-	}
-
-	cmd->msg.tx_len = len;
-	cmd->msg.tx_buf = data;
-	return 0;
-}
-
-int iris_panel_dcs_write_wrapper(struct dsi_panel *panel, void *data,
-				 size_t len)
-{
-	int rc = 0;
-	struct dsi_panel_cmd_set cmdset;
-	struct dsi_cmd_desc dsi_cmd =
-	{{0, MIPI_DSI_DCS_SHORT_WRITE, 0, 0, 0, 0, NULL, 0, NULL}, 1, 0};
-
-	memset(&cmdset, 0x00, sizeof(cmdset));
-	cmdset.cmds = &dsi_cmd;
-	cmdset.count = 1;
-	rc = iris_panel_dcs_type_set(&dsi_cmd, data, len);
-
-	if (rc < 0) {
-		pr_err("%s: invalid dsi cmd len\n", __func__);
-		return rc;
-	}
-
-	rc = iris5_panel_cmd_passthrough(panel, &cmdset);
-
-	if (rc < 0) {
-		pr_err("%s: send panel command failed\n", __func__);
-		return rc;
-	}
-
-	return rc;
-}
-
-int iris_panel_dcs_read_wrapper(struct dsi_display *display, u8 cmd, void *rbuf,
-				size_t rlen)
-{
-	int rc = 0;
-	struct dsi_panel_cmd_set cmdset;
-	struct dsi_cmd_desc dsi_cmd =
-	{{0, MIPI_DSI_DCS_READ, MIPI_DSI_MSG_REQ_ACK, 0, 0, 1, &cmd, rlen, rbuf}, 1, 0};
-	struct dsi_panel *panel;
-
-	if (!display || !display->panel) {
-		pr_err("%s, Invalid params\n", __func__);
-		return -EINVAL;
-	}
-
-	memset(&cmdset, 0x00, sizeof(cmdset));
-	cmdset.cmds = &dsi_cmd;
-	cmdset.count = 1;
-
-	/* enable the clk vote for CMD mode panels */
-	if (display->config.panel_mode == DSI_OP_CMD_MODE) {
-		dsi_display_clk_ctrl(display->dsi_clk_handle,
-				     DSI_ALL_CLKS, DSI_CLK_ON);
-	}
-
-	panel = display->panel;
-	mutex_lock(&display->display_lock);
-	mutex_lock(&panel->panel_lock);
-
-	rc = iris5_panel_cmd_passthrough(panel, &cmdset);
-	mutex_unlock(&panel->panel_lock);
-	mutex_unlock(&display->display_lock);
-
-	if (display->config.panel_mode == DSI_OP_CMD_MODE) {
-		dsi_display_clk_ctrl(display->dsi_clk_handle,
-				     DSI_ALL_CLKS, DSI_CLK_OFF);
-	}
-
-	if (rc < 0) {
-		pr_err("%s, [%s] failed to read panel register, rc=%d,cmd=%d\n",
-		       __func__,
-		       display->name,
-		       rc,
-		       cmd);
-		return rc;
-	}
-
-	pr_err("%s, return: %d\n", __func__, rc);
-	return rc;
-}
-#endif
 
 bool is_dsi_panel(struct drm_crtc *crtc)
 {
@@ -667,13 +557,6 @@ static ssize_t oplus_display_get_spr(struct kobject *obj,
 static ssize_t oplus_display_get_iris_state(struct kobject *obj,
 		struct kobj_attribute *attr, char *buf)
 {
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-	if (iris_get_feature() && iris_loop_back_validate() == 0) {
-		iris_recovery_check_state = 0;
-	}
-	printk(KERN_INFO "oplus_display_get_iris_state = %d\n",
-		iris_recovery_check_state);
-#endif
 	return sprintf(buf, "%d\n", iris_recovery_check_state);
 }
 
@@ -692,18 +575,8 @@ static ssize_t oplus_display_regulator_control(struct kobject *obj,
 	}
 	temp_display = get_main_display();
 	if (temp_save == 0) {
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-		if (iris_get_feature()) {
-			iris5_control_pwr_regulator(false);
-		}
-#endif
 		dsi_pwr_enable_regulator(&temp_display->panel->power_info, false);
 	} else if (temp_save == 1) {
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-		if (iris_get_feature()) {
-			iris5_control_pwr_regulator(true);
-		}
-#endif
 		dsi_pwr_enable_regulator(&temp_display->panel->power_info, true);
 	}
 	return count;
@@ -841,20 +714,7 @@ static ssize_t oplus_display_set_panel_reg(struct kobject *obj,
 			return -EINVAL;
 		}
 
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-
-		if (iris_get_feature()
-				&& (iris5_abypass_mode_get(get_main_display()->panel) == PASS_THROUGH_MODE)) {
-			iris_panel_dcs_read_wrapper(get_main_display(), value, reg, len);
-
-		} else {
-			dsi_display_read_panel_reg(get_main_display(), value, reg, len);
-		}
-
-#else
 		dsi_display_read_panel_reg(get_main_display(), value, reg, len);
-#endif
-
 		for (index = 0; index < len; index++) {
 			printk("%x ", reg[index]);
 		}
@@ -892,19 +752,8 @@ static ssize_t oplus_display_set_panel_reg(struct kobject *obj,
 						     DSI_ALL_CLKS, DSI_CLK_ON);
 			}
 
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-
-			if (iris_get_feature()
-					&& (iris5_abypass_mode_get(display->panel) == PASS_THROUGH_MODE)) {
-				ret = iris_panel_dcs_write_wrapper(display->panel, reg, len);
-			} else
-				ret = mipi_dsi_dcs_write(&display->panel->mipi_device, reg[0],
-							 payload, len - 1);
-
-#else
 			ret = mipi_dsi_dcs_write(&display->panel->mipi_device, reg[0],
 						 payload, len - 1);
-#endif
 
 			if (display->config.panel_mode == DSI_OP_CMD_MODE) {
 				dsi_display_clk_ctrl(display->dsi_clk_handle,
@@ -2442,15 +2291,6 @@ int dsi_display_oplus_set_power(struct drm_connector *connector,
 		pr_err("invalid display/panel\n");
 		return -EINVAL;
 	}
-
-#if defined(OPLUS_FEATURE_PXLW_IRIS5)
-
-	if (iris_get_feature() && NULL != display->display_type
-			&& !strcmp(display->display_type, "secondary")) {
-		return rc;
-	}
-
-#endif
 
 	switch (power_mode) {
 	case SDE_MODE_DPMS_LP1:
