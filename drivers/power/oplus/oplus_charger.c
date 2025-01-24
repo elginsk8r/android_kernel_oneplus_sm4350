@@ -74,13 +74,7 @@
 #include "oplus_adapter.h"
 #include "charger_ic/oplus_short_ic.h"
 #include "oplus_debug_info.h"
-
-#ifndef WPC_NEW_INTERFACE
 #include "oplus_wireless.h"
-#include "wireless_ic/oplus_chargepump.h"	//for WPC
-#else
-#include "oplus_wireless.h"
-#endif
 
 static struct oplus_chg_chip *g_charger_chip = NULL;
 
@@ -125,7 +119,7 @@ static void oplus_chg_pdqc_to_normal(struct oplus_chg_chip *chip);
 static void oplus_get_smooth_soc_switch(struct oplus_chg_chip *chip);
 static void oplus_chg_pd_config(struct oplus_chg_chip *chip);
 static void oplus_chg_qc_config(struct oplus_chg_chip *chip);
-#if IS_ENABLED(CONFIG_FB) || IS_ENABLED(CONFIG_QCOM_KGSL)
+#ifdef  CONFIG_FB
 static int fb_notifier_callback(struct notifier_block *nb, unsigned long event, void *data);
 #endif
 void oplus_chg_ui_soc_decimal_init(void);
@@ -1883,17 +1877,17 @@ int oplus_chg_init(struct oplus_chg_chip *chip)
 		goto power_psy_reg_failed;
 	}
 
-#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_FB)
+#ifdef CONFIG_FB
 	chip->chg_fb_notify.notifier_call = fb_notifier_callback;
-#if IS_ENABLED(CONFIG_QCOM_KGSL)
+#ifdef CONFIG_DRM_MSM
 	rc = msm_drm_register_client(&chip->chg_fb_notify);
-#elif IS_ENABLED(CONFIG_FB)
+#else
 	rc = fb_register_client(&chip->chg_fb_notify);
-#endif
+#endif /*CONFIG_DRM_MSM*/
 	if (rc) {
 		pr_err("Unable to register chg_fb_notify: %d\n", rc);
 	}
-#endif /* CONFIG_FB */
+#endif
 
 	oplus_chg_debug_info_init();
 	init_proc_chg_log();
@@ -4315,7 +4309,8 @@ static bool oplus_chg_check_time_is_good(struct oplus_chg_chip *chip)
 	}
 }
 
-#if IS_ENABLED(CONFIG_QCOM_KGSL)
+#ifdef CONFIG_FB
+#ifdef CONFIG_DRM_MSM
 static int fb_notifier_callback(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -4343,7 +4338,7 @@ static int fb_notifier_callback(struct notifier_block *nb,
 	}
 	return 0;
 }
-#elif IS_ENABLED(CONFIG_FB)
+#else
 static int fb_notifier_callback(struct notifier_block *nb,
 		unsigned long event, void *data)
 {
@@ -4367,7 +4362,7 @@ static int fb_notifier_callback(struct notifier_block *nb,
 	}
 	return 0;
 }
-#endif /* CONFIG_FB */
+#endif /* CONFIG_DRM_MSM */
 
 void oplus_chg_set_allow_switch_to_fastchg(bool allow)
 {
@@ -4379,7 +4374,6 @@ void oplus_chg_set_allow_switch_to_fastchg(bool allow)
 	}
 }
 
-#if IS_ENABLED(CONFIG_QCOM_KGSL) || IS_ENABLED(CONFIG_FB)
 void oplus_chg_set_led_status(bool val)
 {
 	/*Do nothing*/
@@ -6643,7 +6637,6 @@ static void oplus_chg_other_thing(struct oplus_chg_chip *chip)
 #ifndef WPC_NEW_INTERFACE
 	if(chip->wireless_support){
         oplus_wpc_print_log();
-        //chargepump_print_log();
 	}
 #endif
 }

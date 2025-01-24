@@ -39,10 +39,7 @@
 #include "../../oplus/oplus_short.h"
 #include "../../oplus/charger_ic/oplus_short_ic.h"
 #include "../../oplus/charger_ic/op_charge.h"
-
 #include "../../oplus/oplus_adapter.h"
-#include "../../oplus/charger_ic/oplus_bq25882.h"
-#include "../../oplus/gauge_ic/oplus_bq27541.h"
 #include "../../oplus/oplus_configfs.h"
 #include <soc/oplus/system/boot_mode.h>
 

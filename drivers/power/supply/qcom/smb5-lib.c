@@ -34,10 +34,7 @@
 #include "../../oplus/oplus_vooc.h"
 #include "../../oplus/oplus_short.h"
 #include "../../oplus/charger_ic/oplus_short_ic.h"
-
 #include "../../oplus/oplus_adapter.h"
-#include "../../oplus/charger_ic/oplus_bq25882.h"
-#include "../../oplus/gauge_ic/oplus_bq27541.h"
 
 struct oplus_chg_chip *g_oplus_chip = NULL;
 bool fg_oplus_set_input_current = false;
@@ -57,6 +54,8 @@ extern bool oplus_usbtemp_check_is_support(void);
 extern void oplus_set_usb_status(int status);
 extern void oplus_clear_usb_status(int status);
 extern int oplus_get_usb_status(void);
+extern bool oplus_chg_is_usb_present(void);
+extern void smbchg_set_chargerid_switch_val(int value);
 void oplus_set_smb5_usb_props_type(enum power_supply_type type);
 
 #define OPLUS_CHG_MONITOR_INTERVAL round_jiffies_relative(msecs_to_jiffies(5000))
