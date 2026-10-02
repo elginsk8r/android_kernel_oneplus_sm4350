@@ -8,11 +8,7 @@
 #include <linux/slab.h>
 #include <linux/bitmap.h>
 #include <linux/buffer_head.h>
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 11, 0)
 #include <linux/sched/signal.h>
-#else
-#include <linux/sched.h>
-#endif
 #include <linux/vmalloc.h>
 
 #include "exfat_raw.h"
@@ -29,10 +25,6 @@
 #else
 #error "BITS_PER_LONG not 32 or 64"
 #endif
-
-#ifndef ALIGN_DOWN
-#define ALIGN_DOWN(x, a) __ALIGN_KERNEL((x) - ((a) - 1), (a))
-#endif 
 
 /*
  *  Allocation Bitmap Management Functions
@@ -61,12 +53,8 @@ static int exfat_allocate_bitmap(struct super_block *sb,
 	}
 	sbi->map_sectors = ((need_map_size - 1) >>
 			(sb->s_blocksize_bits)) + 1;
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 12, 0)
 	sbi->vol_amap = kvmalloc_array(sbi->map_sectors,
 				sizeof(struct buffer_head *), GFP_KERNEL);
-#else
-	sbi->vol_amap = vmalloc(sbi->map_sectors * sizeof(struct buffer_head *));
-#endif
 	if (!sbi->vol_amap)
 		return -ENOMEM;
 
@@ -106,11 +94,8 @@ int exfat_load_bitmap(struct super_block *sb)
 				return -EIO;
 
 			type = exfat_get_entry_type(ep);
-			if (type == TYPE_UNUSED)
-				break;
-			if (type != TYPE_BITMAP)
-				continue;
-			if (ep->dentry.bitmap.flags == 0x0) {
+			if (type == TYPE_BITMAP &&
+			    ep->dentry.bitmap.flags == 0x0) {
 				int err;
 
 				err = exfat_allocate_bitmap(sb, ep);
@@ -118,6 +103,9 @@ int exfat_load_bitmap(struct super_block *sb)
 				return err;
 			}
 			brelse(bh);
+
+			if (type == TYPE_UNUSED)
+				return -EINVAL;
 		}
 
 		if (exfat_get_next_cluster(sb, &clu.dir))
